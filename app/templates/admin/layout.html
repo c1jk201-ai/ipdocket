@@ -1,0 +1,109 @@
+{% extends "layouts/base.html" %}
+
+{% set _popup = (request.args.get('popup') == '1') or (popup is defined and popup) %}
+{% set _active_page = active_page if active_page is defined else '' %}
+{% if not _active_page %}
+  {% if request.path == '/admin' or request.path == '/admin/' %}
+    {% set _active_page = 'index' %}
+  {% elif request.path == '/admin/ops' or request.path == '/admin/ops/' %}
+    {% set _active_page = 'ops_overview' %}
+  {% elif request.path.startswith('/admin/config') %}
+    {% set _active_page = 'config' %}
+  {% elif request.path.startswith('/admin/matter-create-menu') %}
+    {% set _active_page = 'matter_create_menu' %}
+  {% elif request.path.startswith('/admin/case-parameters') %}
+    {% set _active_page = 'case_parameters' %}
+  {% elif request.path.startswith('/admin/users') %}
+    {% set _active_page = 'users' %}
+  {% elif request.path.startswith('/admin/roles') %}
+    {% set _active_page = 'roles' %}
+  {% elif request.path.startswith('/admin/codes') %}
+    {% set _active_page = 'codes' %}
+  {% elif request.path.startswith('/admin/deadlines') %}
+    {% set _active_page = 'deadlines' %}
+  {% elif request.path.startswith('/admin/data-quality') %}
+    {% set _active_page = 'data_quality' %}
+  {% elif request.path.startswith('/admin/usage_logs') %}
+    {% set _active_page = 'usage_logs' %}
+  {% elif request.path.startswith('/admin/access-debug') %}
+    {% set _active_page = 'access_debug' %}
+  {% elif request.path.startswith('/admin/deletions') %}
+    {% set _active_page = 'deletions' %}
+  {% elif request.path.startswith('/admin/errors') %}
+    {% set _active_page = 'error_reports' %}
+  {% elif request.path.startswith('/admin/observability') %}
+    {% set _active_page = 'observability' %}
+  {% elif request.path.startswith('/admin/security/health') %}
+    {% set _active_page = 'security_health' %}
+  {% elif request.path.startswith('/admin/ops/service-health') %}
+    {% set _active_page = 'ops_service_health' %}
+  {% elif request.path.startswith('/admin/ops/queue') %}
+    {% set _active_page = 'ops_queue' %}
+  {% elif request.path.startswith('/admin/ops/scheduler') %}
+    {% set _active_page = 'ops_scheduler' %}
+  {% elif request.path.startswith('/admin/ops/disk') %}
+    {% set _active_page = 'ops_disk' %}
+  {% elif request.path.startswith('/admin/ops/retention') %}
+    {% set _active_page = 'ops_retention' %}
+  {% elif request.path.startswith('/admin/ops/annuity') %}
+    {% set _active_page = 'ops_annuity' %}
+  {% endif %}
+{% endif %}
+
+{% set _page_meta = {
+  'default': {'kicker': 'Administrator', 'label': 'Administrator Settings', 'description': 'Manage accounts, permissions, ERP policies, security, and operations.'},
+  'index': {'kicker': 'Administrator', 'label': 'Admin Dashboard', 'description': 'Open the main account, permission, ERP, security, and operations tools.'},
+  'config': {'kicker': 'System', 'label': 'System Settings', 'description': 'Login, access control, billing, and raw configuration.'},
+  'matter_create_menu': {'kicker': 'Matter', 'label': 'Matter Create Menu', 'description': 'Configure New Matter Wizard sections, matter types, and create-form parameter layout.'},
+  'case_parameters': {'kicker': 'Matter', 'label': 'Matter Parameters', 'description': 'Manage field definitions and matter-profile parameter mappings.'},
+  'users': {'kicker': 'Account', 'label': 'Staff & Users', 'description': 'Create accounts, link staff records, and manage active user status.'},
+  'roles': {'kicker': 'Account', 'label': 'Roles & Permissions', 'description': 'Review roles and assign menu or workflow permissions.'},
+  'codes': {'kicker': 'ERP', 'label': 'Legacy Code Registry', 'description': 'Review where deprecated code tables moved in the current system.'},
+  'deadlines': {'kicker': 'Policy', 'label': 'Deadline Notice Rules', 'description': 'Review and adjust deadline notice policies and agency response rules.'},
+  'data_quality': {'kicker': 'Operations', 'label': 'Data Quality', 'description': 'Find orphan records, missing links, duplicates, and parsing failures.'},
+  'usage_logs': {'kicker': 'Audit', 'label': 'Activity Logs', 'description': 'Search request history by user, path, method, status, and date.'},
+  'access_debug': {'kicker': 'Audit', 'label': 'Access Review', 'description': 'Check whether a user can access a matter and inspect the policy decision.'},
+  'deletions': {'kicker': 'Audit', 'label': 'Recycle Bin', 'description': 'Review deletion history, restore records, and inspect restore status.'},
+  'error_reports': {'kicker': 'Audit', 'label': 'Error Reports', 'description': 'Review recent application errors and captured exception details.'},
+  'observability': {'kicker': 'Operations', 'label': 'Observability', 'description': 'Review error trends, swallowed exceptions, and automation failures.'},
+  'security_health': {'kicker': 'Security', 'label': 'Security Settings', 'description': 'Review security configuration, required actions, and key rotation status.'},
+  'ops_overview': {'kicker': 'Operations', 'label': 'Operations Monitoring', 'description': 'Track service health, durable queues, scheduler jobs, storage, retention, and renewals.'},
+  'ops_service_health': {'kicker': 'Operations', 'label': 'Service Health', 'description': 'Review latency, queue health, notification failures, and operational alerts.'},
+  'ops_queue': {'kicker': 'Operations', 'label': 'Durable Queue', 'description': 'Filter queued, running, failed, and retryable background jobs.'},
+  'ops_scheduler': {'kicker': 'Operations', 'label': 'Scheduler Status', 'description': 'Review scheduled job heartbeats, successes, and failures.'},
+  'ops_disk': {'kicker': 'Operations', 'label': 'Disk Usage', 'description': 'Review upload and backup storage usage over recent samples.'},
+  'ops_retention': {'kicker': 'Operations', 'label': 'Retention History', 'description': 'Review cleanup runs, removed rows, errors, and table growth.'},
+  'ops_annuity': {'kicker': 'Operations', 'label': 'Renewal Operations', 'description': 'Inspect matter renewal generation, workflow sync, and backlog status.'}
+} %}
+{% set _meta = _page_meta.get(_active_page, _page_meta['default']) %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ static_asset_url('css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-shell{% if _popup %} admin-shell-popup{% endif %}">
+  <main class="admin-main">
+    {% block admin_header %}
+    <section class="admin-hero">
+      <div>
+        <div class="admin-kicker">{{ _meta.kicker }}</div>
+        <h1 class="admin-title">{% block title %}{{ _meta.label }}{% endblock %}</h1>
+        <p class="admin-description">{% block admin_description %}{{ _meta.description }}{% endblock %}</p>
+      </div>
+      {% if not _popup %}
+      <div class="admin-actions">
+        {% block admin_header_actions %}
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.index') }}"><i class="bi bi-grid-1x2"></i> Admin</a>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_security_health.security_health_page') }}"><i class="bi bi-shield-check"></i> Security</a>
+        {% endblock %}
+      </div>
+      {% endif %}
+    </section>
+    {% endblock %}
+
+    {% block admin_content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

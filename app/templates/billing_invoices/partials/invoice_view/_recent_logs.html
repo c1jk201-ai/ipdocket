@@ -1,0 +1,281 @@
+<!-- Recent Logs (last 5) -->
+<div id="sec-case-matching" class="sheet no-print" style="margin-top: 16px">
+ <div class="page-header" style="align-items: center; gap: 8px">
+  <h3 style="margin: 0">
+   Matter matching
+   <span class="muted" style="font-size: 0.8em; font-weight: 500">({{ case_links|length }})</span>
+  </h3>
+  <div class="page-actions">
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('case_work.select_matter_create', popup=1, invoice_id=invoice['id'], client_id=invoice['client_id']) }}"
+    onclick="window.open(this.href,'caseCreateFromInvoice','width=1200,height=900,scrollbars=yes,resizable=yes'); return false;"
+   >New matter</a
+  >
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('billing_invoices.case_matching.page', preselect_invoice=(invoice['number'] or invoice['id']), mode='invoice_first') }}"
+    onclick="window.open(this.href,'caseMatchingFromInvoice','width=1400,height=900,scrollbars=yes,resizable=yes'); return false;"
+   >Matter matching</a
+  >
+  </div>
+ </div>
+
+ <div class="card" style="margin-top: 10px">
+  <div class="muted" style="font-size: 0.85em; margin-bottom: 6px">
+    Add one or more confirmed matter links to this invoice.
+  </div>
+  <form
+   method="POST"
+   action="{{ url_for('billing_invoices.invoices.add_invoice_case_link', invoice_id=invoice['id']) }}"
+   data-prevent-double-submit="true"
+   style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap"
+ >
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+   <div>
+    <label style="font-size: 12px">Matter ID, Our Ref, former Our Ref, or Your Ref</label>
+    <input
+     name="case_ref"
+     placeholder="Example: 6ab144..., 25TD0329US, CLIENT-REF-001"
+     style="width: 260px"
+    />
+   </div>
+   <button class="btn btn-primary" type="submit">Link matter</button>
+  </form>
+  {% set bulk_link = namespace(tokens=[]) %}
+  {% for suggestion in internal_reference_suggestions or [] %}
+    {% if suggestion.status == 'ok' and not suggestion.already_linked and suggestion.matter_id %}
+      {% set _ = bulk_link.tokens.append(suggestion.matter_id) %}
+    {% endif %}
+  {% endfor %}
+  {% if bulk_link.tokens %}
+  <form
+   method="POST"
+   action="{{ url_for('billing_invoices.invoices.add_invoice_case_link', invoice_id=invoice['id']) }}"
+   data-prevent-double-submit="true"
+   style="display: inline-flex; gap: 8px; align-items: center; margin-top: 8px"
+ >
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+   <input type="hidden" name="case_ref" value="{{ bulk_link.tokens|join(' ') }}" />
+   <button class="btn btn-ghost btn-sm" type="submit">
+    Link {{ bulk_link.tokens|length }} suggested matter{% if bulk_link.tokens|length != 1 %}s{% endif %}
+   </button>
+  </form>
+  {% endif %}
+
+  {% if internal_reference_suggestions %}
+  <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef2f7">
+   <div class="muted" style="font-size: 0.85em; margin-bottom: 8px">
+    Suggested matches from invoice references: {{ internal_reference_suggestions|length }}
+   </div>
+   <div style="display: flex; flex-direction: column; gap: 8px">
+    {% for suggestion in internal_reference_suggestions %}
+    <div style="border: 1px solid #eef2f7; border-radius: 8px; padding: 8px 10px">
+     {% if suggestion.status == 'ok' %}
+     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+      <span class="muted" style="font-size: 0.85em">{{ suggestion.input }}</span>
+      <strong>{{ suggestion.our_ref or suggestion.matter_id }}</strong>
+      {% if suggestion.right_name %}
+      <span class="muted">{{ suggestion.right_name }}</span>
+      {% endif %}
+      <div class="spacer"></div>
+      {% if suggestion.already_linked %}
+      <span class="badge bg-secondary">Linked</span>
+      {% else %}
+      <form
+       method="POST"
+       action="{{ url_for('billing_invoices.invoices.add_invoice_case_link', invoice_id=invoice['id']) }}"
+       data-prevent-double-submit="true"
+       style="display: inline-flex"
+     >
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+       <input type="hidden" name="case_ref" value="{{ suggestion.matter_id }}" />
+       <button class="btn btn-sm btn-outline-primary" type="submit">Link matter</button>
+      </form>
+      {% endif %}
+     </div>
+     {% elif suggestion.status == 'ambiguous' %}
+     <div class="muted" style="margin-bottom: 6px">
+      Multiple matter matches for {{ suggestion.input }}. Select the correct matter manually.
+     </div>
+     <div style="display: flex; flex-direction: column; gap: 6px">
+      {% for match in suggestion.matches %}
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+       <strong>{{ match.our_ref or match.matter_id }}</strong>
+       {% if match.right_name %}
+       <span class="muted">{{ match.right_name }}</span>
+       {% endif %}
+       <div class="spacer"></div>
+       {% if match.already_linked %}
+       <span class="badge bg-secondary">Linked</span>
+       {% else %}
+       <form
+        method="POST"
+        action="{{ url_for('billing_invoices.invoices.add_invoice_case_link', invoice_id=invoice['id']) }}"
+        data-prevent-double-submit="true"
+        style="display: inline-flex"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="case_ref" value="{{ match.matter_id }}" />
+        <button class="btn btn-sm btn-outline-primary" type="submit">Link matter</button>
+       </form>
+       {% endif %}
+      </div>
+      {% endfor %}
+     </div>
+     {% else %}
+     <div class="muted">No matter match found for {{ suggestion.input }}.</div>
+     {% endif %}
+    </div>
+    {% endfor %}
+   </div>
+  </div>
+  {% endif %}
+
+  <div style="margin-top: 10px">
+   {% if case_links %}
+   <table class="table table-sm table-hover mb-0">
+    <thead>
+     <tr>
+      <th style="width: 220px">Matter reference</th>
+      <th>Matter name</th>
+      <th style="width: 140px"></th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for c in case_links %}
+     <tr>
+      <td>
+       <a href="{{ url_for('case_work.case_detail', case_id=c.matter_id, invoice_id=invoice['id'], _anchor='sec-cost') }}" class="text-decoration-none">
+        {{ c.our_ref or c.matter_id }}
+       </a>
+      </td>
+      <td>{{ c.right_name or '' }}</td>
+      <td>
+       <a href="{{ url_for('case_work.case_detail', case_id=c.matter_id, invoice_id=invoice['id'], _anchor='sec-cost') }}" class="btn btn-sm btn-outline-info">View</a>
+       <form
+        method="POST"
+        action="{{ url_for('billing_invoices.invoices.remove_invoice_case_link', invoice_id=invoice['id']) }}"
+        class="d-inline"
+        data-confirm="Remove this matter link?"
+        data-prevent-double-submit="true"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="matter_id" value="{{ c.matter_id }}" />
+        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+       </form>
+      </td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+   {% else %}
+   <div class="text-muted">
+    No confirmed matter links yet.
+    {% if internal_reference_suggestions %}
+    Review the suggested matches above or enter a matter identifier manually.
+    {% else %}
+    Enter a Matter ID, Our Ref, former Our Ref, or Your Ref above.
+    {% endif %}
+   </div>
+   {% endif %}
+  </div>
+ </div>
+</div>
+<div id="sec-logs" class="sheet no-print" style="margin-top: 16px">
+ <div class="page-header" style="align-items: center; gap: 8px">
+  <h3 style="margin: 0">Recent activity</h3>
+  <div class="page-actions">
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='payment') }}"
+   >All payment activity</a
+  >
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='billing') }}"
+   >All billing logs</a
+  >
+   <a
+    class="btn"
+    href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='all') }}"
+   > View</a
+  >
+  </div>
+ </div>
+ <div class="grid grid-2" style="gap: 12px; margin-top: 8px">
+  <div class="card">
+   <h4 style="margin: 0 0 8px 0">📄 Billing</h4>
+   <ul style="list-style: none; padding: 0; margin: 0">
+    {% for log in billing_logs %}
+    <li style="padding: 6px 0; border-bottom: 1px solid #eef2f7">
+     <div style="display: flex; gap: 8px; align-items: center">
+      <span class="muted" style="font-size: 0.85em"
+      >{{ log['created_at']|local_dt }}</span
+     >
+      <span style="font-weight: 600">
+       {% if log['action']=='invoice.status_change' %}status change{% elif
+       log['action']=='invoice.tax_issued' %}Tax documentation recorded{% elif
+       log['action']=='invoice.publish' %}Issued(sent){% elif
+       log['action']=='invoice.create' %}Draft{% else %}{{
+       log['action'] }}{% endif %}
+      </span>
+      <div class="spacer"></div>
+      <span class="muted" style="font-size: 0.85em"
+      >{{ log['username'] or '-' }}</span
+     >
+     </div>
+     {% if log['pretty_meta'] %}
+     <div
+      class="muted"
+      style="margin-top: 2px; white-space: pre-wrap; font-size: 0.85em"
+    >
+      {{ log['pretty_meta'] }}
+     </div>
+     {% endif %}
+    </li>
+    {% else %}
+    <li class="muted"> none.</li>
+    {% endfor %}
+   </ul>
+  </div>
+  <div class="card">
+   <h4 style="margin: 0 0 8px 0">💳 Payment</h4>
+   <ul style="list-style: none; padding: 0; margin: 0">
+    {% for log in payment_logs %}
+    <li style="padding: 6px 0; border-bottom: 1px solid #eef2f7">
+     <div style="display: flex; gap: 8px; align-items: center">
+      <span class="muted" style="font-size: 0.85em"
+      >{{ log['created_at']|local_dt }}</span
+     >
+      <span style="font-weight: 600">
+       {% if log['action']=='invoice.payment.verify' %}Payment verification{% elif
+       log['action']=='invoice.payment.force_paid' %} Payment{% elif
+       log['action']=='invoice.payment.unverify' %} {% elif
+       log['action']=='invoice.payment_meta.save' %}Payment Save{% elif
+       log['action']=='invoice.mark_paid' %} Payment{% elif
+       log['action']=='invoice.deposit.apply' %}Retainer application{% elif
+       log['action']=='invoice.deposit.cancel_apply' %}Retainer applicationCancel{%
+       else %}{{ log['action'] }}{% endif %}
+      </span>
+      <div class="spacer"></div>
+      <span class="muted" style="font-size: 0.85em"
+      >{{ log['username'] or '-' }}</span
+     >
+     </div>
+     {% if log['pretty_meta'] %}
+     <div
+      class="muted"
+      style="margin-top: 2px; white-space: pre-wrap; font-size: 0.85em"
+    >
+      {{ log['pretty_meta'] }}
+     </div>
+     {% endif %}
+    </li>
+    {% else %}
+    <li class="muted"> none.</li>
+    {% endfor %}
+   </ul>
+  </div>
+ </div>
+</div>

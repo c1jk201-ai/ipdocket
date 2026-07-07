@@ -1,0 +1,169 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block title %}Office Actions{% endblock %}
+
+{% block content %}
+{% from "_entity_links.html" import history_notice_edit, history_notice_view %}
+{% set today_str = today|default('')|string %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Office Actions</h4>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form
+              method="GET"
+              class="row g-2 align-items-center"
+              data-show-loading="true"
+              data-loading-text="Loading office action list..."
+              data-loading-detail="Refreshing the list with your search criteria."
+            >
+                <div class="col-auto">
+                    <input type="text" class="form-control form-control-sm" name="q"
+                           value="{{ search }}" placeholder="Search docket no. or document name...">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
+                    {% if search %}
+                    <a href="{{ url_for('doc.all_notices') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                    {% endif %}
+                </div>
+                <div class="col-auto ms-auto">
+                    <span class="badge bg-secondary">{{ total }} total</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">Docket No.</th>
+                        <th>Document</th>
+                        <th style="width: 100px;">Uploaded</th>
+                        <th style="width: 100px;">Mailed</th>
+                        <th style="width: 100px;">Due</th>
+                        <th style="width: 100px;">Extended Due</th>
+                        <th style="width: 100px;">Done</th>
+                        <th style="width: 60px;">Files</th>
+                        <th style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    {% set eff_due = r.effective_due_date or r.due_date or r.computed_due_date %}
+                    {% set is_overdue = eff_due and not r.done_date and today_str and eff_due < today_str %}
+                    <tr class="{% if is_overdue %}table-danger{% endif %}">
+                        <td class="text-center text-muted">{{ (page - 1) * per_page + loop.index }}</td>
+                        <td>
+                            <a href="{{ url_for('case_work.case_detail', case_id=r.matter_id) }}#sec-history" class="text-decoration-none">
+                                {{ r.our_ref }}
+                            </a>
+                        </td>
+                        <td class="text-truncate" style="max-width: 300px;" title="{{ r.doc_name or '' }}">
+                            {% if r.oa_id %}
+                              {{ history_notice_view(r.matter_id, r.oa_id, label=(r.doc_name or '-'), popup=1, classes='text-decoration-none text-dark text-truncate d-block') }}
+                            {% else %}
+                              {{ r.doc_name or '-' }}
+                            {% endif %}
+                            {% if not r.due_date and r.due_policy == 'NO_DEADLINE' %}
+                              <span class="badge bg-secondary ms-1">No deadline</span>
+                            {% elif not r.due_date and r.due_policy == 'COMPUTED' %}
+                              <span class="badge bg-info text-dark ms-1">Auto docketed</span>
+                            {% elif not r.due_date and r.due_date_confirm_required %}
+                              <span class="badge bg-warning text-dark ms-1">Review needed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                          {% set _recv = (r.received_date or '')|date_only %}
+                          {% if _recv %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_recv) }}" class="text-decoration-none">{{ _recv|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% set _notified = (r.notified_date or '')|date_only %}
+                          {% if _notified %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_notified) }}" class="text-decoration-none">{{ _notified|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td>
+                            {% if r.done_date and eff_due %}
+                                {% set _due = (eff_due or '')|date_only %}
+                                {% if _due %}
+                                  <a href="{{ url_for('deadlines.calendar_month', date=_due) }}" class="text-muted text-decoration-none" title="Completed">{{ _due|us_date }}</a>
+                                {% else %}
+                                  -
+                                {% endif %}
+                            {% elif eff_due %}
+                                {% set _due = (eff_due or '')|date_only %}
+                                {% if _due %}
+                                  <a href="{{ url_for('deadlines.calendar_month', date=_due) }}"
+                                     class="{% if is_overdue %}text-danger fw-bold{% else %}text-primary{% endif %} text-decoration-none">
+                                    {{ _due|us_date }}
+                                  </a>
+                                  {% if not r.due_date and r.computed_due_date %}
+                                    <span class="text-muted small ms-1" title="Calculated from document type">*</span>
+                                  {% endif %}
+                                {% else %}
+                                  -
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                          {% set _ext = (r.extended_due_date or '')|date_only %}
+                          {% if _ext %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_ext) }}" class="text-decoration-none">{{ _ext|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% set _done = (r.done_date or '')|date_only %}
+                          {% if _done %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_done) }}" class="text-decoration-none">{{ _done|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if r.attach_count > 0 %}
+                                <a href="{{ url_for('case_work.history_notice_attachments', case_id=r.matter_id, oa_id=r.oa_id) }}"
+                                   class="badge bg-info text-decoration-none">{{ r.attach_count }}</a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('case_work.history_notice_edit', case_id=r.matter_id, oa_id=r.oa_id, popup=1) }}"
+                               onclick="window.open(this.href,'noticeEdit','width=1100,height=800'); return false;"
+                               class="btn btn-sm btn-outline-secondary">Edit</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4 text-muted">No office action data.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% set notice_pagination_args = request.args.to_dict(flat=True) %}
+    {% set _ = notice_pagination_args.update({'q': search or '', 'per_page': per_page}) %}
+    {{ ui.pagination(request.endpoint, page, total_pages, notice_pagination_args, 'Office action pagination') }}
+</div>
+{% endblock %}

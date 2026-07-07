@@ -1,0 +1,152 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1">Capacity Planner</h1>
+      <div class="text-muted small" id="capacityGeneratedAt"></div>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" id="capacityRefresh">
+      <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
+      New
+    </button>
+  </div>
+
+  <ul class="nav nav-tabs" id="capacityTabs" role="tablist"></ul>
+  <div class="table-responsive border border-top-0 bg-white">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Contact</th>
+          <th class="text-end">Item</th>
+          <th class="text-end">Estimated</th>
+          <th class="text-end"></th>
+          <th class="text-end"></th>
+          <th class="text-end">Overdue</th>
+          <th class="text-end"></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="capacityRows">
+        <tr><td colspan="8" class="text-muted p-3">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-lg-6">
+      <h2 class="h6"></h2>
+      <div class="list-group" id="capacityBottlenecks"></div>
+    </div>
+    <div class="col-lg-6">
+      <h2 class="h6"> </h2>
+      <div class="list-group" id="capacitySuggestions"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(() => {
+  const tabsEl = document.getElementById("capacityTabs");
+  const rowsEl = document.getElementById("capacityRows");
+  const generatedEl = document.getElementById("capacityGeneratedAt");
+  const bottlenecksEl = document.getElementById("capacityBottlenecks");
+  const suggestionsEl = document.getElementById("capacitySuggestions");
+  let plan = null;
+  let activeDays = 14;
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[ch]));
+  }
+
+  function badge(level) {
+    const cls = level === "overloaded" ? "danger" : level === "tight" ? "warning" : level === "available" ? "success" : "secondary";
+    return `<span class="badge text-bg-${cls}">${level}</span>`;
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = "";
+    (plan.windows || []).forEach((win) => {
+      const li = document.createElement("li");
+      li.className = "nav-item";
+      li.role = "presentation";
+      li.innerHTML = `<button class="nav-link ${win.days === activeDays ? "active" : ""}" type="button">${win.days}</button>`;
+      li.querySelector("button").addEventListener("click", () => {
+        activeDays = win.days;
+        render();
+      });
+      tabsEl.appendChild(li);
+    });
+  }
+
+  function renderRows() {
+    const win = (plan.windows || []).find((item) => item.days === activeDays) || (plan.windows || [])[0];
+    if (!win || !(win.people || []).length) {
+      rowsEl.innerHTML = `<tr><td colspan="8" class="text-muted p-3">Estimated item none.</td></tr>`;
+      return;
+    }
+    rowsEl.innerHTML = win.people.map((person) => {
+      const types = Object.entries(person.by_type || {}).map(([k, v]) => `${k} ${v}`).join(" / ");
+      const util = Math.round((person.utilization || 0) * 100);
+      return `<tr>
+        <td><div class="fw-semibold">${esc(person.name || "-")}</div>${badge(person.load_level)}</td>
+        <td class="text-end">${person.item_count}</td>
+        <td class="text-end">${person.estimated_hours}</td>
+        <td class="text-end">${person.capacity_hours}</td>
+        <td class="text-end">${util}%</td>
+        <td class="text-end">${person.overdue_count}</td>
+        <td class="text-end">${person.urgent_count}</td>
+        <td class="text-muted small">${esc(types || "-")}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderLists() {
+    bottlenecksEl.innerHTML = (plan.bottlenecks || []).slice(0, 8).map((item) =>
+      `<div class="list-group-item">
+        <div class="d-flex justify-content-between"><strong>${esc(item.name)}</strong>${badge(item.load_level)}</div>
+        <div class="small text-muted">${item.window_days} / Item ${item.item_count} / Overdue ${item.overdue_count}</div>
+      </div>`
+    ).join("") || `<div class="list-group-item text-muted"> none.</div>`;
+
+    suggestionsEl.innerHTML = (plan.reassignment_suggestions || []).slice(0, 8).map((item) =>
+      `<div class="list-group-item">
+        <div><strong>${esc(item.from)}</strong> -> <strong>${esc(item.to)}</strong></div>
+        <div class="small text-muted">${item.window_days} / ${esc(item.item?.title || "")}</div>
+      </div>`
+    ).join("") || `<div class="list-group-item text-muted">  none.</div>`;
+  }
+
+  function render() {
+    renderTabs();
+    renderRows();
+    renderLists();
+    generatedEl.textContent = plan ? `reference date ${plan.today} / Create ${plan.generated_at}` : "";
+  }
+
+  async function load() {
+    rowsEl.innerHTML = `<tr><td colspan="8" class="text-muted p-3">Loading...</td></tr>`;
+    const res = await fetch("/api/productivity/capacity-planner", { headers: { "Accept": "application/json" } });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "capacity planner failed");
+    plan = data;
+    activeDays = (plan.windows?.[0]?.days) || 14;
+    render();
+  }
+
+  document.getElementById("capacityRefresh").addEventListener("click", load);
+  load().catch((err) => {
+    rowsEl.innerHTML = `<tr><td colspan="8" class="text-danger p-3">${err.message}</td></tr>`;
+  });
+})();
+</script>
+{% endblock %}

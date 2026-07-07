@@ -1,0 +1,455 @@
+{% extends "layouts/base.html" %}
+
+{% block styles %}
+<style>
+  .merge-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .merge-table tbody tr[data-row-hidden="1"] {
+    display: none;
+  }
+  .merge-client-tools {
+    min-width: 0;
+  }
+  @media (max-width: 767.98px) {
+    #mergePage {
+      margin-top: 1rem !important;
+    }
+    .merge-page-header {
+      align-items: stretch !important;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1rem !important;
+    }
+    .merge-page-actions,
+    .merge-page-actions .btn {
+      width: 100%;
+    }
+    .merge-page-actions .btn {
+      justify-content: center;
+    }
+    .merge-duplicate-row,
+    .merge-source-summary {
+      align-items: stretch !important;
+      flex-direction: column;
+    }
+    .merge-duplicate-actions,
+    .merge-confirm-actions,
+    .merge-client-tools {
+      width: 100%;
+    }
+    .merge-duplicate-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      text-align: left !important;
+    }
+    .merge-duplicate-actions form {
+      margin-right: 0 !important;
+    }
+    .merge-duplicate-actions .btn,
+    .merge-confirm-actions .btn {
+      flex: 1 1 10rem;
+      justify-content: center;
+    }
+    .merge-client-tools {
+      align-items: stretch !important;
+      flex-direction: column;
+    }
+    .merge-client-filter {
+      width: 100% !important;
+    }
+    .merge-sticky-header {
+      position: static;
+    }
+    #main #mergePage .table-responsive {
+      overflow: visible;
+    }
+    #main #mergePage .merge-table,
+    #clientTable {
+      border-collapse: separate;
+      border-spacing: 0 0.75rem;
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+    #clientTable thead {
+      display: none;
+    }
+    #clientTable tbody,
+    #clientTable tbody tr,
+    #clientTable tbody td {
+      display: block;
+      width: 100%;
+    }
+    #clientTable tbody tr {
+      background: #fff;
+      border: 1px solid rgba(57, 72, 103, 0.12);
+      border-radius: 0.75rem;
+      box-shadow: 0 0.2rem 0.7rem rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      padding: 0.55rem 0.75rem;
+    }
+    #clientTable tbody td {
+      border-bottom: 1px solid #eef2f7;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      padding: 0.6rem 0 !important;
+      text-align: left !important;
+    }
+    #clientTable tbody td:last-child {
+      border-bottom: 0;
+    }
+    #clientTable tbody td[data-label] {
+      display: grid;
+      gap: 0.55rem;
+      grid-template-columns: 5.4rem minmax(0, 1fr);
+    }
+    #clientTable tbody td[data-label]::before {
+      color: #64748b;
+      content: attr(data-label);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding-top: 0.08rem;
+    }
+    #clientTable tbody td[data-label] > * {
+      min-width: 0;
+    }
+    #clientTable tbody td[data-label="Client"] {
+      display: block;
+    }
+    #clientTable tbody td[data-label="Client"]::before {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+    #clientTable tbody td[data-label="Select"] .btn-group {
+      display: grid;
+      gap: 0.5rem;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div
+  class="container-fluid mt-4 fade-in"
+  id="mergePage"
+  data-preselected-target="{{ preselected_target_id or '' }}"
+  data-preselected-sources='{{ preselected_source_ids|tojson if preselected_source_ids is defined else "[]" }}'
+  data-unified-invoice="{{ 1 if config.get('INVOICEAPP_UNIFIED_CLIENTS') else 0 }}"
+>
+  <div class="d-flex justify-content-between align-items-center mb-4 merge-page-header">
+    <div>
+      <h3 class="fw-bold text-dark mb-1">Client </h3>
+      <p class="text-muted small mb-0">
+        target( Client) 1 Original(Delete Client) 1  Select.
+      </p>
+    </div>
+    <div class="d-flex gap-2 merge-page-actions">
+      <a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="{{ url_for('customers.clients') }}">
+        <i class="bi bi-arrow-left"></i> Client List
+      </a>
+    </div>
+  </div>
+
+  <div class="alert alert-warning border-0 shadow-sm">
+    <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>   Confirm</div>
+    <div class="small text-muted">
+      Source client Matter/CRM Log/Invoice  target Clientto Go, Source client   Delete(Undo ).<br />
+      <span class="fw-semibold">TIP:</span>  Matter/Invoice Link  Client targetto Select.
+    </div>
+  </div>
+  <div id="mergeAlert" class="alert alert-danger d-none" role="alert"></div>
+
+  {% if duplicate_groups %}
+  <div class="card border-warning shadow-sm mb-4">
+    <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center gap-2 flex-wrap">
+      <span><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Duplicate  Client (Quick Select)</span>
+      <span class="small text-muted">   target/Original Edit  exists.</span>
+    </div>
+    <div class="card-body p-0">
+      <ul class="list-group list-group-flush">
+        {% for g in duplicate_groups %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between align-items-start gap-3 merge-duplicate-row">
+            <div class="flex-grow-1">
+              <div class="small text-muted mb-2 d-flex flex-wrap gap-1">
+                <span class="badge bg-warning-subtle text-warning border">Duplicate {{ g.clients|length }}</span>
+                {% if g.reasons %}
+                  {% for reason in g.reasons[:3] %}
+                  <span class="badge bg-light text-secondary border">{{ reason.kind_label }} · {{ reason.value }}</span>
+                  {% endfor %}
+                  {% if g.reasons|length > 3 %}
+                  <span class="badge bg-light text-secondary border">+{{ g.reasons|length - 3 }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-light text-secondary border">{{ g.kind_label }} · {{ g.value }}</span>
+                {% endif %}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                {% for c in g.clients %}
+                <a
+                  class="btn btn-sm btn-outline-secondary"
+                  href="{{ url_for('customers.client_view', client_id=c.id) }}"
+                >#{{ c.id }} {{ c.name }}</a>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="text-end merge-duplicate-actions">
+              <div class="small text-muted mb-2" data-role="group-recommend"></div>
+              {% if g.signature %}
+              <form
+                method="post"
+                action="{{ url_for('customers.client_duplicate_reject') }}"
+                class="d-inline-block me-1"
+                onsubmit="return confirm('Remove this client from the merge list?');"
+              >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="hidden" name="group_signature" value="{{ g.signature }}" />
+                <button type="submit" class="btn btn-sm btn-outline-secondary"> </button>
+              </form>
+              {% endif %}
+              <button
+                type="button"
+                class="btn btn-sm btn-warning"
+                data-action="load-group"
+                data-ids='{{ g.client_ids|tojson }}'
+              >
+                  
+              </button>
+            </div>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('customers.client_merge') }}" id="mergeForm" data-prevent-double-submit="true">
+    <div id="mergeHiddenFields"></div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-lg-6">
+        <div class="card border-primary shadow-sm h-100">
+          <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-shield-check me-1 text-primary"></i>target ( Client)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="clear-target">target Clear</button>
+          </div>
+          <div class="card-body">
+            <div id="targetPreview" class="text-muted small">
+              below tablefrom <span class="fw-semibold">target</span>   Select.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card border-danger shadow-sm h-100">
+          <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-arrow-down-right-circle me-1 text-danger"></i>Original (Delete Client)</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-action="clear-sources">Original </button>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2 merge-source-summary">
+              <div class="small text-muted">
+                <span class="badge bg-danger-subtle text-danger border">Original</span>
+                <span id="sourcesCountLabel">0</span>
+                <i class="bi bi-arrow-right mx-1"></i>
+                <span class="badge bg-primary-subtle text-primary border">target</span>
+                <span id="targetLabel">Select</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-action="clear-selection">All Reset</button>
+            </div>
+            <div id="sourcesPreview" class="text-muted small">
+              below tablefrom <span class="fw-semibold">Original</span>   Add.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body d-flex flex-column flex-md-row gap-3 justify-content-between align-items-start align-items-md-center">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" value="1" id="mergeAck" required />
+          <label class="form-check-label" for="mergeAck">
+            Source client   Delete, Original Log target Clientto Go  Confirm.
+          </label>
+        </div>
+        <div class="d-flex gap-2 flex-wrap merge-confirm-actions">
+          <button
+            type="submit"
+            class="btn btn-danger"
+            id="mergeSubmitBtn"
+            disabled
+            data-confirm=" Client ?  Actions   none."
+          >
+            Client  row
+          </button>
+          <a href="{{ url_for('customers.clients') }}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <span><i class="bi bi-search me-1 text-muted"></i>Client </span>
+        <div class="d-flex gap-2 align-items-center flex-wrap merge-client-tools">
+          <div class="input-group input-group-sm merge-client-filter" style="width: 360px;">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input
+              type="text"
+              class="form-control"
+              id="clientFilter"
+              placeholder="Name/ID/Email//Registration No. Search…"
+              autocomplete="off"
+            />
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="clearGroupFilter"> Filter Clear</button>
+          <span class="small text-muted" id="clientFilterCount"></span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 merge-table" id="clientTable" style="min-width: 1100px;">
+            <thead class="bg-light merge-sticky-header">
+              <tr>
+                <th class="py-3 ps-3" style="width: 28%">Client</th>
+                <th class="py-3" style="width: 16%">Registration No.</th>
+                <th class="py-3" style="width: 20%">Phone</th>
+                <th class="py-3 text-center" style="width: 18%">Data</th>
+                <th class="py-3 text-center" style="width: 10%">Invoice</th>
+                <th class="py-3 text-end pe-3" style="width: 8%">Select</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in clients %}
+                {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+                {% if unified_mode %}
+                  {% set invoice_label = ' (#' ~ c.id ~ ')' %}
+                {% elif c.external_invoice_client_id %}
+                  {% set invoice_label = 'Link (#' ~ c.external_invoice_client_id ~ ')' %}
+                {% else %}
+                  {% set invoice_label = 'Link' %}
+                {% endif %}
+              <tr
+                data-client-id="{{ c.id }}"
+                data-client-name="{{ c.name|e }}"
+                data-client-type="{{ (c.type or '')|e }}"
+                data-client-email="{{ (c.email or '')|e }}"
+                data-client-phone="{{ (c.phone or '')|e }}"
+                data-client-registration="{{ (c.registration_number or '')|e }}"
+                data-client-bizreg="{{ (c.biz_reg_number or '')|e }}"
+                data-client-address="{{ (c.address or '')|e }}"
+                data-case-count="{{ case_counts.get(c.id, 0) if case_counts is defined else 0 }}"
+                data-contact-count="{{ contact_counts.get(c.id, 0) if contact_counts is defined else 0 }}"
+                data-opportunity-count="{{ opportunity_counts.get(c.id, 0) if opportunity_counts is defined else 0 }}"
+                data-activity-count="{{ activity_counts.get(c.id, 0) if activity_counts is defined else 0 }}"
+                data-external-invoice-client-id="{{ c.external_invoice_client_id or '' }}"
+                data-invoice-label="{{ invoice_label|e }}"
+                data-view-url="{{ url_for('customers.client_view', client_id=c.id) }}"
+              >
+                <td class="ps-3 py-2" data-label="Client">
+                  <div class="fw-semibold">
+                    <a href="{{ url_for('customers.client_view', client_id=c.id) }}" class="text-decoration-none">
+                      #{{ c.id }} {{ c.name }}
+                    </a>
+                  </div>
+                  <div class="small text-muted text-truncate" style="max-width: 420px;">
+                    {% if c.type %}{{ c.type|upper }} · {% endif %}
+                    {{ c.address or '-' }}
+                  </div>
+                </td>
+                <td class="small" data-label="Registration No.">
+                  <div class="font-monospace text-secondary">{{ c.registration_number or '-' }}</div>
+                  {% if c.biz_reg_number %}
+                  <div class="font-monospace text-secondary">{{ c.biz_reg_number }}</div>
+                  {% endif %}
+                </td>
+                <td class="small" data-label="Phone">
+                  <div class="d-flex flex-column gap-1">
+                    {% if c.email %}
+                    <div><i class="bi bi-envelope me-1 text-muted"></i>{{ c.email }}</div>
+                    {% endif %}
+                    {% if c.phone %}
+                    <div><i class="bi bi-telephone me-1 text-muted"></i>{{ c.phone }}</div>
+                    {% endif %}
+                    {% if not c.email and not c.phone %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="small text-center" data-label="Data">
+                  <div class="d-flex flex-wrap justify-content-center gap-1">
+                    <span class="badge bg-light text-secondary border">Matter {{ case_counts.get(c.id, 0) if case_counts is defined else 0 }}</span>
+                    <span class="badge bg-light text-secondary border">Phone {{ contact_counts.get(c.id, 0) if contact_counts is defined else 0 }}</span>
+                    <span class="badge bg-light text-secondary border"> {{ opportunity_counts.get(c.id, 0) if opportunity_counts is defined else 0 }}</span>
+                    <span class="badge bg-light text-secondary border"> {{ activity_counts.get(c.id, 0) if activity_counts is defined else 0 }}</span>
+                  </div>
+                </td>
+                <td class="small text-center" data-label="Invoice">
+                  {% if unified_mode %}
+                    <span class="badge bg-success-subtle text-success border"></span>
+                  {% elif c.external_invoice_client_id %}
+                    <span class="badge bg-info-subtle text-info border">Link</span>
+                  {% else %}
+                    <span class="badge bg-warning-subtle text-warning border">Link</span>
+                  {% endif %}
+                </td>
+                <td class="text-end pe-3" data-label="Select">
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Select merge target and sources">
+                    <button type="button" class="btn btn-outline-primary" data-action="set-target" data-client-id="{{ c.id }}">target</button>
+                    <button type="button" class="btn btn-outline-danger" data-action="toggle-source" data-client-id="{{ c.id }}">Original</button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <noscript>
+      <div class="alert alert-danger mt-3">
+         page   JavaScript required. below Default Select UI .
+      </div>
+      <div class="row g-3 mt-0">
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header"> Client (Original)</div>
+            <div class="card-body">
+              <select class="form-select" name="source_clients" multiple required size="10">
+                {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.name }} (ID: {{ client.id }})</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Ctrl  Cmd   Client Select  exists.</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header"> Client (target)</div>
+            <div class="card-body">
+              <select class="form-select" name="target_client" required>
+                <option value="">:::Select:::</option>
+                {% for client in clients %}
+                <option value="{{ client.id }}">{{ client.name }} (ID: {{ client.id }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </noscript>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_asset_url('js/crm_client_merge.js') }}"></script>
+{% endblock %}

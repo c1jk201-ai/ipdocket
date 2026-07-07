@@ -1,0 +1,254 @@
+{% import "components/_macros.html" as ui %}
+{% from "case/_patent_center_links.html" import patent_center_application_link %}
+{% set _next_docket = _next_docket if _next_docket is defined else (next_docket if next_docket is defined else (docket_due[0] if docket_due else None)) %}
+{% set _finance_summary = case_finance_summary or {} %}
+{% set _invoice_summary = _invoice_summary if _invoice_summary is defined else (_finance_summary.get('ar', {}) if _finance_summary else {}) %}
+{% set _history_count = history_total_count if history_total_count is defined else ((history_rows or [])|length) %}
+{% set _workflow_count = (workflows or [])|length %}
+{% set _auto_blue = auto_status.display_blue if auto_status else (matter.status_blue or '') %}
+{% set _auto_red = auto_status.display_red if auto_status else (matter.status_red or '') %}
+{% set _next_due = (_next_docket.extended_due_date or _next_docket.due_date or '') if _next_docket else '' %}
+{% set _due_count = due_total_count if due_total_count is defined else ((due_rows or [])|length) %}
+{% set _file_count = fm_total_count if fm_total_count is defined else 0 %}
+{% set _family_count = family_count if family_count is defined else 0 %}
+{% set _progress_count = (progress_entries or [])|length %}
+{% set _alarm_count = alarm_total_count if alarm_total_count is defined else 0 %}
+{% set _manual_status_text = case_status or matter.inhouse_status or '' %}
+{% set _status_text = _manual_status_text or '' %}
+{% set _focus_fallback = _manual_status_text or 'Internal status ' %}
+{% set _focus_mode = 'auto' if (_auto_red or _auto_blue) else 'status' %}
+{% set _last_activity_display = last_audit_display or matter.retained_at or matter.entered_at or '-' %}
+{% set _last_activity_label = 'Recent Change' if last_audit_display else 'Matter reference date' %}
+{% set _summary_custom = _custom_data if _custom_data is defined and _custom_data else {} %}
+{% set _summary_client_name = _summary_custom.get('client_name', '') %}
+{% set _summary_client_label = _summary_client_name or ((overview.clients if overview is defined and overview else '') or '') %}
+{% set _summary_client_id = _summary_custom.get('client_id', '') %}
+{% set _summary_app_no = app_no if app_no is defined else '' %}
+{% set _summary_owner = _summary_custom.get('attorney', '') or _summary_custom.get('handler', '') or _summary_custom.get('manager', '') or '-' %}
+
+<div class="case-sticky-summary case-hero-shell" id="caseStickySummary" role="region" aria-label="Matter ">
+  <div class="case-hero">
+    <div class="case-hero__topbar">
+      <div class="case-hero__eyebrow">Matter</div>
+
+      <div class="case-hero__toolbar" aria-label="Quick Actions">
+        {% if can_edit_case %}
+          <button type="button" class="btn btn-sm btn-outline-primary" id="caseQuickMemoBtn" data-bs-toggle="modal" data-bs-target="#quickMemoModal" data-shortcut="memo">
+            <i class="bi bi-journal-text"></i> Notes
+          </button>
+        {% endif %}
+        {% if can_edit_case %}
+          <button type="button" class="btn btn-sm btn-outline-primary desktop-preferred-action" id="caseQuickUploadBtn" data-bs-toggle="modal" data-bs-target="#quickFileModal">
+            <i class="bi bi-cloud-upload"></i> File Upload
+          </button>
+        {% endif %}
+        {% if can_invoice %}
+          {% if invoice_module_new_url %}
+            <a class="btn btn-sm btn-outline-secondary" id="caseQuickInvoiceBtn" href="{{ invoice_module_new_url }}" title="Link Invoice Create">
+              <i class="bi bi-receipt"></i> Invoice Create
+            </a>
+          {% else %}
+            <form method="post" action="/case/{{ matter.matter_id }}/quick/invoice" class="d-inline">
+              {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+              <button type="submit" class="btn btn-sm btn-outline-secondary" id="caseQuickInvoiceBtn" title="Link Invoice Create">
+                <i class="bi bi-receipt"></i> Invoice Create
+              </button>
+            </form>
+          {% endif %}
+        {% endif %}
+        {% if can_edit_case or can_invoice %}
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleEditMode" title=" ">
+            <i class="bi bi-pencil-square"></i> 
+          </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="case-hero__main">
+      <div class="case-hero__main-copy">
+        <div class="case-hero__identity-row">
+          {{ ui.icon_badge(_badge_class, _badge_label, "summaryCaseBadge") }}
+          <span id="caseHeaderOurRef" class="summary-ref">{{ matter.our_ref or 'REF None' }}</span>
+          {% if matter.our_ref %}
+            <button type="button" class="app-copy-btn case-hero__copy" data-copy-text="{{ matter.our_ref|e }}" title="Our Ref. ">
+              <i class="bi bi-clipboard"></i>
+            </button>
+          {% endif %}
+        </div>
+
+        <div class="case-hero__title-row">
+          <span class="inline-edit" data-inline-field="title" data-inline-type="text" data-value="{{ case_title|e }}">
+            <span class="inline-display" id="summaryTitleText">{{ case_title or 'Title None' }}</span>
+            {% if can_edit_case %}
+              <button type="button" class="inline-edit-btn" title="">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <span class="inline-editor"></span>
+            {% endif %}
+          </span>
+        </div>
+
+        <div class="case-hero__facts" aria-label="Matter  ">
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">Type</span>
+            <span class="case-hero__fact-value" id="summaryDivisionBadge">{{ case_division or 'DOM' }}</span>
+          </div>
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">Type</span>
+            <span class="case-hero__fact-value" id="summaryTypeBadge">{{ case_type or 'PATENT' }}</span>
+          </div>
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">Internal status</span>
+            <span class="case-hero__fact-value" id="summaryStatusBadge">{{ _status_text }}</span>
+          </div>
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">{{ 'ForeignRepresentative' if (is_incoming_patent or is_incoming_design or is_incoming_trademark) else 'Client' }}</span>
+            <span class="case-hero__fact-value">
+              {% if (_summary_client_id|int) > 0 and _summary_client_label %}
+                <a href="{{ url_for('customers.client_view', client_id=_summary_client_id|int) }}">{{ _summary_client_label }}</a>
+              {% elif _summary_client_label %}
+                {{ _summary_client_label }}
+              {% else %}
+                -
+              {% endif %}
+            </span>
+          </div>
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">Application No.</span>
+            <span class="case-hero__fact-value case-hero__fact-value--inline">
+              {% if _summary_app_no %}
+                <span>{{ _summary_app_no }}</span>
+                <button type="button" class="app-copy-btn" data-copy-text="{{ _summary_app_no|e }}" title="Application No. ">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+                {{ patent_center_application_link(_summary_app_no, 'Open Patent Center file history') }}
+              {% else %}
+                -
+              {% endif %}
+            </span>
+          </div>
+          <div class="case-hero__fact">
+            <span class="case-hero__fact-label">Responsible</span>
+            <span class="case-hero__fact-value">{{ _summary_owner }}</span>
+          </div>
+        </div>
+
+        <div class="case-hero__meta-line">
+          <span>{{ _last_activity_label }} {{ _last_activity_display }}</span>
+          <span>Tasks {{ _workflow_count }}</span>
+          <span>{{ matter.entered_at or '-' }} Input</span>
+          <span>{{ matter.retained_at or '-' }} </span>
+        </div>
+      </div>
+
+      <aside class="case-hero__side">
+        <div class="case-hero__status-note{% if _auto_red %} case-hero__status-note--alert{% endif %}">
+          <div class="case-hero__status-label">{% if _auto_red %}Immediate Confirm Required{% else %}Current {% endif %}</div>
+          <div class="case-hero__status-value" id="summaryFocusValue" data-summary-focus-mode="{{ _focus_mode }}">
+            {% if _auto_red %}
+              {{ _auto_red|format_status }}
+            {% elif _auto_blue %}
+              {{ _auto_blue }}
+            {% else %}
+              {{ _focus_fallback }}
+            {% endif %}
+          </div>
+          <div class="case-hero__status-meta">
+            {% if _auto_red %}
+              Auto Status   Confirm .
+            {% elif _auto_blue %}
+              Auto Status  Current Operations .
+            {% elif _manual_status_text %}
+              Internal Status .
+            {% else %}
+              Internal Status   .
+            {% endif %}
+          </div>
+          <div class="case-hero__status-links">
+            <a class="case-hero__status-link" href="#sec-deadlines">TaskDeadline View</a>
+            <a class="case-hero__status-link" href="#sec-audits">Change history</a>
+            <a class="case-hero__status-link" href="#sec-cost" onclick="showFinanceTab('invoice')">View billing</a>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="case-kpi-grid">
+      <div class="case-kpi-card case-kpi-card--deadline">
+        <div class="case-kpi-card__label"><i class="bi bi-calendar-event"></i> Next TaskDeadline</div>
+        <div class="case-kpi-card__value">
+          <a
+            id="summaryNextDeadline"
+            class="link-quiet"
+            href="{% if _next_docket %}{{ url_for('deadlines.docket_detail', docket_id=_next_docket.docket_id) }}{% else %}#{% endif %}"
+            title="Deadline Details Go"
+            data-due-date="{{ _next_due[:10] if _next_due else '' }}"
+            {% if not _next_docket %}aria-disabled="true"{% endif %}
+          >
+            {% if _next_docket %}
+              {{ _next_due[:10] if _next_due else '' }}
+              <span class="dday-chip dday-chip--safe" id="summaryDdayChip" data-due-date="{{ _next_due[:10] if _next_due else '' }}">In Progress…</span>
+            {% else %}
+               None
+            {% endif %}
+          </a>
+          <a
+            id="summaryNextDeadlineCalendar"
+            href="{% if _next_due %}{{ url_for('deadlines.calendar_month', date=_next_due[:10]) }}{% else %}#{% endif %}"
+            class="link-muted"
+            title="to View"
+            {% if not _next_due %}style="display:none;" aria-disabled="true"{% endif %}
+          ><i class="bi bi-calendar3"></i></a>
+        </div>
+        <div class="case-kpi-card__meta">{{ (_next_docket.name_free or _next_docket.name_ref or '') if _next_docket else '   TaskDeadline ' }}</div>
+      </div>
+
+      <div class="case-kpi-card case-kpi-card--queue">
+        <div class="case-kpi-card__label"><i class="bi bi-exclamation-circle"></i>  TaskDeadline</div>
+        <div class="case-kpi-card__value">
+          <a id="summaryOpenDeadlineCount" class="link-quiet" href="#sec-deadlines" title="TaskDeadline Listto Go">
+            {{ (docket_due or [])|length }}
+          </a>
+        </div>
+        <div class="case-kpi-card__meta"> {{ _history_count }}items / Notice DUE {{ _due_count }}items</div>
+      </div>
+
+      <div class="case-kpi-card case-kpi-card--finance">
+        <div class="case-kpi-card__label"><i class="bi bi-wallet2"></i> Outstanding balance</div>
+        <div class="case-kpi-card__value">
+          <a id="summaryOutstanding" class="link-quiet" href="#sec-cost" title="Expense management Go" onclick="showFinanceTab('invoice')">
+            {{ (_invoice_summary.get('outstanding_minor', 0) or 0)|currency_minor(_invoice_summary.get('currency', 'USD')) }}
+          </a>
+        </div>
+        <div class="case-kpi-card__meta">Billing {{ (_invoice_summary.get('billed_minor', 0) or 0)|currency_minor(_invoice_summary.get('currency', 'USD')) }}</div>
+      </div>
+
+      <div class="case-kpi-card case-kpi-card--audit">
+        <div class="case-kpi-card__label"><i class="bi bi-clock-history"></i> Recent </div>
+        <div class="case-kpi-card__value">
+          <a id="summaryLastActivity" class="link-quiet" href="#sec-audits" title="Change historyto Go">{{ _last_activity_display }}</a>
+        </div>
+        <div class="case-kpi-card__meta">{{ matter.entered_at or '-' }} Input / {{ matter.retained_at or '-' }} </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="case-focus-stage" id="caseStageArea" aria-label="Matter  ">
+  <div class="case-focus-strip" aria-label="Matter  Go">
+    <div class="case-focus-block">
+      <div class="case-focus-block__label"> </div>
+      <div class="legacy-nav-wrapper case-focus-nav">
+        <nav class="legacy-nav mb-0" aria-label="top ">
+          <a class="legacy-nav-btn legacy-top legacy-tab active" href="#caseStageArea" data-top="sec-history" data-scroll="caseStageArea"> <span class="case-nav-count">{{ _history_count }}</span></a>
+          <a class="legacy-nav-btn legacy-top" href="#caseStageArea" data-top="sec-due" data-scroll="caseStageArea">Notice DUE <span class="case-nav-count">{{ _due_count }}</span></a>
+          <a class="legacy-nav-btn legacy-top" href="#caseStageArea" data-top="sec-files" data-scroll="caseStageArea"> <span class="case-nav-count">{{ _file_count }}</span></a>
+          <a class="legacy-nav-btn legacy-top" href="#caseStageArea" data-top="sec-family" data-scroll="caseStageArea">Related applications <span class="case-nav-count">{{ _family_count }}</span></a>
+          <a class="legacy-nav-btn legacy-top" href="#caseStageArea" data-top="sec-progress" data-scroll="caseStageArea">Progress <span class="case-nav-count">{{ _progress_count }}</span></a>
+          <a class="legacy-nav-btn legacy-top" href="#caseStageArea" data-top="alarm" data-scroll="caseStageArea"> <span class="case-nav-count">{{ _alarm_count }}</span></a>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <div id="top-panel"></div>
+</section>

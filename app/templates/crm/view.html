@@ -1,0 +1,1510 @@
+{% extends "layouts/base.html" %}
+{% from "_entity_links.html" import case_list_search %}
+
+{% block content %}
+<div
+  id="app-page-meta"
+  class="d-none"
+  data-type="client"
+  data-id="{{ client.id }}"
+  data-title="{{ client.name }}"
+  data-subtitle="{{ (client.type or '') }}"
+  data-url="{{ request.path }}"
+></div>
+<div class="container mt-3 fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1">
+                    <li class="breadcrumb-item"><a href="{{ url_for('customers.clients') }}">CRM</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('customers.clients') }}">Client</a></li>
+                    <li class="breadcrumb-item active">{{ client.name }}</li>
+                </ol>
+            </nav>
+            <h3 class="fw-semibold mb-0">{{ client.name }}</h3>
+            {% if client.type %}
+            <span class="badge bg-light text-secondary border">{{ client.type|upper }}</span>
+            {% endif %}
+            {% if client.extra and client.extra.annuity_management_disabled %}
+            <span class="badge bg-warning text-dark border">Renewal  </span>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            {{ case_list_search(client.name, label="Matter List", classes="btn btn-outline-secondary") }}
+            <a href="{{ url_for('customers.client_edit', client_id=client.id) }}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+            {% set invoice_client_id = invoice_client_id or (client.id if unified_mode else client.external_invoice_client_id) %}
+            {% if invoice_client_id %}
+              <a href="/accounting/invoice-system/clients/{{ invoice_client_id }}" class="btn btn-outline-success">
+                  <i class="bi bi-receipt"></i> Invoice
+              </a>
+              <a href="/accounting/invoice-system/clients/{{ invoice_client_id }}/deposit" class="btn btn-outline-secondary" title="Retainer">
+                  Retainer
+              </a>
+            {% else %}
+              <form action="{{ url_for('customers.client_sync_invoice', client_id=client.id) }}" method="post" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button class="btn btn-outline-success">
+                  <i class="bi bi-link-45deg"></i> Invoice Link
+                </button>
+              </form>
+              <a href="{{ url_for('billing_invoices.clients.list_clients', ipm_client_id=client.id) }}" class="btn btn-outline-secondary">
+                Invoice ClientSearch
+              </a>
+            {% endif %}
+
+            <a href="{{ url_for('case_work.select_matter_create', client_id=client.id) }}" class="btn btn-outline-primary">
+                <i class="bi bi-folder-plus"></i> Matter Create
+            </a>
+            <a href="{{ url_for('customers.opportunity_create', client_id=client.id) }}" class="btn btn-success">
+                <i class="bi bi-plus-lg"></i> 
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="clientTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">
+                <i class="bi bi-info-circle me-1"></i> Default 
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cases-tab" data-bs-toggle="tab" data-bs-target="#cases" type="button">
+                <i class="bi bi-folder2-open me-1"></i> Matter
+                <span class="badge bg-secondary">{{ client_matters_total or 0 }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button">
+                <i class="bi bi-receipt me-1"></i> Invoice
+                <span class="badge bg-secondary">{{ client_invoices.total_count or 0 }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts" type="button">
+                <i class="bi bi-person-lines-fill me-1"></i> Phone
+                <span class="badge bg-secondary">{{ contacts|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="opportunities-tab" data-bs-toggle="tab" data-bs-target="#opportunities" type="button">
+                <i class="bi bi-briefcase me-1"></i> 
+                <span class="badge bg-secondary">{{ opportunities|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button">
+                <i class="bi bi-clock-history me-1"></i>  Log
+                <span class="badge bg-secondary">{{ activities|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button">
+                <i class="bi bi-paperclip me-1"></i>  File
+                <span class="badge bg-secondary">{{ client_attachments|length }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="clientTabsContent">
+        <!-- Basic Info Tab -->
+        <div class="tab-pane fade show active" id="info" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-light fw-semibold">Default </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Client name</dt>
+                                <dd class="col-sm-8">{{ client.name }}</dd>
+
+                                <dt class="col-sm-4">Client name ()</dt>
+                                <dd class="col-sm-8">{{ client.extra.name_en or '-' }}</dd>
+
+                                <dt class="col-sm-4"></dt>
+                                <dd class="col-sm-8">{{ client.extra.nationality or '-' }}</dd>
+
+                                <dt class="col-sm-4">Client Type</dt>
+                                <dd class="col-sm-8">{{ client.type or '-' }}</dd>
+
+                                <dt class="col-sm-4">Type</dt>
+                                <dd class="col-sm-8">{{ client.extra.business_type or '-' }}</dd>
+
+                                <dt class="col-sm-4">/ </dt>
+                                <dd class="col-sm-8">{{ client.registration_number or '-' }}</dd>
+
+                                <dt class="col-sm-4">Client </dt>
+                                <dd class="col-sm-8">{{ client.extra.client_code or '-' }}</dd>
+
+                                <dt class="col-sm-4">PatentClient</dt>
+                                <dd class="col-sm-8">
+                                    {% set codes = client.extra.applicant_codes if client.extra and client.extra.applicant_codes else [] %}
+                                    {{ (codes | select('string') | reject('equalto','') | list | join(', ')) if codes else '-' }}
+                                </dd>
+
+                                <dt class="col-sm-4">Renewal </dt>
+                                <dd class="col-sm-8">
+                                    {% if client.extra and client.extra.annuity_management_disabled %}
+                                    <span class="badge bg-warning text-dark"></span>
+                                    {% else %}
+                                    <span class="badge bg-success"></span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-light fw-semibold">Phone </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">table </dt>
+                                <dd class="col-sm-8">{{ client.extra.main_phone or client.phone or '-' }}</dd>
+
+                                <dt class="col-sm-4"></dt>
+                                <dd class="col-sm-8">{{ client.extra.mobile_phone or '-' }}</dd>
+
+                                <dt class="col-sm-4">E-Mail</dt>
+                                <dd class="col-sm-8">{{ client.email or '-' }}</dd>
+
+                                <dt class="col-sm-4">Contact (Invoice)</dt>
+                                <dd class="col-sm-8">{{ client.manager or client.extra.tax_manager or '-' }}</dd>
+
+                                <dt class="col-sm-4">table FAX</dt>
+                                <dd class="col-sm-8">{{ client.extra.main_fax or '-' }}</dd>
+
+                                <dt class="col-sm-4">page</dt>
+                                <dd class="col-sm-8">{{ client.extra.homepage or '-' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-light fw-semibold">Address </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Default Address</dt>
+                                <dd class="col-sm-8">{{ client.address or '-' }}</dd>
+
+                                <dt class="col-sm-4">Filing Address</dt>
+                                <dd class="col-sm-8">{{ client.extra.applicant_address or '-' }}</dd>
+
+                                <dt class="col-sm-4"> Address</dt>
+                                <dd class="col-sm-8">{{ client.extra.mail_recv_address or '-' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if applicant_code_suggestion %}
+                    {% set slots = applicant_code_suggestion.slots or 0 %}
+                    <div class="card mb-3 border-warning shadow-sm">
+                        <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Applicant ID Suggestions</span>
+                            <span class="small text-muted">Extracted from recent matters</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="small text-muted mb-2">
+                                Applicant identifiers extracted from filing package metadata. Select only the entries that should be applied.
+                            </div>
+                            <form action="{{ url_for('customers.apply_applicant_code_suggestion', client_id=client.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <div class="mb-2">
+                                    {% for code in applicant_code_suggestion.codes %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="applicant-code-{{ client.id }}-{{ loop.index }}" name="codes" value="{{ code }}" {% if loop.index0 < slots %}checked{% endif %}>
+                                        <label class="form-check-label" for="applicant-code-{{ client.id }}-{{ loop.index }}">{{ code }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if applicant_code_suggestion.extra_count %}
+                                <div class="small text-muted mb-2">
+                                    Save  items( 3items) to Display   {{ applicant_code_suggestion.extra_count }}items exists.
+                                </div>
+                                {% endif %}
+                                <button type="submit" class="btn btn-sm btn-primary">selected value Apply</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if biz_reg_suggestion %}
+                    {% set b = biz_reg_suggestion.get("fields", {}) %}
+                    {% set reg_number = b.get("reg_number") or "" %}
+                    {% set company_name = b.get("company_name") or "" %}
+                    {% set representative_name = b.get("representative_name") or "" %}
+                    {% set corp_registration_number = b.get("corp_registration_number") or "" %}
+                    {% set business_location = b.get("business_location") or "" %}
+                    {% set head_office_location = b.get("head_office_location") or "" %}
+                    {% set business_type = b.get("business_type") or "" %}
+                    {% set opening_date = b.get("opening_date") or "" %}
+                    {% set tax_invoice_email = b.get("tax_invoice_email") or "" %}
+                    <div class="card mb-3 border-warning shadow-sm">
+                        <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Business document  </span>
+                            <span class="small text-muted">
+                                {% if biz_reg_suggestion.get("file_name") %}{{ biz_reg_suggestion.get("file_name") }}{% endif %}
+                                {% if biz_reg_suggestion.get("uploaded_at") %} · {{ biz_reg_suggestion.get("uploaded_at")|local_dt }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('customers.apply_biz_reg_suggestion', client_id=client.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="apply_fields_present" value="1">
+                                <div class="small text-muted mb-2">Upload Business documentfrom Auto  .  Item Select Apply  exists.</div>
+                                <div class="mb-3">
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4">Tax ID / EIN</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-reg-number" name="apply_fields" value="reg_number" {% if reg_number %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not reg_number %}text-muted{% endif %}" for="bizreg-{{ client.id }}-reg-number">{{ reg_number or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4"></div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-company-name" name="apply_fields" value="company_name" {% if company_name %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not company_name %}text-muted{% endif %}" for="bizreg-{{ client.id }}-company-name">{{ company_name or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4">Representative</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-representative" name="apply_fields" value="representative_name" {% if representative_name %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not representative_name %}text-muted{% endif %}" for="bizreg-{{ client.id }}-representative">{{ representative_name or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4">Entity registration number</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-corp-reg" name="apply_fields" value="corp_registration_number" {% if corp_registration_number %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not corp_registration_number %}text-muted{% endif %}" for="bizreg-{{ client.id }}-corp-reg">{{ corp_registration_number or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4">items</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-opening-date" name="apply_fields" value="opening_date" {% if opening_date %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not opening_date %}text-muted{% endif %}" for="bizreg-{{ client.id }}-opening-date">{{ opening_date or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4"> Address</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-business-location" name="apply_fields" value="business_location" {% if business_location %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not business_location %}text-muted{% endif %}" for="bizreg-{{ client.id }}-business-location">{{ business_location or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4"> Address</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-head-office-location" name="apply_fields" value="head_office_location" {% if head_office_location %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not head_office_location %}text-muted{% endif %}" for="bizreg-{{ client.id }}-head-office-location">{{ head_office_location or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center mb-2">
+                                        <div class="col-sm-4"></div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-business-type" name="apply_fields" value="business_type" {% if business_type %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not business_type %}text-muted{% endif %}" for="bizreg-{{ client.id }}-business-type">{{ business_type or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center">
+                                        <div class="col-sm-4">Billing tax email</div>
+                                        <div class="col-sm-8">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="bizreg-{{ client.id }}-tax-email" name="apply_fields" value="tax_invoice_email" {% if tax_invoice_email %}checked{% else %}disabled{% endif %}>
+                                                <label class="form-check-label {% if not tax_invoice_email %}text-muted{% endif %}" for="bizreg-{{ client.id }}-tax-email">{{ tax_invoice_email or '-' }}</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary">Apply selected values</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if tax_suggestion %}
+                    {% set s = tax_suggestion.get("fields", {}) %}
+                    <div class="card mb-3 border-warning shadow-sm">
+                        <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Tax documentation suggestion</span>
+                            <span class="small text-muted">
+                                {% if tax_suggestion.get("invoice_number") %}{{ tax_suggestion.get("invoice_number") }}{% endif %}
+                                {% if tax_suggestion.get("issued_at") %} · {{ tax_suggestion.get("issued_at") }}{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="small text-muted mb-2">Recent tax documentation details detected from uploaded records.</div>
+                            <dl class="row mb-3">
+                                <dt class="col-sm-4">Tax ID / EIN</dt>
+                                <dd class="col-sm-8">{{ s.get("corp_num") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Legal business name</dt>
+                                <dd class="col-sm-8">{{ s.get("corp_name") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Representative</dt>
+                                <dd class="col-sm-8">{{ s.get("ceo_name") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Email</dt>
+                                <dd class="col-sm-8">{{ s.get("email") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Address</dt>
+                                <dd class="col-sm-8">{{ s.get("address") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Entity type</dt>
+                                <dd class="col-sm-8">{{ s.get("biz_type") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Business activity</dt>
+                                <dd class="col-sm-8">{{ s.get("biz_class") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Contact</dt>
+                                <dd class="col-sm-8">{{ s.get("contact_name") or '-' }}</dd>
+
+                                <dt class="col-sm-4">Phone</dt>
+                                <dd class="col-sm-8">{{ s.get("tel") or '-' }}</dd>
+                            </dl>
+                            <form action="{{ url_for('customers.apply_tax_suggestion', client_id=client.id) }}" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-primary">Apply values</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-light fw-semibold">Business tax profile</div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Tax ID / EIN</dt>
+                                <dd class="col-sm-8">{{ client.extra.business_reg_no or '-' }}</dd>
+
+                                <dt class="col-sm-4">Legal business name</dt>
+                                <dd class="col-sm-8">{{ client.extra.tax_company_name or '-' }}</dd>
+
+                                <dt class="col-sm-4">Authorized representative</dt>
+                                <dd class="col-sm-8">{{ client.extra.tax_ceo or '-' }}</dd>
+
+                                <dt class="col-sm-4">Billing contact</dt>
+                                <dd class="col-sm-8">{{ client.extra.tax_manager or '-' }}</dd>
+
+                                <dt class="col-sm-4">Billing contact email</dt>
+                                <dd class="col-sm-8">{{ client.extra.tax_manager_email or '-' }}</dd>
+
+                                <dt class="col-sm-4">Business document</dt>
+                                <dd class="col-sm-8">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span id="bizRegInlineFile">
+                                            {% if biz_reg_attachment %}
+                                            <a href="{{ url_for('customers.biz_reg_download_shared', client_id=client.id) }}"
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-file-earmark-pdf"></i>
+                                                {{ biz_reg_attachment['original_name'] }}
+                                                <i class="bi bi-download ms-1"></i>
+                                            </a>
+                                            {% else %}
+                                            <span class="text-muted">Registration</span>
+                                            {% endif %}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            id="bizRegOpenModalBtn"
+                                            class="btn btn-sm btn-outline-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#bizRegUploadModal"
+                                        >
+                                            <i class="bi bi-upload"></i>
+                                            {{ 'Registration' if biz_reg_attachment else 'Registration' }}
+                                        </button>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        from File  Upload LLM analysis  Open.
+                                    </div>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    {% if client.notes or client.extra.note or client.extra.special_note %}
+                    <div class="card mb-3 border-0 shadow-sm">
+                        <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+                            <span></span>
+                            <a href="{{ url_for('customers.client_edit', client_id=client.id) }}#notes"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil-square"></i> Edit
+                            </a>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <div class="text-muted small mb-1">Internal Notes (   / Invoice )</div>
+                                <div style="white-space: pre-wrap;">{{ (client.notes or '')|trim or '-' }}</div>
+                            </div>
+                            {% if client.extra.note %}
+                            <div class="mb-2">{{ client.extra.note }}</div>
+                            {% endif %}
+                            {% if client.extra.special_note %}
+                            <div class="text-muted small">: {{ client.extra.special_note }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Cases Tab -->
+        <div class="tab-pane fade" id="cases" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex flex-column">
+                        <h5 class="mb-0 fw-semibold">Matter List</h5>
+                        <div class="text-muted small"> CRM Client Link Matter(Recent {{ client_matters|length }}items)</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {{ case_list_search(client.name, label="All Search", classes="btn btn-sm btn-outline-secondary") }}
+                        <a href="{{ url_for('case_work.select_matter_create', client_id=client.id) }}"
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-folder-plus"></i> Matter Create
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">Our Ref</th>
+                                    <th>Matter</th>
+                                    <th>Type</th>
+                                    <th class="text-end pe-3">Open</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in client_matters %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <a href="{{ url_for('case_work.case_detail', case_id=m.matter_id) }}"
+                                           class="fw-semibold text-decoration-none">
+                                            {{ m.our_ref }}
+                                        </a>
+                                    </td>
+                                    <td class="text-truncate" style="max-width: 520px;" title="{{ m.right_name or '' }}">
+                                        {{ m.right_name or '-' }}
+                                    </td>
+                                    <td>
+                                        {% set _div = (m.right_group or '') %}
+                                        {% set _typ = (m.matter_type or '') %}
+                                        {% if _div and _typ %}
+                                        <span class="badge bg-light text-secondary border">{{ _div }} / {{ _typ }}</span>
+                                        {% elif _typ %}
+                                        <span class="badge bg-light text-secondary border">{{ _typ }}</span>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('case_work.case_detail', case_id=m.matter_id) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            Open
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        Link Matter none. (Matter List to Name Search .)
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices Tab -->
+        <div class="tab-pane fade" id="invoices" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <div class="d-flex flex-column">
+                        <h5 class="mb-0 fw-semibold">Invoice history</h5>
+                        <div class="text-muted small">
+                            {% if invoice_client_id %}
+                            Invoice Client #{{ invoice_client_id }} Recent {{ client_invoices['items']|length }}items
+                            {% else %}
+                            Invoice Client Link  none.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {% if invoice_client_id %}
+                        <a href="{{ url_for('billing_invoices.clients.view_client', client_id=invoice_client_id) }}"
+                           class="btn btn-sm btn-outline-success">
+                            Show all
+                        </a>
+                        <a href="{{ url_for('billing_invoices.invoices.new_invoice', client_id=invoice_client_id) }}"
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-plus-lg"></i>  Invoice
+                        </a>
+                        {% else %}
+                        <form action="{{ url_for('customers.client_sync_invoice', client_id=client.id) }}" method="post" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-link-45deg"></i> Invoice Link
+                            </button>
+                        </form>
+                        <a href="{{ url_for('billing_invoices.clients.list_clients', ipm_client_id=client.id) }}"
+                           class="btn btn-sm btn-outline-secondary">
+                            Invoice ClientSearch
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if invoice_client_id %}
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Total Invoice</div>
+                                <div class="fs-4 fw-semibold">{{ client_invoices.total_count or 0 }}</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">Invoice total</div>
+                                {% if client_invoices.invoiced_by_currency %}
+                                  {% for cur, amount in client_invoices.invoiced_by_currency.items() %}
+                                  <div class="fw-semibold">{{ "{:,.0f}".format(amount or 0) }} <span class="small text-muted">{{ cur }}</span></div>
+                                  {% endfor %}
+                                {% else %}
+                                  <div class="fw-semibold">-</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <div class="text-muted small">outstanding </div>
+                                {% if client_invoices.outstanding_by_currency %}
+                                  {% for cur, amount in client_invoices.outstanding_by_currency.items() %}
+                                  <div class="fw-semibold text-danger">{{ "{:,.0f}".format(amount or 0) }} <span class="small text-muted">{{ cur }}</span></div>
+                                  {% endfor %}
+                                {% else %}
+                                  <div class="fw-semibold">-</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">No.</th>
+                                    <th>Issue date</th>
+                                    <th>Business profile </th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end pe-3">Open</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inv in client_invoices['items'] %}
+                                <tr>
+                                    <td class="ps-3 fw-semibold">
+                                        <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv.id) }}"
+                                           class="text-decoration-none">
+                                            #{{ inv.number or inv.id }}
+                                        </a>
+                                    </td>
+                                    <td>{{ inv.issue_date or '-' }}</td>
+                                    <td>{{ inv.business_name or '-' }}</td>
+                                    <td class="text-end fw-semibold">
+                                        {{ "{:,.0f}".format(inv.total or 0) }}
+                                        <span class="small text-muted">{{ inv.currency or 'USD' }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set raw_status = inv.status or inv.billing_status or '-' %}
+                                        <span class="badge rounded-pill bg-{{ 'success' if (inv.payment_status == 'paid' or inv.status == 'paid') else 'secondary' if raw_status == 'void' else 'warning' }} fw-normal">
+                                            {{ status_label(raw_status) if raw_status != '-' else '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv.id) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            Open
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        {% if invoice_client_id %}
+                                        Registration Invoice none.
+                                        {% else %}
+                                        Invoice Client Link Invoice history   exists.
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if client_invoices.total_count > client_invoices.latest_limit %}
+                    <div class="text-muted small mt-3">
+                        Recent {{ client_invoices.latest_limit }}items Display In Progress. All  Invoice Client from Confirm.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Contacts Tab -->
+        <div class="tab-pane fade" id="contacts" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-semibold">Phone List</h5>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#contactModal">
+                        <i class="bi bi-plus-lg"></i> Phone Add
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">Name</th>
+                                    <th></th>
+                                    <th>Email</th>
+                                    <th></th>
+                                    <th></th>
+                                    <th class="text-end pe-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for contact in contacts %}
+                                <tr>
+                                    <td class="ps-3">
+                                        {{ contact.name }}
+                                        {% if contact.is_primary %}
+                                        <span class="badge bg-primary ms-1">Responsible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ contact.title or '-' }}</td>
+                                    <td>
+                                        {% if contact.email %}
+                                        <a href="mailto:{{ contact.email }}">{{ contact.email }}</a>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                    <td>{{ contact.phone or '-' }}</td>
+                                    <td>{{ contact.mobile or '-' }}</td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('customers.contact_edit', contact_id=contact.id) }}"
+                                           class="btn btn-sm btn-outline-primary">Edit</a>
+                                        <form action="{{ url_for('customers.contact_delete', contact_id=contact.id) }}"
+                                              method="post" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    data-confirm=" Phone Delete ? ">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        Registration Phone none.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Opportunities Tab -->
+        <div class="tab-pane fade" id="opportunities" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-semibold"> List</h5>
+                    <a href="{{ url_for('customers.opportunity_create', client_id=client.id) }}"
+                       class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-lg"></i>  Add
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3"></th>
+                                    <th></th>
+                                    <th class="text-end">EstimatedAmount</th>
+                                    <th class="text-center"></th>
+                                    <th>EstimatedDeadline</th>
+                                    <th class="text-end pe-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for opp in opportunities %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <a href="{{ url_for('customers.opportunity_view', opportunity_id=opp.id) }}"
+                                           class="text-decoration-none">{{ opp.name }}</a>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if opp.stage == 'prospecting' %}bg-secondary
+                                            {% elif opp.stage == 'proposal' %}bg-info
+                                            {% elif opp.stage == 'negotiation' %}bg-warning text-dark
+                                            {% elif opp.stage == 'closed_won' %}bg-success
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ dict(opp.STAGE_CHOICES).get(opp.stage, opp.stage) }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if opp.amount %}${{ "{:,.0f}".format(opp.amount) }}{% else %}-{% endif %}
+                                    </td>
+                                    <td class="text-center">{{ opp.probability or 0 }}%</td>
+                                    <td>{{ opp.expected_close_date|local_date if opp.expected_close_date else '-' }}</td>
+                                    <td class="text-end pe-3">
+                                        <a href="{{ url_for('customers.opportunity_edit', opportunity_id=opp.id) }}"
+                                           class="btn btn-sm btn-outline-primary">Edit</a>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        Registration  none.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activities Tab -->
+        <div class="tab-pane fade" id="activities" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-semibold"> Log</h5>
+                    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+                        <i class="bi bi-plus-lg"></i>  Add
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush">
+                        {% for activity in activities %}
+                        <li class="list-group-item px-4 py-3">
+                            <div class="d-flex align-items-start">
+                                <div class="me-3 mt-1">
+                                    {% if activity.type == 'call' %}
+                                    <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+                                        <i class="bi bi-telephone text-primary"></i>
+                                    </div>
+                                    {% elif activity.type == 'email' %}
+                                    <div class="rounded-circle bg-info bg-opacity-10 p-2">
+                                        <i class="bi bi-envelope text-info"></i>
+                                    </div>
+                                    {% elif activity.type == 'meeting' %}
+                                    <div class="rounded-circle bg-success bg-opacity-10 p-2">
+                                        <i class="bi bi-calendar-event text-success"></i>
+                                    </div>
+                                    {% else %}
+                                    <div class="rounded-circle bg-warning bg-opacity-10 p-2">
+                                        <i class="bi bi-sticky text-warning"></i>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold">{{ activity.summary }}</div>
+                                            {% if activity.description %}
+                                            <div class="text-muted small mt-1" style="white-space: pre-wrap;">{{ activity.description }}</div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-end">
+                                            <div class="small text-muted">
+                                                {{ activity.activity_date|local_dt_min if activity.activity_date else '-' }}
+                                            </div>
+                                            {% if activity.user %}
+                                            <div class="small text-muted">{{ activity.user.display_name or activity.user.username }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ms-2">
+                                    <form action="{{ url_for('customers.activity_delete', activity_id=activity.id) }}" method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0"
+                                                data-confirm="  Delete ? ">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-center py-5 text-muted">
+                            <i class="bi bi-clock-history fs-1 d-block mb-3 opacity-50"></i>
+                            Log  none.
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Files Tab -->
+        <div class="tab-pane fade" id="files" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-semibold"> File</h5>
+                    <span class="text-muted small">  to </span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="crmClientAttachDrop"
+                         class="p-3 text-center text-muted bg-light border-bottom"
+                         data-upload-url="{{ url_for('customers.client_attachment_upload', client_id=client.id) }}">
+                        <div class="fw-semibold text-primary">+ File Add</div>
+                        <div class="small text-muted"> File  </div>
+                        <input id="crmClientAttachInput" type="file" multiple style="display:none" />
+                    </div>
+                    <div id="crmClientAttachError" class="p-2 text-danger small" style="display:none"></div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">File name</th>
+                                    <th></th>
+                                    <th>Upload </th>
+                                    <th>Type</th>
+                                    <th class="text-end pe-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in client_attachments %}
+                                <tr>
+                                    <td class="ps-3">
+                                        <a href="{{ url_for('customers.client_attachment_download', client_id=client.id, att_id=a.id) }}"
+                                           class="text-decoration-none">
+                                            {{ a.original_name }}
+                                        </a>
+                                        {% if a.is_biz_reg %}
+                                        <span class="badge bg-warning-subtle text-warning border ms-2">Business document</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ a.size|filesizeformat if a.size else '-' }}</td>
+                                    <td>
+                                        {% if a.uploaded_at %}
+                                        {{ a.uploaded_at|local_dt_min if a.uploaded_at.strftime is defined else a.uploaded_at }}
+                                        {% else %}-{% endif %}
+                                    </td>
+                                    <td>{{ a.content_type or '-' }}</td>
+                                    <td class="text-end pe-3">
+                                        <form action="{{ url_for('customers.client_attachment_delete', client_id=client.id, att_id=a.id) }}"
+                                              method="post" class="d-inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    data-confirm=" File Delete ? ">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">No registered files.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('customers.clients') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Listto
+        </a>
+    </div>
+</div>
+
+<!-- Contact Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('customers.contact_create') }}" method="post">
+                {{ contact_form.hidden_tag() }}
+                <input type="hidden" name="client_id" value="{{ client.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Phone Add</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        {{ contact_form.name(class="form-control", placeholder="Phone Name") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"></label>
+                        {{ contact_form.title(class="form-control", placeholder="/") }}
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            {{ contact_form.email(class="form-control", placeholder="email@example.com") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            {{ contact_form.phone(class="form-control", placeholder="02-0000-0000") }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label"></label>
+                            {{ contact_form.mobile(class="form-control", placeholder="010-0000-0000") }}
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                {{ contact_form.is_primary(class="form-check-input") }}
+                                <label class="form-check-label">Contact Settings</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        {{ contact_form.notes(class="form-control", rows="2", placeholder="Notes...") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Business Registration Modal -->
+<div
+    class="modal fade"
+    id="bizRegUploadModal"
+    tabindex="-1"
+    aria-labelledby="bizRegUploadModalLabel"
+    aria-hidden="true"
+    data-upload-url="{{ url_for('customers.biz_reg_upload', client_id=client.id) }}"
+    data-download-url="{{ url_for('customers.biz_reg_download_shared', client_id=client.id) }}"
+>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <div class="small text-uppercase text-muted fw-semibold">CRM Client</div>
+                    <h5 class="modal-title" id="bizRegUploadModalLabel">Business document Registration</h5>
+                    <div class="small text-muted">{{ client.name }} Client File Upload LLM  Item Auto .</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <div id="bizRegModalAlert" class="alert d-none mb-3" role="alert"></div>
+                <div
+                    id="bizRegModalDropzone"
+                    class="bizreg-modal-dropzone"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Business document File Upload"
+                >
+                    <input id="bizRegModalInput" type="file" accept=".pdf,image/*" hidden />
+                    <div class="bizreg-modal-icon">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                    </div>
+                    <div class="fw-semibold mb-1">Drop a file here or click to select one</div>
+                    <div class="small text-muted">Supported formats: PDF, PNG, JPG, JPEG, GIF</div>
+                    <div class="small text-muted">Automatically extracts Tax ID / EIN, entity details, representative, address, and billing tax email.</div>
+                </div>
+                <div id="bizRegModalProgress" class="small text-muted mt-3 d-none"></div>
+                <div id="bizRegModalResult" class="card border-warning-subtle shadow-sm mt-3 d-none">
+                    <div class="card-header bg-warning-subtle text-dark d-flex justify-content-between align-items-center">
+                        <span class="fw-semibold">AI extraction result</span>
+                        <span id="bizRegModalFileName" class="small text-muted"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="small text-muted mb-2">
+                            File saved. Review the extracted details before applying them to the client profile.
+                        </div>
+                        <div id="bizRegModalParsedSummary" class="fw-semibold mb-3"></div>
+                        <div id="bizRegModalParsedGrid" class="row g-2"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <a
+                    id="bizRegModalDownloadLink"
+                    class="btn btn-outline-success d-none"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                >
+                    <i class="bi bi-download"></i> Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="bizRegModalCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{{ url_for('customers.activity_create') }}" method="post">
+                {{ activity_form.hidden_tag() }}
+                <input type="hidden" name="client_id" value="{{ client.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Activity log</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Type</label>
+                        {{ activity_form.type(class="form-select") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Summary <span class="text-danger">*</span></label>
+                        {{ activity_form.summary(class="form-control", placeholder="Activity summary") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Details</label>
+                        {{ activity_form.description(class="form-control", rows="3", placeholder="Enter activity details...") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Activity date</label>
+                        {{ activity_form.activity_date(class="form-control", type="datetime-local") }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const drop = document.getElementById("crmClientAttachDrop");
+        const input = document.getElementById("crmClientAttachInput");
+        const err = document.getElementById("crmClientAttachError");
+        const uploadUrl = drop?.dataset.uploadUrl;
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+        const bizRegModal = document.getElementById("bizRegUploadModal");
+        const bizRegDropzone = document.getElementById("bizRegModalDropzone");
+        const bizRegInput = document.getElementById("bizRegModalInput");
+        const bizRegAlert = document.getElementById("bizRegModalAlert");
+        const bizRegProgress = document.getElementById("bizRegModalProgress");
+        const bizRegResult = document.getElementById("bizRegModalResult");
+        const bizRegFileName = document.getElementById("bizRegModalFileName");
+        const bizRegParsedSummary = document.getElementById("bizRegModalParsedSummary");
+        const bizRegParsedGrid = document.getElementById("bizRegModalParsedGrid");
+        const bizRegDownloadLink = document.getElementById("bizRegModalDownloadLink");
+        const bizRegInlineFile = document.getElementById("bizRegInlineFile");
+        const bizRegOpenModalBtn = document.getElementById("bizRegOpenModalBtn");
+        const bizRegCloseBtn = document.getElementById("bizRegModalCloseBtn");
+        let bizRegReloadPending = false;
+
+        const bizRegPreviewDefs = [
+            ["company_name", "Legal business name"],
+            ["reg_number", "Tax ID / EIN"],
+            ["corp_registration_number", "Entity registration number"],
+            ["representative_name", "Representative"],
+            ["opening_date", "Formation date"],
+            ["business_type", "Entity type"],
+            ["business_location", "Business address"],
+            ["head_office_location", "Principal office address"],
+            ["tax_invoice_email", "Billing tax email"],
+        ];
+
+        function setErr(msg) {
+            if (!err) return;
+            err.textContent = msg || "";
+            err.style.display = msg ? "block" : "none";
+        }
+
+        function setBizRegAlert(message, type = "info") {
+            if (!bizRegAlert) return;
+            bizRegAlert.className = `alert alert-${type} mb-3`;
+            bizRegAlert.textContent = message || "";
+            bizRegAlert.classList.toggle("d-none", !message);
+        }
+
+        function setBizRegProgress(message) {
+            if (!bizRegProgress) return;
+            bizRegProgress.textContent = message || "";
+            bizRegProgress.classList.toggle("d-none", !message);
+        }
+
+        function resetBizRegResult() {
+            setBizRegAlert("", "info");
+            setBizRegProgress("");
+            if (bizRegResult) bizRegResult.classList.add("d-none");
+            if (bizRegFileName) bizRegFileName.textContent = "";
+            if (bizRegParsedSummary) bizRegParsedSummary.textContent = "";
+            if (bizRegParsedGrid) bizRegParsedGrid.innerHTML = "";
+            if (bizRegDownloadLink) {
+                bizRegDownloadLink.classList.add("d-none");
+                bizRegDownloadLink.setAttribute("href", "#");
+            }
+            if (bizRegCloseBtn) {
+                bizRegCloseBtn.textContent = "Close";
+            }
+        }
+
+        function setBizRegBusy(isBusy) {
+            if (!bizRegDropzone) return;
+            bizRegDropzone.classList.toggle("is-loading", isBusy);
+            bizRegDropzone.setAttribute("aria-busy", isBusy ? "true" : "false");
+            if (bizRegCloseBtn) {
+                bizRegCloseBtn.disabled = isBusy;
+            }
+        }
+
+        function renderInlineBizReg(fileName, downloadUrl) {
+            if (!bizRegInlineFile) return;
+            bizRegInlineFile.innerHTML = "";
+            if (!fileName || !downloadUrl) {
+                const empty = document.createElement("span");
+                empty.className = "text-muted";
+                empty.textContent = "Registration";
+                bizRegInlineFile.appendChild(empty);
+                return;
+            }
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.className = "btn btn-sm btn-outline-success";
+
+            const icon = document.createElement("i");
+            icon.className = "bi bi-file-earmark-pdf";
+            link.appendChild(icon);
+            link.appendChild(document.createTextNode(` ${fileName} `));
+
+            const downloadIcon = document.createElement("i");
+            downloadIcon.className = "bi bi-download ms-1";
+            link.appendChild(downloadIcon);
+
+            bizRegInlineFile.appendChild(link);
+        }
+
+        function renderBizRegResult(data, fileName, downloadUrl) {
+            if (!bizRegResult || !bizRegParsedGrid || !bizRegParsedSummary) return;
+
+            bizRegParsedGrid.innerHTML = "";
+            if (bizRegFileName) {
+                bizRegFileName.textContent = fileName || "";
+            }
+
+            const fields = (data && typeof data === "object" && data.fields && typeof data.fields === "object")
+                ? data.fields
+                : {};
+
+            const rows = bizRegPreviewDefs
+                .map(([key, label]) => {
+                    const rawValue = fields[key];
+                    const value = typeof rawValue === "string" ? rawValue.trim() : "";
+                    return value ? { label, value } : null;
+                })
+                .filter(Boolean);
+
+            const summaryParts = [];
+            const summaryCompany = (fields.company_name || "").trim();
+            const summaryBizNo = (fields.reg_number || "").trim();
+            const summaryCorpNo = (fields.corp_registration_number || "").trim();
+            if (summaryCompany) summaryParts.push(summaryCompany);
+            if (summaryBizNo) summaryParts.push(summaryBizNo);
+            if (!summaryBizNo && summaryCorpNo) summaryParts.push(summaryCorpNo);
+            bizRegParsedSummary.textContent = summaryParts.join(" / ") || "  item none.";
+
+            if (!rows.length) {
+                const empty = document.createElement("div");
+                empty.className = "col-12 text-muted small";
+                empty.textContent = "LLM Display     not found. Source file Save.";
+                bizRegParsedGrid.appendChild(empty);
+            } else {
+                rows.forEach(({ label, value }) => {
+                    const col = document.createElement("div");
+                    col.className = "col-md-6";
+                    col.innerHTML = `
+                        <div class="bizreg-preview-item">
+                            <div class="bizreg-preview-label">${label}</div>
+                            <div class="bizreg-preview-value"></div>
+                        </div>
+                    `;
+                    col.querySelector(".bizreg-preview-value").textContent = value;
+                    bizRegParsedGrid.appendChild(col);
+                });
+            }
+
+            if (downloadUrl && bizRegDownloadLink) {
+                bizRegDownloadLink.href = downloadUrl;
+                bizRegDownloadLink.classList.remove("d-none");
+            }
+            bizRegResult.classList.remove("d-none");
+        }
+
+        async function uploadBizRegFile(file) {
+            if (!bizRegModal || !bizRegDropzone || !bizRegInput) return;
+            const uploadTarget = bizRegModal.dataset.uploadUrl;
+            if (!uploadTarget) return;
+
+            resetBizRegResult();
+            setBizRegBusy(true);
+            setBizRegProgress("Business document upload  LLM Analyzing...");
+
+            const fd = new FormData();
+            fd.append("biz_reg_file", file);
+            if (csrf) {
+                fd.append("csrf_token", csrf);
+            }
+
+            try {
+                const resp = await fetch(uploadTarget, {
+                    method: "POST",
+                    body: fd,
+                    credentials: "same-origin",
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    throw new Error(data.message || data.error || "Upload Failed.");
+                }
+
+                const resultFields =
+                    data.suggestion && typeof data.suggestion === "object"
+                        ? data.suggestion
+                        : { fields: data.parsed || {} };
+                const fileName = (data.file && data.file.original_name) || file.name || "";
+                const downloadUrl = data.download_url || bizRegModal.dataset.downloadUrl || "";
+
+                renderBizRegResult(resultFields, fileName, downloadUrl);
+                renderInlineBizReg(fileName, downloadUrl);
+                setBizRegAlert("Save analysis Done.   Details   Status Updated.", "success");
+                setBizRegProgress("");
+                if (bizRegOpenModalBtn) {
+                    bizRegOpenModalBtn.innerHTML = '<i class="bi bi-upload"></i> Registration';
+                }
+                if (bizRegCloseBtn) {
+                    bizRegCloseBtn.textContent = " ";
+                }
+                bizRegReloadPending = true;
+            } catch (e) {
+                setBizRegAlert(e.message || "Upload Failed.", "danger");
+                setBizRegProgress("");
+            } finally {
+                setBizRegBusy(false);
+                bizRegDropzone.classList.remove("is-dragover");
+                bizRegInput.value = "";
+            }
+        }
+
+        async function upload(files) {
+            if (!uploadUrl || !drop) return;
+            if (!uploadUrl) return;
+            setErr("");
+            const fd = new FormData();
+            Array.from(files).forEach((f) => fd.append("files[]", f));
+            try {
+                drop.classList.add("is-dragover");
+                const resp = await fetch(uploadUrl, {
+                    method: "POST",
+                    headers: { "X-CSRFToken": csrf },
+                    body: fd,
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    throw new Error(data.error || "Upload failed");
+                }
+                window.location.reload();
+            } catch (e) {
+                setErr(e.message || "Upload failed");
+            } finally {
+                drop.classList.remove("is-dragover");
+            }
+        }
+
+        if (drop && input) {
+            drop.addEventListener("click", () => input.click());
+            input.addEventListener("change", (e) => {
+                if (e.target.files && e.target.files.length) upload(e.target.files);
+            });
+            drop.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                drop.classList.add("is-dragover");
+            });
+            drop.addEventListener("dragleave", () => {
+                drop.classList.remove("is-dragover");
+            });
+            drop.addEventListener("drop", (e) => {
+                e.preventDefault();
+                drop.classList.remove("is-dragover");
+                if (e.dataTransfer.files && e.dataTransfer.files.length) {
+                    upload(e.dataTransfer.files);
+                }
+            });
+        }
+
+        if (bizRegModal && bizRegDropzone && bizRegInput) {
+            bizRegModal.addEventListener("show.bs.modal", () => {
+                bizRegReloadPending = false;
+                resetBizRegResult();
+            });
+
+            bizRegModal.addEventListener("hidden.bs.modal", () => {
+                if (bizRegReloadPending) {
+                    window.location.reload();
+                    return;
+                }
+                resetBizRegResult();
+            });
+
+            bizRegDropzone.addEventListener("click", () => {
+                if (!bizRegDropzone.classList.contains("is-loading")) {
+                    bizRegInput.click();
+                }
+            });
+
+            bizRegDropzone.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!bizRegDropzone.classList.contains("is-loading")) {
+                        bizRegInput.click();
+                    }
+                }
+            });
+
+            bizRegInput.addEventListener("change", (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) {
+                    uploadBizRegFile(file);
+                }
+            });
+
+            bizRegDropzone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                if (bizRegDropzone.classList.contains("is-loading")) return;
+                bizRegDropzone.classList.add("is-dragover");
+            });
+
+            ["dragleave", "dragend"].forEach((eventName) => {
+                bizRegDropzone.addEventListener(eventName, () => {
+                    bizRegDropzone.classList.remove("is-dragover");
+                });
+            });
+
+            bizRegDropzone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                bizRegDropzone.classList.remove("is-dragover");
+                if (bizRegDropzone.classList.contains("is-loading")) return;
+                const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                if (file) {
+                    uploadBizRegFile(file);
+                }
+            });
+        }
+    });
+</script>
+
+<style>
+    .fade-in {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .nav-tabs .nav-link {
+        color: #6c757d;
+    }
+    .nav-tabs .nav-link.active {
+        font-weight: 600;
+    }
+    #crmClientAttachDrop.is-dragover {
+        background-color: #eef2ff !important;
+    }
+    .bizreg-modal-dropzone {
+        border: 2px dashed rgba(13, 110, 253, 0.28);
+        border-radius: 1rem;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        background:
+            radial-gradient(circle at top left, rgba(13, 110, 253, 0.08), transparent 45%),
+            linear-gradient(180deg, rgba(248, 250, 255, 0.92), rgba(255, 255, 255, 0.98));
+        cursor: pointer;
+        transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+    .bizreg-modal-dropzone:hover,
+    .bizreg-modal-dropzone:focus-visible,
+    .bizreg-modal-dropzone.is-dragover {
+        border-color: rgba(13, 110, 253, 0.58);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.12);
+        transform: translateY(-1px);
+        outline: none;
+    }
+    .bizreg-modal-dropzone.is-loading {
+        opacity: 0.72;
+        cursor: progress;
+    }
+    .bizreg-modal-icon {
+        width: 4rem;
+        height: 4rem;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.85rem;
+        background: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+        font-size: 1.65rem;
+    }
+    .bizreg-preview-item {
+        height: 100%;
+        border: 1px solid rgba(255, 193, 7, 0.34);
+        border-radius: 0.85rem;
+        padding: 0.8rem 0.9rem;
+        background: #fffdf7;
+    }
+    .bizreg-preview-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #8c6a13;
+        margin-bottom: 0.2rem;
+    }
+    .bizreg-preview-value {
+        color: #273142;
+        word-break: break-word;
+    }
+</style>
+{% endblock %}

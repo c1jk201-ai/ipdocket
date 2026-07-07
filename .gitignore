@@ -1,0 +1,87 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+client_secret.json
+**/client_secret.json
+
+# Local tool and editor state
+.agents/
+.codex/
+.playwright-cli/
+.vscode/
+.idea/
+
+# Runtime data
+data/
+uploads/
+logs/
+backups/
+reports/
+instance/
+output/
+app/data/pdf_text_cache/
+
+# Databases, dumps, and backups
+*.sqlite
+*.sqlite3
+*.db
+*.mdb
+*.accdb
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*.dump
+*.dump.*
+*.sql
+*.sql.gz
+*.dump.gz
+*.bak.gz
+backup-*.tar.gz
+*-backup.tar.gz
+backup-*.tgz
+*-backup.tgz
+backup-*.zip
+*-backup.zip
+prod*.sql
+production*.sql
+*_backup_*.sql
+*dump*.json
+*dump*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Test, coverage, and debug artifacts
+.coverage
+.coverage.*
+htmlcov/
+error_dump*.txt
+migrate.log
+output.txt
+my_changes.txt
+env_debug.log
+result*.xml
+debug_db_columns.py
+inspect_error*.py
+reproduce_error*.py
+inspect_schema.py
+
+# Transfer bundles and local release packages
+ipm_transfer_bundle*
+ipm-transfer-*.tar.gz
+transfer/
+legacy_data/

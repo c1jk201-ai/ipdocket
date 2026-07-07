@@ -1,0 +1,23 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width: 720px;">
+  <h5 class="fw-semibold mb-3">{{ title or 'Done' }}</h5>
+
+  <div class="alert alert-success">
+    Save Done.
+  </div>
+
+  <div class="d-flex gap-2">
+    <a class="btn btn-primary" href="{{ back_url }}" onclick="if(window.opener){window.opener.location.href=this.href; window.close();} return false;">Matter  Go</a>
+    <button type="button" class="btn btn-outline-secondary" onclick="window.close()"> Close</button>
+  </div>
+</div>
+
+<script>
+  try {
+    if (window.opener && !window.opener.closed) {
+      window.opener.location.reload();
+    }
+  } catch (e) {}
+</script>
+{% endblock %}

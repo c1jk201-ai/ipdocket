@@ -1,0 +1,134 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ {% set _profiles = all_profiles if all_profiles is defined else (business_profiles if business_profiles is defined else []) %}
+ {% set _selected_bp = bp_id if bp_id is defined else (business_profile_id if business_profile_id is defined else '') %}
+ {% set _selected_lang = lang if lang is defined else (language if language is defined else '') %}
+ <div class="page-header">
+  <div>
+   <h2 class="invoice-page-title">Invoice templates</h2>
+   <div class="invoice-page-subtitle">Reusable invoice defaults and line-item presets.</div>
+  </div>
+  <div class="page-actions">
+   <a class="btn" href="{{ url_for('export_all_templates') }}" title="Export all">Export all</a>
+   <a class="btn btn-primary" href="{{ url_for('new_template') }}"><i class="bi bi-plus-lg"></i> New template</a>
+  </div>
+ </div>
+
+ <div class="invoice-filter-panel">
+  <h3 class="invoice-section-title">Search and filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-lg-6">
+    <label>Search (Name/Description)</label>
+    <input type="text" name="q" value="{{ q or '' }}" placeholder="Enter a search term..." />
+   </div>
+
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Language</label>
+    <select name="language">
+     <option value="">All</option>
+     <option value="en" {% if _selected_lang=='en' %}selected{% endif %}>English</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Sort</label>
+    <select name="sort">
+     <option value="name" {% if sort=='name' %}selected{% endif %}>Name</option>
+     <option value="recent" {% if sort=='recent' %}selected{% endif %}>Most recent</option>
+     <option value="payment_terms" {% if sort=='payment_terms' %}selected{% endif %}>Payment terms</option>
+     <option value="items" {% if sort=='items' %}selected{% endif %}>Item count</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Per page</label>
+    <select name="per_page">
+     <option value="10" {% if per_page==10 %}selected{% endif %}>10</option>
+     <option value="30" {% if per_page==30 %}selected{% endif %}>30</option>
+     <option value="50" {% if per_page==50 %}selected{% endif %}>50</option>
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Search</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.templates_bp.list_templates') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="invoice-data-panel">
+  <div class="table-card">
+   <table class="responsive table-compact">
+    <thead>
+     <tr>
+      <th>Template name</th>
+      <th>Description</th>
+      <th>Language</th>
+      <th>Payment terms</th>
+      <th>Items</th>
+      <th class="right"></th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for t in templates %}
+     <tr>
+      <td data-label="Template name" style="font-weight:600;">{{ t['name'] }}</td>
+      <td data-label="Description" class="muted">{{ t['description'] or '-' }}</td>
+      <td data-label="Language" class="muted">{{ t['language'] or '-' }}</td>
+      <td data-label="Payment terms">{{ t['payment_terms'] }} days</td>
+      <td data-label="Items">{{ (t['default_items']|from_json|length) if t['default_items'] else 0 }}</td>
+      <td data-label="Actions" class="right nowrap">
+       <a class="btn" href="{{ url_for('edit_template', template_id=t['id']) }}">Edit</a>
+       <form method="post" action="{{ url_for('billing_invoices.templates_bp.copy_template', template_id=t['id']) }}" style="display:inline;">
+        <button class="btn btn-ghost" type="submit" title="Copy template"><i class="bi bi-files"></i></button>
+       </form>
+       <a class="btn btn-ghost" href="{{ url_for('export_template', template_id=t['id']) }}" title="Export template"><i class="bi bi-download"></i></a>
+       <form method="post" action="{{ url_for('delete_template', template_id=t['id']) }}" style="display:inline;" data-confirm="Delete">
+        <button class="btn btn-danger" type="submit">Delete</button>
+       </form>
+      </td>
+     </tr>
+     {% else %}
+     <tr><td colspan="6" class="muted">Template none.</td></tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set template_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = template_pagination_args.update({'q': q or '', 'business_profile_id': _selected_bp or '', 'language': _selected_lang or '', 'sort': sort, 'per_page': per_page}) %}
+ {{ ui.pagination('billing_invoices.templates_bp.list_templates', page, total_pages, template_pagination_args, 'Invoice templates Pagination') }}
+
+ <div class="invoice-filter-panel">
+  <h3 style="margin-top:0;">📥 Template </h3>
+  <p class="muted" style="margin:0 0 8px 0; font-size:12px;">days Template(JSON)  Template(JSON column) File/ Upload exists.</p>
+  <form method="post" action="{{ url_for('import_templates') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+   <div class="col-12 col-lg-4">
+    <label>File Upload (.json)</label>
+    <input type="file" name="file" accept="application/json" />
+   </div>
+   <div class="col-12 col-lg-8">
+    <label> JSON </label>
+    <textarea name="json_text" rows="5" placeholder='[{"name":"Sample","default_items":[]}, ...]'></textarea>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit"><i class="bi bi-upload"></i> Import</button>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <script>
+  document.addEventListener("DOMContentLoaded", function () {
+   var langSelect = document.querySelector('select[name="language"]');
+   if (!langSelect) return;
+   var currentLang = "{{ lang or '' }}";
+   if (!currentLang) {
+    langSelect.value = "";
+   }
+  });
+ </script>
+
+{% endblock %}

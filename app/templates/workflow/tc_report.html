@@ -1,0 +1,182 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container-fluid mt-3" style="max-width: 1200px;">
+  <div class="d-flex align-items-start justify-content-between mb-3">
+    <div>
+      <h3 class="fw-semibold mb-1">TC report</h3>
+      <div class="text-muted small">
+        Matter:
+        <a class="text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, _anchor='sec-workflow') }}">
+          <b>{{ matter.our_ref or matter.matter_id }}</b>
+        </a>
+        {% if matter.right_name %} - {{ matter.right_name }}{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, _anchor='sec-workflow') }}">Back to matter</a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ csv_url }}">CSV download</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label small mb-1">Date basis</label>
+          <select class="form-select form-select-sm" name="basis">
+            <option value="due" {% if (filters.basis or '') == 'due' %}selected{% endif %}>Due date</option>
+            <option value="created" {% if (filters.basis or '') == 'created' %}selected{% endif %}>Registration date</option>
+            <option value="completed" {% if (filters.basis or '') == 'completed' %}selected{% endif %}>Completed date</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Start</label>
+          <input type="date" class="form-control form-control-sm" name="start" value="{{ filters.start or '' }}" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">End</label>
+          <input type="date" class="form-control form-control-sm" name="end" value="{{ filters.end or '' }}" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Status</label>
+          <select class="form-select form-select-sm" name="status">
+            <option value="all" {% if (filters.status or '') == 'all' %}selected{% endif %}>All</option>
+            <option value="Pending" {% if (filters.status or '') == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="In Progress" {% if (filters.status or '') == 'In Progress' %}selected{% endif %}>In Progress</option>
+            <option value="Completed" {% if (filters.status or '') == 'Completed' %}selected{% endif %}>Completed</option>
+            <option value="Abandoned" {% if (filters.status or '') == 'Abandoned' %}selected{% endif %}>Abandoned</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Assignee</label>
+          <select class="form-select form-select-sm" name="assignee_id" style="min-width: 160px;">
+            <option value="" {% if not (filters.assignee_id or '') %}selected{% endif %}>All</option>
+            {% for a in (assignee_options or []) %}
+              <option value="{{ a.id }}" {% if (filters.assignee_id or '') == (a.id|string) %}selected{% endif %}>{{ a.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">View</label>
+          <select class="form-select form-select-sm" name="show">
+            <option value="all" {% if (filters.show or '') == 'all' %}selected{% endif %}>All</option>
+            <option value="tc" {% if (filters.show or '') == 'tc' %}selected{% endif %}>TC Input</option>
+            <option value="missing" {% if (filters.show or '') == 'missing' %}selected{% endif %}>TC Missing(Done)</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">TC target</label>
+          <select class="form-select form-select-sm" name="tc_scope">
+            <option value="candidate" {% if (filters.tc_scope or '') == 'candidate' %}selected{% endif %}>TC candidate</option>
+            <option value="work" {% if (filters.tc_scope or '') == 'work' %}selected{% endif %}>WORK</option>
+            <option value="mgmt" {% if (filters.tc_scope or '') == 'mgmt' %}selected{% endif %}>MGMT</option>
+            <option value="all" {% if (filters.tc_scope or '') == 'all' %}selected{% endif %}>All non-renewal</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+        </div>
+      </form>
+      <div class="form-text mt-2">
+        TC Missing(Done) uses completed tasks when Status is All.
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2 h-100">
+        <div class="text-muted small">Total Task</div>
+        <div class="fw-semibold fs-5">{{ summary.total_count or 0 }} items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2 h-100">
+        <div class="text-muted small">TC Input</div>
+        <div class="fw-semibold fs-5">{{ summary.tc_count or 0 }} items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2 h-100">
+        <div class="text-muted small">Total TC</div>
+        <div class="fw-semibold fs-5">{{ summary.total_hours or 0 }}h</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2 h-100">
+        <div class="text-muted small">Missing(Done)</div>
+        <div class="fw-semibold fs-5">{{ summary.missing_count or 0 }} items</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">TC List</div>
+      <div class="text-muted small">Display: {{ (workflows or [])|length }} items</div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 90px;">ID</th>
+              <th>Task</th>
+              <th style="width: 120px;">Status</th>
+              <th style="width: 220px;">Assignees</th>
+              <th class="text-end" style="width: 90px;">TC(h)</th>
+              <th style="width: 110px;">Completed</th>
+              <th style="width: 110px;">Due date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for wf in (workflows or []) %}
+              {% set _missing = ((wf.status or '') == 'Completed') and (wf.work_hours is none or (wf.work_hours or 0) <= 0) %}
+              <tr class="{% if _missing %}table-warning{% endif %}">
+                <td class="text-muted">
+                  <a class="text-decoration-none" href="{{ url_for('workflow.detail', workflow_id=wf.id) }}">#{{ wf.id }}</a>
+                </td>
+                <td>
+                  <div class="fw-semibold">{{ wf.name|workflow_title }}</div>
+                  {% if wf.business_code %}
+                    <div class="text-muted small">{{ wf.business_code }}</div>
+                  {% endif %}
+                  <div class="mt-1">
+                    <a class="link-muted small text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, workflow_id='wf_' ~ wf.id, _anchor='sec-workflow') }}">
+                      Open in matter <i class="bi bi-link-45deg"></i>
+                    </a>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ wf.status or '-' }}</span>
+                  {% if _missing %}
+                    <span class="badge bg-warning text-dark ms-1">TC Missing</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="small">Handler: {{ (wf.assignee.display_name or wf.assignee.username) if wf.assignee else '-' }}</div>
+                  <div class="small">Attorney: {{ (wf.attorney_assignee.display_name or wf.attorney_assignee.username) if wf.attorney_assignee else '-' }}</div>
+                  <div class="small">Manager: {{ (wf.inspector.display_name or wf.inspector.username) if wf.inspector else '-' }}</div>
+                </td>
+                <td class="text-end">
+                  {% if wf.work_hours is not none and (wf.work_hours or 0) > 0 %}
+                    {{ "%.2f"|format(wf.work_hours) }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>{{ (wf.completed_date or '')|us_date or '-' }}</td>
+                <td>{{ (wf.due_date or '')|us_date or '-' }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center py-4 text-muted">Display item none.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

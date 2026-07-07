@@ -1,0 +1,1855 @@
+{% extends "layouts/base.html" %}
+
+{% block styles %}
+<style>
+/* Custom Styles for Deadline Module */
+:root {
+  --app-soft-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --app-card-border: 1px solid rgba(226, 230, 239, 0.8);
+  --deadline-axis-final-bg: #eff6ff;
+  --deadline-axis-final-border: #bfdbfe;
+  --deadline-axis-final-text: #12395F;
+  --deadline-axis-final-chip: #dbeafe;
+  --deadline-axis-internal-bg: #fff7ed;
+  --deadline-axis-internal-border: #fed7aa;
+  --deadline-axis-internal-text: #c2410c;
+  --deadline-axis-internal-chip: #ffedd5;
+  --deadline-status-pending: #94a3b8;
+  --deadline-status-urgent: #C8A24A;
+  --deadline-status-overdue: #dc2626;
+  --deadline-status-completed: #16a34a;
+  --deadline-status-abandoned: #6b7280;
+}
+
+.deadline-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header & Navigation */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--app-navy);
+    letter-spacing: -0.02em;
+}
+
+.nav-segment {
+    background: #e9ecef;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.nav-segment .nav-link {
+    color: var(--app-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.4rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.nav-segment .nav-link:hover {
+    color: var(--app-indigo);
+    background: rgba(255,255,255,0.5);
+}
+
+.nav-segment .nav-link.active {
+    background: #fff;
+    color: var(--app-navy);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Card Styles */
+.app-card {
+    background: #f8fafd;
+    border: var(--app-card-border);
+    border-radius: 1rem;
+    box-shadow: var(--app-soft-shadow);
+    overflow: hidden;
+}
+
+.filter-toolbar {
+    background: #fff;
+    border: var(--app-card-border);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--app-soft-shadow);
+}
+
+.deadline-axis-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.deadline-axis-btn {
+    border: none;
+    background: transparent;
+    color: #475569;
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 0.38rem 0.8rem;
+    border-radius: 999px;
+    transition: all 0.18s ease;
+}
+
+.deadline-axis-btn:hover {
+    background: rgba(255, 255, 255, 0.8);
+    color: var(--app-navy);
+}
+
+.deadline-axis-btn.active {
+    background: #fff;
+    color: var(--app-navy);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.deadline-axis-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 0.9rem;
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.deadline-axis-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.deadline-axis-legend__swatch {
+    width: 1rem;
+    height: 0.72rem;
+    border-radius: 999px;
+    display: inline-block;
+    border: 1px solid transparent;
+}
+
+.deadline-axis-legend__swatch.final {
+    background: var(--deadline-axis-final-bg);
+    border-color: var(--deadline-axis-final-border);
+}
+
+.deadline-axis-legend__swatch.internal {
+    background: var(--deadline-axis-internal-bg);
+    border-color: var(--deadline-axis-internal-border);
+}
+
+.deadline-axis-legend__accent {
+    width: 0.3rem;
+    height: 0.9rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.deadline-axis-legend__accent.pending {
+    background: var(--deadline-status-pending);
+}
+
+.deadline-axis-legend__accent.urgent {
+    background: var(--deadline-status-urgent);
+}
+
+.deadline-axis-legend__accent.overdue {
+    background: var(--deadline-status-overdue);
+}
+
+.deadline-axis-legend__note {
+    flex: 1 1 100%;
+    color: #94a3b8;
+}
+
+/* Calendar Overrides */
+#dl-calendar {
+    font-family: 'Noto Sans', 'Segoe UI', Arial, Helvetica, sans-serif;
+}
+.fc .fc-toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--app-navy);
+}
+.fc .fc-button-primary {
+    background: #fff !important;
+    border: 1px solid #dee2e6 !important;
+    color: #495057 !important;
+    font-weight: 600;
+    text-transform: capitalize;
+    box-shadow: none !important;
+}
+.fc .fc-button-primary:hover {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+}
+.fc .fc-button-primary:disabled { /* today button */
+    opacity: 0.6;
+}
+.fc .fc-button-active {
+    background: #e9ecef !important;
+    color: #0d6efd !important;
+    border-color: #dee2e6 !important;
+}
+.fc-theme-standard td, .fc-theme-standard th {
+    border-color: #f1f3f5;
+}
+.fc-daygrid-day.fc-day-today {
+    background: rgba(255, 179, 71, 0.16) !important;
+}
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: var(--app-accent);
+    color: var(--app-navy);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    font-weight: 700;
+    margin: 0.2rem;
+    padding: 0 0.35rem;
+}
+
+/* FullCalendar: prevent event titles/links from overflowing into adjacent day cells */
+.fc .deadline-calendar-event {
+    border-radius: 0.65rem;
+    overflow: hidden;
+    box-shadow: none;
+}
+.fc .deadline-calendar-event--axis-final {
+    background: var(--deadline-axis-final-bg) !important;
+    border-color: var(--deadline-axis-final-border) !important;
+    color: var(--deadline-axis-final-text) !important;
+}
+.fc .deadline-calendar-event--axis-internal {
+    background: var(--deadline-axis-internal-bg) !important;
+    border-color: var(--deadline-axis-internal-border) !important;
+    color: var(--deadline-axis-internal-text) !important;
+}
+.fc .deadline-calendar-event .fc-event-main {
+    padding: 0;
+}
+.fc .deadline-calendar-event--status-completed,
+.fc .deadline-calendar-event--status-abandoned {
+    opacity: 0.74;
+}
+.fc .fc-daygrid-event {
+    max-width: 100%;
+    overflow: hidden;
+}
+.fc .deadline-event-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 0.2rem 0.45rem;
+}
+.fc .deadline-event-chip__status {
+    flex: 0 0 auto;
+    width: 0.28rem;
+    height: 0.85rem;
+    border-radius: 999px;
+}
+.fc .deadline-event-chip__status--pending {
+    background: var(--deadline-status-pending);
+}
+.fc .deadline-event-chip__status--urgent {
+    background: var(--deadline-status-urgent);
+}
+.fc .deadline-event-chip__status--overdue {
+    background: var(--deadline-status-overdue);
+}
+.fc .deadline-event-chip__status--completed {
+    background: var(--deadline-status-completed);
+}
+.fc .deadline-event-chip__status--abandoned {
+    background: var(--deadline-status-abandoned);
+}
+.fc .deadline-event-chip__axis {
+    flex: 0 0 auto;
+    font-size: 0.67rem;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    padding: 0.18rem 0.34rem;
+    border-radius: 999px;
+}
+.fc .deadline-calendar-event--axis-final .deadline-event-chip__axis {
+    background: var(--deadline-axis-final-chip);
+    color: var(--deadline-axis-final-text);
+}
+.fc .deadline-calendar-event--axis-internal .deadline-event-chip__axis {
+    background: var(--deadline-axis-internal-chip);
+    color: var(--deadline-axis-internal-text);
+}
+.fc .fc-daygrid-event .fc-event-main-frame,
+.fc .fc-daygrid-event .fc-event-title-container {
+    min-width: 0;
+    overflow: hidden;
+}
+.fc .fc-daygrid-event .fc-event-title,
+.fc .fc-daygrid-event .app-fc-event-title,
+.fc .deadline-event-chip__title {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.fc .fc-list-event .deadline-event-chip {
+    padding: 0;
+}
+
+/* Table Styles */
+.table-custom th {
+    background: #f8fafc;
+    color: var(--app-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-custom td {
+    vertical-align: middle;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+.table-custom tr:last-child td {
+    border-bottom: none;
+}
+.table-row-hover:hover td {
+    background-color: #f8fafc;
+    cursor: default;
+}
+.link-quiet {
+    color: inherit;
+    text-decoration: none;
+}
+.link-quiet:hover {
+    color: var(--app-indigo);
+    text-decoration: underline;
+}
+.link-muted {
+    color: var(--app-muted);
+    text-decoration: none;
+}
+.link-muted:hover {
+    color: var(--app-indigo);
+    text-decoration: underline;
+}
+
+/* Badges */
+.badge-soft {
+    padding: 0.35em 0.65em;
+    font-weight: 600;
+    border-radius: 0.5rem;
+}
+.badge-soft-primary { background: #e0f2fe; color: #0369a1; }
+.badge-soft-success { background: #dcfce7; color: #15803d; }
+.badge-soft-warning { background: #fef9c3; color: #a16207; }
+.badge-soft-danger  { background: #fee2e2; color: #b91c1c; }
+.badge-soft-secondary { background: #f1f5f9; color: #475569; }
+
+/* FAB */
+.fab-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--app-navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    font-size: 1.5rem;
+    transition: transform 0.2s, background 0.2s;
+    z-index: 1000;
+    border: none;
+}
+.fab-btn:hover {
+    transform: translateY(-2px);
+    background: #2d3e5e;
+    color: #fff;
+}
+
+@media (max-width: 767.98px) {
+    .deadline-container {
+        padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
+        padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
+        padding-top: 1rem !important;
+    }
+
+    .page-header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .page-header > .d-flex {
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+    }
+
+    .page-title {
+        font-size: 1.35rem;
+        line-height: 1.25;
+    }
+
+    .nav-segment {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-segment .nav-link {
+        flex: 1 0 auto;
+        white-space: nowrap;
+    }
+
+    .filter-toolbar {
+        padding: 0.75rem;
+    }
+
+    .filter-toolbar > .d-flex {
+        align-items: stretch !important;
+        flex-wrap: wrap !important;
+        width: 100%;
+    }
+
+    .filter-toolbar .input-group {
+        width: 100% !important;
+    }
+
+    .filter-toolbar .form-check {
+        margin-left: 0 !important;
+    }
+
+    .deadline-axis-segment {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .deadline-axis-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .deadline-axis-legend {
+        width: 100%;
+        gap: 0.45rem 0.65rem;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 0.15rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .deadline-axis-legend__item {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .deadline-axis-legend__note {
+        display: none;
+    }
+
+    .fc .fc-toolbar.fc-header-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.55rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .fc .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    .fc .fc-toolbar-chunk:first-child,
+    .fc .fc-toolbar-chunk:last-child {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .fc .fc-toolbar-title {
+        font-size: 1.08rem;
+        line-height: 1.25;
+        text-align: center;
+    }
+
+    .fc .fc-button-group,
+    .fc .fc-button {
+        flex: 0 0 auto;
+    }
+
+    .fc .fc-daygrid-day-frame {
+        min-height: 4.25rem;
+    }
+
+    .fc .deadline-event-chip {
+        gap: 0.25rem;
+        padding-left: 0.3rem;
+        padding-right: 0.3rem;
+    }
+
+    .fc .deadline-event-chip__axis {
+        display: none;
+    }
+
+    #main .deadline-container .table-responsive > #main-table,
+    #main-table {
+        border-collapse: separate;
+        border-spacing: 0 0.75rem;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    #main-table thead {
+        display: none;
+    }
+
+    #main-table tbody,
+    #main-table tbody tr,
+    #main-table tbody td {
+        display: block;
+        width: 100%;
+    }
+
+    #main-table tbody tr {
+        background: #fff;
+        border: 1px solid rgba(57, 72, 103, 0.12);
+        border-radius: 0.75rem;
+        box-shadow: 0 0.2rem 0.7rem rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+        padding: 0.55rem 0.75rem;
+    }
+
+    #main-table tbody td {
+        border-bottom: 1px solid #eef2f7;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        padding: 0.55rem 0 !important;
+        text-align: left !important;
+    }
+
+    #main-table tbody td:last-child {
+        border-bottom: 0;
+    }
+
+    #main-table tbody td[data-label] {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: 5.8rem minmax(0, 1fr);
+    }
+
+    #main-table tbody td[data-label]::before {
+        color: #64748b;
+        content: attr(data-label);
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding-top: 0.08rem;
+    }
+
+    #main-table tbody td[data-label] > * {
+        min-width: 0;
+    }
+
+    #main-table tbody td[data-label="Select"] {
+        display: flex;
+        justify-content: flex-end;
+        padding-bottom: 0.15rem !important;
+    }
+
+    #main-table tbody td[data-label="Select"]::before {
+        display: none;
+    }
+
+    #main-table .text-truncate {
+        max-width: 100% !important;
+        white-space: normal;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pt-4 px-4 pb-5 deadline-container">
+
+    <!-- 1. Header & Nav -->
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <h1 class="page-title mb-0">Task/Deadline </h1>
+            {% if page == 'internal' %}
+              <span class="badge bg-warning text-dark border">Internal Deadline </span>
+            {% elif page == 'list' %}
+              <span class="badge bg-light text-dark border">List </span>
+            {% endif %}
+        </div>
+
+        <nav class="nav-segment">
+            <a href="{{ url_for('deadlines.calendar_month') }}"
+               class="nav-link {% if page == 'calendar_month' %}active{% endif %}">
+               <i class="bi bi-calendar3 me-1"></i> Month 
+            </a>
+             <a href="{{ url_for('deadlines.list_view') }}"
+                class="nav-link {% if page == 'list' %}active{% endif %}">
+                <i class="bi bi-list-task me-1"></i> Deadline List
+             </a>
+            <a href="{{ url_for('deadlines.internal_close') }}"
+               class="nav-link {% if page == 'internal' %}active{% endif %}">
+                <i class="bi bi-building-check me-1"></i> Internal Deadline
+            </a>
+        </nav>
+    </div>
+
+    <div class="alert alert-light border py-2 small mb-3">
+        {% if page == 'internal' %}
+          <span class="fw-semibold">Internal Deadline</span> <span class="fw-semibold">Internal/ Due date</span> to /Filter <span class="fw-semibold">Done Process</span> .
+          <a href="{{ url_for('deadlines.list_view') }}" class="text-decoration-none">Deadline List</a>from Deadline Add/Delete  exists.
+        {% elif page == 'list' %}
+          <span class="fw-semibold">Deadline List</span> Matter <span class="fw-semibold">Final/Internal Deadline</span>  <span class="fw-semibold">Add/Delete</span> .
+          Internal Due date to Process <a href="{{ url_for('deadlines.internal_close') }}" class="text-decoration-none">Internal Deadline</a> .
+        {% else %}
+          <span class="fw-semibold">Month </span>  row  <span class="fw-semibold">Task</span>  .
+          Matter <span class="fw-semibold">Deadline</span> <a href="{{ url_for('deadlines.list_view') }}" class="text-decoration-none">Deadline List</a>from .
+        {% endif %}
+    </div>
+
+    {% if page in ['list', 'internal'] %}
+      {% set view_module = "docket_internal" if page == 'internal' else "docket_list" %}
+      {% include "_saved_views_bar.html" %}
+    {% endif %}
+
+    <!-- 2. Content Area -->
+    <div class="animate-fade-in">
+
+        <!-- === CALENDAR VIEW === -->
+        {% if page == 'calendar_month' %}
+        <div class="filter-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <div class="form-check form-check-inline user-select-none">
+                    <input class="form-check-input" type="checkbox" id="view-mine">
+                    <label class="form-check-label small fw-semibold text-secondary" for="view-mine"> Task View</label>
+                </div>
+                <div class="deadline-axis-segment" id="calendar-due-axis" aria-label="Deadline  Filter">
+                    <button type="button" class="deadline-axis-btn" data-due-axis="all">All</button>
+                    <button type="button" class="deadline-axis-btn" data-due-axis="final">Final Due date</button>
+                    <button type="button" class="deadline-axis-btn" data-due-axis="internal">Internal Due date</button>
+                </div>
+            </div>
+            <div class="deadline-axis-legend">
+                <span class="deadline-axis-legend__item">
+                    <span class="deadline-axis-legend__swatch final"></span> Final Due date
+                </span>
+                <span class="deadline-axis-legend__item">
+                    <span class="deadline-axis-legend__swatch internal"></span> Internal Due date
+                </span>
+                <span class="deadline-axis-legend__item">
+                    <span class="deadline-axis-legend__accent pending"></span> OpenIn Progress
+                </span>
+                <span class="deadline-axis-legend__item">
+                    <span class="deadline-axis-legend__accent urgent"></span> Due Soon
+                </span>
+                <span class="deadline-axis-legend__item">
+                    <span class="deadline-axis-legend__accent overdue"></span> Deadline Overdue
+                </span>
+                <span class="deadline-axis-legend__note"> Deadline Type,   Status .   Final Due date Display.</span>
+            </div>
+        </div>
+        <div class="app-card p-3">
+            <div id="dl-calendar"></div>
+        </div>
+
+        <!-- FullCalendar Libs -->
+        <script src="{{ static_asset_url('vendor/fullcalendar/index.global.min.js') }}"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!window.FullCalendar || !window.FullCalendar.Calendar) return;
+            var calendarEl = document.getElementById('dl-calendar');
+            if (!calendarEl || calendarEl.dataset.ipmCalendarBooted === '1') return;
+            calendarEl.dataset.ipmCalendarBooted = '1';
+            var params = new URLSearchParams(window.location.search || "");
+            var initialDate = params.get('date') || null;
+            var worklogUrl = "{{ url_for('worklog.index') }}";
+            var worklogOwnerValue = {{ ((current_user.staff_party_id or current_user.id|string) if current_user.is_authenticated else '')|tojson }};
+            var worklogOwnerName = {{ ((current_user.display_name or current_user.username or current_user.email or '') if current_user.is_authenticated else '')|tojson }};
+            var mineCheckbox = document.getElementById('view-mine');
+            var dueAxisButtons = Array.from(document.querySelectorAll('.deadline-axis-btn'));
+            var mineFlag = (params.get('mine') || '').toLowerCase();
+            var dueAxis = (params.get('due_axis') || 'all').toLowerCase();
+            if (!['all', 'final', 'internal'].includes(dueAxis)) dueAxis = 'all';
+            if (mineCheckbox && ['1', 'true', 'yes'].includes(mineFlag)) {
+                mineCheckbox.checked = true;
+            }
+
+            function syncDueAxisButtons() {
+                dueAxisButtons.forEach(function(button) {
+                    var active = (button.dataset.dueAxis || '') === dueAxis;
+                    button.classList.toggle('active', active);
+                    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+                });
+            }
+
+            function syncUrlParams() {
+                try {
+                    const p = new URLSearchParams(window.location.search || "");
+                    if (mineCheckbox && mineCheckbox.checked) p.set('mine', '1');
+                    else p.delete('mine');
+                    if (dueAxis && dueAxis !== 'all') p.set('due_axis', dueAxis);
+                    else p.delete('due_axis');
+                    const next = p.toString();
+                    const nextUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+                    window.history.replaceState({}, '', nextUrl);
+                } catch (e) {}
+            }
+
+            function buildDayListUrl(dateStr) {
+                var url = new URL(worklogUrl, window.location.origin);
+                url.searchParams.set('filter', 'all');
+                url.searchParams.set('days', 'all');
+                url.searchParams.set('page', '1');
+                url.searchParams.set('due_from', String(dateStr || ''));
+                url.searchParams.set('due_to', String(dateStr || ''));
+                if (dueAxis && dueAxis !== 'all') {
+                    url.searchParams.set('due_axis', dueAxis);
+                }
+                if (mineCheckbox && mineCheckbox.checked) {
+                    if (worklogOwnerValue) {
+                        url.searchParams.set('owner_role', 'owner');
+                        url.searchParams.set('owner', worklogOwnerValue);
+                        if (worklogOwnerName) url.searchParams.set('owner_name', worklogOwnerName);
+                    }
+                } else {
+                    var owner = (params.get('owner') || '').trim();
+                    var ownerName = (params.get('owner_name') || '').trim();
+                    if (owner) {
+                        url.searchParams.set('owner_role', 'owner');
+                        url.searchParams.set('owner', owner);
+                    }
+                    if (ownerName) url.searchParams.set('owner_name', ownerName);
+                }
+                return url.pathname + url.search;
+            }
+
+            function drilldownNavigate(url) {
+                if (!url) return;
+                if (window.AppDrilldown && typeof window.AppDrilldown.navigate === 'function') {
+                    window.AppDrilldown.navigate(url);
+                    return;
+                }
+                window.location.assign(url);
+            }
+
+            function pad2(value) {
+                return String(value).padStart(2, '0');
+            }
+
+            function formatLocalYmd(dateObj) {
+                if (!(dateObj instanceof Date) || Number.isNaN(dateObj.getTime())) return '';
+                return [
+                    String(dateObj.getFullYear()),
+                    pad2(dateObj.getMonth() + 1),
+                    pad2(dateObj.getDate())
+                ].join('-');
+            }
+
+            function openDayList(dateLike) {
+                if (!dateLike) return;
+                var dateStr = '';
+                if (typeof dateLike === 'string') {
+                    dateStr = dateLike.split('T')[0];
+                } else if (dateLike instanceof Date && !Number.isNaN(dateLike.getTime())) {
+                    dateStr = formatLocalYmd(dateLike);
+                } else if (dateLike && typeof dateLike.toISOString === 'function') {
+                    try {
+                        dateStr = formatLocalYmd(new Date(dateLike.valueOf()));
+                    } catch (e) {}
+                }
+                if (!dateStr) return;
+                drilldownNavigate(buildDayListUrl(dateStr));
+            }
+
+            function normalizeCalendarToolbarLabels() {
+                if (!calendarEl) return;
+                var root = calendarEl.closest('.app-card') || calendarEl.parentElement || document;
+                var monthBtn = root.querySelector('.fc-dayGridMonth-button');
+                var listBtn = root.querySelector('.fc-listWeek-button');
+                if (monthBtn) monthBtn.textContent = 'Month';
+                if (listBtn) listBtn.textContent = '';
+            }
+
+            function queueToolbarNormalization() {
+                if (typeof window.requestAnimationFrame === 'function') {
+                    window.requestAnimationFrame(normalizeCalendarToolbarLabels);
+                    return;
+                }
+                window.setTimeout(normalizeCalendarToolbarLabels, 0);
+            }
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                initialDate: initialDate || undefined,
+                navLinks: true,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listWeek'
+                },
+                views: {
+                    dayGridMonth: { buttonText: 'Month' },
+                    listWeek: { buttonText: '' }
+                },
+                buttonText: {
+                    today: 'Today',
+                    week: 'Week',
+                    day: 'Day',
+                },
+                locale: 'en',
+                height: 'auto',
+                contentHeight: 720,
+                dayMaxEvents: true,
+                datesSet: function() {
+                    queueToolbarNormalization();
+                },
+                navLinkDayClick: function(date) {
+                    openDayList(date);
+                },
+                dateClick: function(info) {
+                    openDayList(info && info.dateStr ? info.dateStr : info.date);
+                },
+                eventTimeFormat: {
+                    hour: '2-digit', minute: '2-digit', meridiem: false
+                },
+                events: function(info, successCallback, failureCallback) {
+                    const url = new URL("{{ url_for('worklog.api_calendar_events') }}", window.location.origin);
+                    url.searchParams.set("start", info.startStr);
+                    url.searchParams.set("end", info.endStr);
+                    try {
+                        const pageParams = new URLSearchParams(window.location.search || "");
+                        const mine = (pageParams.get("mine") || "").trim().toLowerCase();
+                        const mineOn = ['1', 'true', 'yes'].includes(mine) || (mineCheckbox && mineCheckbox.checked);
+                        if (mineOn) {
+                            url.searchParams.set("mine", "1");
+                        } else {
+                            const owner = (pageParams.get("owner") || "").trim();
+                            const ownerName = (pageParams.get("owner_name") || "").trim();
+                            if (owner) url.searchParams.set("owner", owner);
+                            if (ownerName) url.searchParams.set("owner_name", ownerName);
+                        }
+                        if (dueAxis && dueAxis !== 'all') {
+                            url.searchParams.set("due_axis", dueAxis);
+                        }
+                    } catch (e) {}
+                    if (window.AppFetch && typeof window.AppFetch.json === "function") {
+                        window.AppFetch.json(url)
+                            .then(data => successCallback(data))
+                            .catch(err => failureCallback(err));
+                    } else {
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => successCallback(data))
+                            .catch(err => failureCallback(err));
+                    }
+                },
+                eventClick: function(info) {
+                    if (info.event.url) {
+                        info.jsEvent.preventDefault();
+                        drilldownNavigate(info.event.url);
+                    }
+                },
+                eventDidMount: function(info) {
+                    var axisLabel = String(info.event.extendedProps.due_axis_label || '').trim();
+                    var statusLabel = String(info.event.extendedProps.status_label || '').trim();
+                    var tooltipParts = [axisLabel, statusLabel, String(info.event.title || '').trim()].filter(Boolean);
+                    if (tooltipParts.length) {
+                        info.el.setAttribute('title', tooltipParts.join(' · '));
+                    }
+                },
+                eventContent: function(arg) {
+                    // Keep each event to a single line while separating axis and status visually.
+                    var status = String(arg.event.extendedProps.status || 'pending').trim().toLowerCase() || 'pending';
+                    var axisLabel = String(arg.event.extendedProps.axis_short_label || '').trim();
+                    var wrap = document.createElement('span');
+                    wrap.className = 'deadline-event-chip';
+
+                    var statusEl = document.createElement('span');
+                    statusEl.className = 'deadline-event-chip__status deadline-event-chip__status--' + status;
+                    statusEl.setAttribute('aria-hidden', 'true');
+                    wrap.appendChild(statusEl);
+
+                    if (axisLabel) {
+                        var axisEl = document.createElement('span');
+                        axisEl.className = 'deadline-event-chip__axis';
+                        axisEl.textContent = axisLabel;
+                        wrap.appendChild(axisEl);
+                    }
+
+                    const titleEl = document.createElement('span');
+                    titleEl.className = 'app-fc-event-title deadline-event-chip__title';
+                    titleEl.textContent = String(arg.event.title || '');
+                    wrap.appendChild(titleEl);
+                    return { domNodes: [wrap] };
+                }
+            });
+            syncDueAxisButtons();
+            calendar.render();
+            queueToolbarNormalization();
+
+            if (mineCheckbox) {
+                mineCheckbox.addEventListener('change', () => {
+                    syncUrlParams();
+                    calendar.refetchEvents();
+                });
+            }
+            dueAxisButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var nextAxis = (button.dataset.dueAxis || '').trim().toLowerCase();
+                    if (!['all', 'final', 'internal'].includes(nextAxis) || nextAxis === dueAxis) return;
+                    dueAxis = nextAxis;
+                    syncDueAxisButtons();
+                    syncUrlParams();
+                    calendar.refetchEvents();
+                });
+            });
+        });
+        </script>
+
+        <!-- === LIST & INTERNAL VIEWS === -->
+        {% elif page in ['list', 'internal'] %}
+
+            {% set is_internal = (page == 'internal') %}
+
+            <!-- Toolbar -->
+            <div class="filter-toolbar d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width: 200px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-filter"></i></span>
+                        <select id="view-filter" class="form-select border-start-0 ps-0">
+                            <option value="todo" selected>OpenIn Progress (ToDo)</option>
+                            <option value="due7">7  Due Soon</option>
+                            <option value="overdue">Deadline Overdue</option>
+                            {% if is_internal %}
+                            <option value="internal">Internal Due date Settingsitems</option>
+                            {% endif %}
+                            <option value="done">Done Item</option>
+                            <option value="all">Show all</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group input-group-sm" style="width: 220px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-calendar2-range"></i></span>
+                        <select id="view-due-axis" class="form-select border-start-0 ps-0">
+                            <option value="all" selected>All Deadline</option>
+                            <option value="final">Final Due date</option>
+                            <option value="internal">Internal Due date</option>
+                        </select>
+                    </div>
+
+                    <div class="form-check form-check-inline user-select-none ms-2">
+                        <input class="form-check-input" type="checkbox" id="view-mine">
+                        <label class="form-check-label small fw-semibold text-secondary" for="view-mine"> Task View</label>
+                    </div>
+
+                    <div id="active-category" class="d-none">
+                        <span class="badge bg-light text-dark border">
+                            Type: <span id="active-category-label"></span>
+                        </span>
+                        <button type="button" class="btn btn-link btn-sm p-0 ms-1" id="clear-category">Clear</button>
+                    </div>
+
+                    <div id="active-owner" class="d-none">
+                        <span class="badge bg-light text-dark border">
+                            Contact: <span id="active-owner-label"></span>
+                        </span>
+                        <button type="button" class="btn btn-link btn-sm p-0 ms-1" id="clear-owner">Clear</button>
+                    </div>
+
+                    <div id="active-date" class="d-none">
+                        <span class="badge bg-light text-dark border">
+                            : <span id="active-date-label"></span>
+                        </span>
+                        <button type="button" class="btn btn-link btn-sm p-0 ms-1" id="clear-date">Clear</button>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2">
+                    <button id="btn-refresh" class="btn btn-sm btn-light border text-secondary">
+                        <i class="bi bi-arrow-clockwise me-1"></i> ?
+                    </button>
+                    {% if not is_internal %}
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addDeadlineModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div id="bulk-toolbar" class="filter-toolbar d-none desktop-preferred-action">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="small text-secondary">
+                        <span class="fw-semibold text-dark" id="bulk-selected-count">0 items</span> selected
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <button id="bulk-done-btn" class="btn btn-sm btn-primary" disabled>
+                            <i class="bi bi-check2-circle me-1"></i> Select Task Done
+                        </button>
+                        <button id="bulk-abandon-btn" class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="bi bi-slash-circle me-1"></i> Select Task 
+                        </button>
+                        <button id="bulk-reopen-btn" class="btn btn-sm btn-light border" disabled>
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Select Reopen Open
+                        </button>
+                        <button id="bulk-clear-btn" class="btn btn-sm btn-link text-decoration-none" disabled>
+                            Select Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Card -->
+            <div class="app-card">
+                <div class="table-responsive">
+                    <table class="table table-custom mb-0 w-100" id="main-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 48px;" class="text-center">
+                                    <input class="form-check-input" type="checkbox" id="select-all-rows" aria-label="Select all">
+                                </th>
+                                <th style="width: 110px;">Ref No.</th>
+                                <th>Matter / Applicant</th>
+                                <th>Deadline Title</th>
+                                <th style="width: 100px;">Type</th>
+                                {% if is_internal %}
+                                <th style="width: 120px;">Internal Due date</th>
+                                <th style="width: 120px;">Final Due date</th>
+                                {% else %}
+                                <th style="width: 120px;">Final Due date</th>
+                                <th style="width: 120px;">Internal Due date</th>
+                                {% endif %}
+                                <th style="width: 140px;">Contact</th>
+                                <th style="width: 100px;">Status</th>
+                                <th style="width: 80px;" class="text-end">{{ 'Done' if is_internal else '' }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- JS Rendered -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Empty State (hidden by default) -->
+                <div id="empty-state" class="text-center py-5 d-none">
+                    <div class="text-muted mb-2"><i class="bi bi-clipboard-check display-4 opacity-25"></i></div>
+                    <p class="text-secondary small">Display Task/Deadline none.</p>
+                </div>
+            </div>
+            <div class="d-flex justify-content-center mt-3">
+                <button id="btn-load-more" class="btn btn-sm btn-outline-secondary d-none">
+                    <span id="load-more-spinner" class="spinner-border spinner-border-sm me-2 d-none" aria-hidden="true"></span>
+                     
+                </button>
+            </div>
+
+            <!-- Add Deadline Modal -->
+            <div class="modal fade" id="addDeadlineModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg">
+                        <div class="modal-header border-bottom-0 pb-0">
+                            <h5 class="modal-title fw-bold"> Deadline Add</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="add-form" onsubmit="return false;">
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted fw-semibold">Matter ID <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-case" placeholder=": 1234" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted fw-semibold">Deadline Title <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="f-title" placeholder="Deadline Content Input" required>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted fw-semibold">Type</label>
+                                        <input type="text" class="form-control" id="f-type" placeholder="General" list="typeOptions">
+                                        <datalist id="typeOptions">
+                                            <option value="OA">
+                                            <option value="Filing">
+                                            <option value="Registration">
+                                            <option value="Annuity Fee">
+                                        </datalist>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted fw-semibold">Final Due date</label>
+                                        <input type="date" class="form-control" id="f-due">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small text-muted fw-semibold">Internal/ Due date(Task )</label>
+                                    <input type="date" class="form-control" id="f-internal">
+                                    <div class="form-text">Final Due date Internal/ Due date In Progress  Input.</div>
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary py-2 fw-semibold" id="btn-submit-add">Add</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- JS Logic for List/Internal -->
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const IS_INTERNAL = {{ 'true' if is_internal else 'false' }};
+                const API_URL = "{{ url_for('deadlines.api_deadlines') }}";
+                const BULK_API_URL = "{{ url_for('deadlines.api_deadlines_bulk') }}";
+                const LIST_URL = "{{ url_for('deadlines.list_view') }}";
+                const INTERNAL_URL = "{{ url_for('deadlines.internal_close') }}";
+                const CALENDAR_URL = "{{ url_for('deadlines.calendar_month') }}";
+                const CRM_CLIENTS_URL = "{{ url_for('customers.clients') }}";
+                const WORKLOG_URL = "{{ url_for('worklog.index') }}";
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                // Elements
+                const tableBody = document.getElementById('table-body');
+                const emptyState = document.getElementById('empty-state');
+                const filterSelect = document.getElementById('view-filter');
+                const dueAxisSelect = document.getElementById('view-due-axis');
+                const mineCheckbox = document.getElementById('view-mine');
+                const refreshBtn = document.getElementById('btn-refresh');
+                const activeCategory = document.getElementById('active-category');
+                const activeCategoryLabel = document.getElementById('active-category-label');
+                const clearCategoryBtn = document.getElementById('clear-category');
+                const activeOwner = document.getElementById('active-owner');
+                const activeOwnerLabel = document.getElementById('active-owner-label');
+                const clearOwnerBtn = document.getElementById('clear-owner');
+                const activeDate = document.getElementById('active-date');
+                const activeDateLabel = document.getElementById('active-date-label');
+                const clearDateBtn = document.getElementById('clear-date');
+                const urlParams = new URLSearchParams(window.location.search);
+                const loadMoreBtn = document.getElementById('btn-load-more');
+                const loadMoreSpinner = document.getElementById('load-more-spinner');
+                const bulkToolbar = document.getElementById('bulk-toolbar');
+                const bulkSelectedCount = document.getElementById('bulk-selected-count');
+                const bulkDoneBtn = document.getElementById('bulk-done-btn');
+                const bulkAbandonBtn = document.getElementById('bulk-abandon-btn');
+                const bulkReopenBtn = document.getElementById('bulk-reopen-btn');
+                const bulkClearBtn = document.getElementById('bulk-clear-btn');
+                const selectAllRows = document.getElementById('select-all-rows');
+                let currentCategory = (urlParams.get('category') || '').trim();
+                let currentOwner = (urlParams.get('owner') || '').trim();
+                let currentOwnerName = (urlParams.get('owner_name') || '').trim();
+                let currentDate = (urlParams.get('date') || '').trim();
+                let currentDueAxis = (urlParams.get('due_axis') || 'all').trim().toLowerCase();
+                if (!['all', 'final', 'internal'].includes(currentDueAxis)) currentDueAxis = 'all';
+
+                const PER_PAGE = 200;
+                let currentPage = 1;
+                let isLoading = false;
+                const selectedIds = new Set();
+
+                function escapeHtml(text) {
+                    if (text === null || text === undefined) return '';
+                    return String(text)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                }
+
+                function buildUrl(base, params, hash) {
+                    if (!base) return '#';
+                    const url = new URL(base, window.location.origin);
+                    Object.entries(params || {}).forEach(([key, value]) => {
+                        if (value === null || value === undefined || value === '') return;
+                        url.searchParams.set(key, String(value));
+                    });
+                    if (hash) url.hash = hash;
+                    return url.pathname + url.search + url.hash;
+                }
+
+                function buildListUrl(params) {
+                    const base = IS_INTERNAL ? INTERNAL_URL : LIST_URL;
+                    const next = Object.assign({}, params || {});
+                    if (!next.category && currentCategory) next.category = currentCategory;
+                    if (!next.owner && currentOwner) next.owner = currentOwner;
+                    if (!next.owner_name && currentOwnerName) next.owner_name = currentOwnerName;
+                    if (!next.date && currentDate) next.date = currentDate;
+                    if (!next.due_axis && currentDueAxis && currentDueAxis !== 'all') {
+                        next.due_axis = currentDueAxis;
+                    }
+                    if (mineCheckbox && mineCheckbox.checked) next.mine = '1';
+                    return buildUrl(base, next);
+                }
+
+                function statusToFilter(status) {
+                    if (status === 'overdue') return 'overdue';
+                    if (status === 'done' || status === 'cancelled' || status === 'expired') return 'done';
+                    return 'todo';
+                }
+
+                function splitApplicants(applicants) {
+                    if (!applicants) return [];
+                    return String(applicants)
+                        .split(';')
+                        .map(s => s.trim())
+                        .filter(Boolean);
+                }
+
+                // Helper: Date Parser
+                function parseDate(str) {
+                    if (!str) return null;
+                    if (window.AppDate && typeof window.AppDate.parseYmd === "function") {
+                        const parsed = window.AppDate.parseYmd(str);
+                        if (parsed) return parsed;
+                    }
+                    const d = new Date(str);
+                    return isNaN(d) ? null : d;
+                }
+
+                // Helper: Badges
+                function getStatusBadge(status) {
+                    const map = {
+                        'done': '<span class="badge badge-soft-success">Done</span>',
+                        'cancelled': '<span class="badge badge-soft-secondary">Task </span>',
+                        'expired': '<span class="badge badge-soft-secondary">DeadlineOverdue()</span>',
+                        'overdue': '<span class="badge badge-soft-danger">DeadlineOverdue</span>',
+                        'new': '<span class="badge badge-soft-primary">OpenIn Progress</span>',
+                        'pending': '<span class="badge badge-soft-primary">OpenIn Progress</span>'
+                    };
+                    return map[status] || '<span class="badge badge-soft-secondary">Unspecified</span>';
+                }
+
+                function getInternalBadge(due, internal) {
+                    const dDue = parseDate(due);
+                    const dInt = parseDate(internal);
+                    if (!dDue || !dInt) return '';
+
+                    if (dInt < dDue) {
+                        return '<br><span class="badge badge-soft-warning mt-1" style="font-size:0.7em">Internal: '+internal+'</span>';
+                    } else if (dInt > dDue) {
+                        return '<br><span class="badge badge-soft-danger mt-1" style="font-size:0.7em">: '+internal+'</span>';
+                    }
+                    return '';
+                }
+
+                function clearSelection() {
+                    selectedIds.clear();
+                    if (selectAllRows) {
+                        selectAllRows.checked = false;
+                        selectAllRows.indeterminate = false;
+                    }
+                    syncBulkUi();
+                }
+
+                function syncSelectAllState() {
+                    if (!selectAllRows) return;
+                    const boxes = Array.from(tableBody.querySelectorAll('.deadline-select:not(:disabled)'));
+                    if (!boxes.length) {
+                        selectAllRows.checked = false;
+                        selectAllRows.indeterminate = false;
+                        selectAllRows.disabled = true;
+                        return;
+                    }
+                    const checkedCount = boxes.filter(box => box.checked).length;
+                    selectAllRows.disabled = false;
+                    selectAllRows.checked = checkedCount > 0 && checkedCount === boxes.length;
+                    selectAllRows.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+                }
+
+                function syncBulkUi() {
+                    const count = selectedIds.size;
+                    if (bulkToolbar) bulkToolbar.classList.toggle('d-none', count === 0);
+                    if (bulkSelectedCount) bulkSelectedCount.textContent = `${count}items`;
+                    const hasSelection = count > 0;
+                    if (bulkDoneBtn) bulkDoneBtn.disabled = !hasSelection;
+                    if (bulkAbandonBtn) bulkAbandonBtn.disabled = !hasSelection;
+                    if (bulkReopenBtn) bulkReopenBtn.disabled = !hasSelection;
+                    if (bulkClearBtn) bulkClearBtn.disabled = !hasSelection;
+                    syncSelectAllState();
+                }
+
+                async function parseActionError(res, fallback) {
+                    let message = fallback;
+                    if (window.AppFetch && typeof window.AppFetch.parseJsonResponse === "function") {
+                        try {
+                            await window.AppFetch.parseJsonResponse(res);
+                        } catch (e) {
+                            message = (e && e.message) ? e.message : message;
+                        }
+                        return message;
+                    }
+                    try {
+                        const payload = await res.json();
+                        message = payload.error || message;
+                    } catch (e) {}
+                    return message;
+                }
+
+                async function promptText(message, defaultValue, opts) {
+                    if (window.AppPrompt) {
+                        return window.AppPrompt(message, defaultValue || '', opts || {});
+                    }
+                    return window.prompt(message, defaultValue || '');
+                }
+
+                async function performBulkAction(action) {
+                    const ids = Array.from(selectedIds);
+                    if (!ids.length) return;
+
+                    let confirmMessage = '';
+                    let payload = { ids, action };
+
+                    if (action === 'cancelled') {
+                        const reasonInput = await promptText('Task  Reason Input.', '', { title: 'Task ' });
+                        if (reasonInput === null) return;
+                        payload.reason = String(reasonInput || '').trim();
+                        confirmMessage = `Process ${ids.length} selected task(s)?`;
+                    } else if (action === 'done') {
+                        confirmMessage = `Mark ${ids.length} selected task(s) as done?`;
+                    } else {
+                        confirmMessage = `selected ${ids.length}items Reopen New`;
+                    }
+
+                    const ok = await window.AppConfirm(confirmMessage);
+                    if (!ok) return;
+
+                    try {
+                        const res = await fetch(BULK_API_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.success) {
+                            const msg = data.error || 'Bulk Process Failed.';
+                            try { await window.AppAlert(msg, { title: 'Error' }); } catch (e) {}
+                            return;
+                        }
+
+                        const summary = [];
+                        if (data.processed_count) summary.push(`${data.processed_count}items Process`);
+                        if (data.forbidden_count) summary.push(`${data.forbidden_count}items Permissions None`);
+                        if (data.missing_count) summary.push(`${data.missing_count}items `);
+                        clearSelection();
+                        await loadData();
+                        if (summary.length) {
+                            try { await window.AppAlert(summary.join('\n'), { title: 'Bulk Process Done' }); } catch (e) {}
+                        }
+                    } catch (e) {
+                        try { await window.AppAlert('Bulk Process In Progress Communication Error .', { title: 'Error' }); } catch (e2) {}
+                    }
+                }
+
+                function syncBadges() {
+                    if (activeCategory && activeCategoryLabel) {
+                        if (currentCategory) {
+                            activeCategoryLabel.textContent = currentCategory;
+                            activeCategory.classList.remove('d-none');
+                        } else {
+                            activeCategory.classList.add('d-none');
+                            activeCategoryLabel.textContent = '';
+                        }
+                    }
+
+                    if (activeOwner && activeOwnerLabel) {
+                        if (currentOwner) {
+                            activeOwnerLabel.textContent = currentOwnerName || currentOwner;
+                            activeOwner.classList.remove('d-none');
+                        } else {
+                            activeOwner.classList.add('d-none');
+                            activeOwnerLabel.textContent = '';
+                        }
+                    }
+
+                    if (activeDate && activeDateLabel) {
+                        if (currentDate) {
+                            activeDateLabel.textContent = currentDate;
+                            activeDate.classList.remove('d-none');
+                        } else {
+                            activeDate.classList.add('d-none');
+                            activeDateLabel.textContent = '';
+                        }
+                    }
+                }
+
+                function applyInitialFilters() {
+                    const initialFilter = (urlParams.get('filter') || '').trim();
+                    if (initialFilter && filterSelect) {
+                        const hasOpt = Array.from(filterSelect.options).some(opt => opt.value === initialFilter);
+                        if (hasOpt) filterSelect.value = initialFilter;
+                    }
+                    if (!initialFilter && IS_INTERNAL && filterSelect) {
+                        const hasOpt = Array.from(filterSelect.options).some(opt => opt.value === 'internal');
+                        if (hasOpt) filterSelect.value = 'internal';
+                    }
+
+                    const mineFlag = (urlParams.get('mine') || '').toLowerCase();
+                    if (mineCheckbox && ['1', 'true', 'yes'].includes(mineFlag)) {
+                        mineCheckbox.checked = true;
+                    }
+                    if (dueAxisSelect) {
+                        const hasAxisOpt = Array.from(dueAxisSelect.options).some(opt => opt.value === currentDueAxis);
+                        dueAxisSelect.value = hasAxisOpt ? currentDueAxis : 'all';
+                    }
+
+                    syncBadges();
+                }
+
+                function syncUrlParams() {
+                    try {
+                        const params = new URLSearchParams(window.location.search || '');
+                        if (filterSelect && filterSelect.value && filterSelect.value !== 'todo') {
+                            params.set('filter', filterSelect.value);
+                        } else {
+                            params.delete('filter');
+                        }
+                        if (mineCheckbox && mineCheckbox.checked) params.set('mine', '1');
+                        else params.delete('mine');
+                        if (currentCategory) params.set('category', currentCategory);
+                        else params.delete('category');
+                        if (currentOwner) params.set('owner', currentOwner);
+                        else params.delete('owner');
+                        if (currentOwnerName) params.set('owner_name', currentOwnerName);
+                        else params.delete('owner_name');
+                        if (currentDate) params.set('date', currentDate);
+                        else params.delete('date');
+                        if (currentDueAxis && currentDueAxis !== 'all') params.set('due_axis', currentDueAxis);
+                        else params.delete('due_axis');
+
+                        const next = params.toString();
+                        const nextUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
+                        window.history.replaceState({}, '', nextUrl);
+                    } catch (e) {}
+                }
+
+                if (clearCategoryBtn) {
+                    clearCategoryBtn.addEventListener('click', () => {
+                        currentCategory = '';
+                        syncBadges();
+                        loadData();
+                    });
+                }
+
+                if (clearOwnerBtn) {
+                    clearOwnerBtn.addEventListener('click', () => {
+                        currentOwner = '';
+                        currentOwnerName = '';
+                        syncBadges();
+                        loadData();
+                    });
+                }
+
+                if (clearDateBtn) {
+                    clearDateBtn.addEventListener('click', () => {
+                        currentDate = '';
+                        syncBadges();
+                        loadData();
+                    });
+                }
+
+                if (dueAxisSelect) {
+                    dueAxisSelect.addEventListener('change', () => {
+                        currentDueAxis = (dueAxisSelect.value || 'all').trim().toLowerCase();
+                        if (!['all', 'final', 'internal'].includes(currentDueAxis)) currentDueAxis = 'all';
+                        clearSelection();
+                        syncBadges();
+                        loadData();
+                    });
+                }
+
+                // Render Row
+                function renderRow(item) {
+                    const title = item.title || '(Title None)';
+                    const ref = item.case_ref || '-';
+                    const caseTitle = item.case_title || '-';
+                    const applicants = item.applicants || '';
+                    const dueDate = item.due_date || '';
+                    const type = item.type || '-';
+                    const statusHtml = getStatusBadge(item.status);
+
+                    const caseUrl = item.url || '#';
+                    const detailUrl = item.detail_url || item.case_deadlines_url || buildUrl(caseUrl, { docket_id: item.id }, 'sec-deadlines');
+
+                    const safeTitle = escapeHtml(title);
+                    const safeRef = escapeHtml(ref);
+                    const safeCaseTitle = escapeHtml(caseTitle);
+                    const safeType = escapeHtml(type);
+                    const safeDueDate = escapeHtml(dueDate);
+
+                    const typeUrl = type && type !== '-' ? buildListUrl({ filter: filterSelect?.value || 'todo', category: type }) : '';
+                    const statusUrl = buildListUrl({ filter: statusToFilter(item.status) });
+                    const dueUrl = dueDate ? (() => {
+                        const p = { date: dueDate, due_axis: 'final' };
+                        if (mineCheckbox && mineCheckbox.checked) p.mine = '1';
+                        else if (currentOwner) p.owner = currentOwner;
+                        return buildUrl(CALENDAR_URL, p);
+                    })() : '';
+
+                    const applicantsHtml = (() => {
+                        const names = splitApplicants(applicants);
+                        if (!names.length) return '<span class="text-muted">-</span>';
+                        return names.map(name => {
+                            const href = buildUrl(CRM_CLIENTS_URL, { q: name });
+                            return `<a href="${href}" class="link-muted">${escapeHtml(name)}</a>`;
+                        }).join(', ');
+                    })();
+
+                    const assigneeId = (item.assigned_to || '').toString().trim();
+                    const assigneeName = (item.assigned_to_name || '').toString().trim();
+                    const assigneeLabel = assigneeName || assigneeId || '-';
+                    const assigneeListUrl = assigneeId ? buildListUrl({ owner: assigneeId, owner_name: assigneeName || '' }) : '';
+                    const assigneeWorklogUrl = assigneeId ? buildUrl(WORKLOG_URL, { owner: assigneeId, filter: 'todo' }) : '';
+                    const canUpdate = !!item.can_update;
+                    const isChecked = selectedIds.has(String(item.id || ''));
+
+                    // Internal deadline display logic
+                    let internalText = '-';
+                    let internalClass = '';
+                    if (item.internal_due_date) {
+                        internalText = item.internal_due_date;
+                        const dInt = parseDate(item.internal_due_date);
+                        const dDue = parseDate(item.due_date);
+                        if (dDue && dInt && dInt < dDue) internalClass = 'text-primary fw-bold';
+                        else if (dDue && dInt && dInt > dDue) internalClass = 'text-danger fw-bold';
+                    }
+
+                    const internalUrl = item.internal_due_date
+                        ? buildUrl(INTERNAL_URL, { filter: 'all', date: item.internal_due_date, owner: currentOwner || '', owner_name: currentOwnerName || '', category: currentCategory || '', due_axis: 'internal' })
+                        : '';
+
+                    // Actions
+                    let actionHtml = '';
+                    if (IS_INTERNAL) {
+                        if (item.status === 'done') {
+                            actionHtml = `<button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleStatus('${item.id}', 'pending')">Reopen Open</button>`;
+                        } else {
+                            actionHtml = `<button class="btn btn-sm btn-primary py-0" onclick="toggleStatus('${item.id}', 'done')">Task Done</button>`;
+                        }
+                    } else {
+                         // Regular list: allow delete
+                         actionHtml = `<button class="btn btn-link text-muted p-0 hover-danger" onclick="deleteItem('${item.id}')"><i class="bi bi-trash"></i></button>`;
+                    }
+
+                    const internalCell = `
+                        <td data-label="Internal Due date" class="${internalClass}">
+                            ${internalUrl ? `<a href="${internalUrl}" class="link-quiet">${escapeHtml(internalText)}</a>` : escapeHtml(internalText)}
+                        </td>
+                    `;
+                    const dueCell = `
+                        <td data-label="Final Due date" class="${IS_INTERNAL ? 'text-muted' : 'fw-semibold'}">
+                            ${dueUrl ? `<a href="${dueUrl}" class="link-quiet">${safeDueDate}</a>` : safeDueDate}
+                        </td>
+                    `;
+                    const dueCells = IS_INTERNAL ? (internalCell + dueCell) : (dueCell + internalCell);
+
+                    return `
+                    <tr class="table-row-hover">
+                        <td data-label="Select" class="text-center">
+                            <input
+                                class="form-check-input deadline-select"
+                                type="checkbox"
+                                value="${escapeHtml(item.id)}"
+                                ${canUpdate ? '' : 'disabled'}
+                                ${isChecked ? 'checked' : ''}
+                                aria-label="Deadline Select"
+                            >
+                        </td>
+                        <td data-label="Ref No.">
+                            <a href="${caseUrl}" class="fw-semibold link-quiet">${safeRef}</a>
+                        </td>
+                        <td data-label="Matter / Applicant">
+                            <div class="text-truncate" style="max-width: 240px;" title="${safeCaseTitle}">
+                                <a href="${caseUrl}" class="link-quiet">${safeCaseTitle}</a>
+                            </div>
+                            <div class="small text-muted text-truncate" style="max-width: 240px;">${applicantsHtml}</div>
+                        </td>
+                        <td data-label="Deadline Title">
+                            <div class="fw-medium">
+                                <a href="${detailUrl}" class="link-quiet">${safeTitle}</a>
+                            </div>
+                        </td>
+                        <td data-label="Type">
+                            ${typeUrl
+                                ? `<a href="${typeUrl}" class="link-muted"><span class="text-muted small border px-2 py-1 rounded bg-light">${safeType}</span></a>`
+                                : `<span class="text-muted small border px-2 py-1 rounded bg-light">${safeType}</span>`}
+                        </td>
+                        ${dueCells}
+                        <td data-label="Contact">
+                            ${assigneeId
+                                ? `
+                                  <div class="text-truncate" style="max-width: 140px;">
+                                    <a href="${assigneeListUrl}" class="link-quiet">${escapeHtml(assigneeLabel)}</a>
+                                  </div>
+                                  <div class="small"><a href="${assigneeWorklogUrl}" class="link-muted">Task</a></div>
+                                  `
+                                : `<span class="text-muted">-</span>`}
+                        </td>
+                        <td data-label="Status">
+                            <a href="${statusUrl}" class="link-quiet">${statusHtml}</a>
+                        </td>
+                        <td data-label="${IS_INTERNAL ? 'Done' : ''}" class="text-end">${actionHtml}</td>
+                    </tr>
+                    `;
+                }
+
+                // Main Load Function
+                function buildApiUrl(pageNo) {
+                    const url = new URL(API_URL, window.location.origin);
+
+                    // Filters
+                    const filterVal = filterSelect.value;
+                    const mineVal = mineCheckbox.checked;
+
+                    if (mineVal) url.searchParams.set("mine", "1");
+                    if (filterVal) url.searchParams.set("filter", filterVal);
+                    if (currentCategory) url.searchParams.set("category", currentCategory);
+                    if (currentOwner) url.searchParams.set("owner", currentOwner);
+                    if (currentDate) url.searchParams.set("date", currentDate);
+                    if (currentDueAxis && currentDueAxis !== 'all') url.searchParams.set("due_axis", currentDueAxis);
+
+                    // ? support (optional, but good to keep if backend relies on it for defaults)
+                    if (filterVal === "done" || filterVal === "all") url.searchParams.set("include_done", "1");
+
+                    // Paging
+                    url.searchParams.set("page", String(pageNo || 1));
+                    url.searchParams.set("per_page", String(PER_PAGE));
+
+                    return url;
+                }
+
+                function setLoadMoreVisible(visible) {
+                    if (!loadMoreBtn) return;
+                    loadMoreBtn.classList.toggle('d-none', !visible);
+                }
+
+                function setLoadMoreLoading(loading) {
+                    if (!loadMoreBtn) return;
+                    loadMoreBtn.disabled = !!loading;
+                    if (loadMoreSpinner) loadMoreSpinner.classList.toggle('d-none', !loading);
+                }
+
+                async function loadPage(pageNo, { append }) {
+                    if (isLoading) return;
+                    isLoading = true;
+                    setLoadMoreLoading(true);
+
+                    if (!append) {
+                        syncUrlParams();
+                        currentPage = 1;
+                        setLoadMoreVisible(false);
+                        clearSelection();
+                        tableBody.innerHTML = '<tr><td colspan="10" class="text-center py-4"><div class="spinner-border text-primary spinner-border-sm"></div></td></tr>';
+                    }
+
+                    try {
+                        const url = buildApiUrl(pageNo);
+                        const res = await fetch(url);
+                        const data = await res.json();
+
+                        const items = Array.isArray(data) ? data : [];
+                        if (!append) {
+                            if (items.length === 0) {
+                                tableBody.innerHTML = '';
+                                tableBody.classList.add('d-none');
+                                emptyState.classList.remove('d-none');
+                            } else {
+                                emptyState.classList.add('d-none');
+                                tableBody.classList.remove('d-none');
+                                tableBody.innerHTML = items.map(renderRow).join('');
+                            }
+                        } else {
+                            if (items.length > 0) {
+                                tableBody.insertAdjacentHTML('beforeend', items.map(renderRow).join(''));
+                            }
+                        }
+
+                        currentPage = pageNo;
+                        // Heuristic: if we got a full page, there may be more.
+                        setLoadMoreVisible(items.length === PER_PAGE);
+                        syncBulkUi();
+                    } catch (e) {
+                        console.error(e);
+                        if (!append) {
+                            tableBody.innerHTML = `<tr><td colspan="10" class="text-center text-danger py-3">Data Loading Error .</td></tr>`;
+                        }
+                        setLoadMoreVisible(false);
+                    } finally {
+                        isLoading = false;
+                        setLoadMoreLoading(false);
+                    }
+                }
+
+                async function loadData() {
+                    await loadPage(1, { append: false });
+                }
+
+                async function loadMore() {
+                    await loadPage(currentPage + 1, { append: true });
+                }
+
+                // Actions
+                window.deleteItem = async (id) => {
+                    const ok = await window.AppConfirm(' Delete ? ');
+                    if(!ok) return;
+                    try {
+                        await fetch(`${API_URL}/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'X-CSRFToken': csrfToken }
+                        });
+                        loadData();
+                    } catch(e) { try { await window.AppAlert('Delete Failed', { title: "Error" }); } catch (e2) {} }
+                };
+
+                window.toggleStatus = async (id, status) => {
+                    try {
+                        const payload = { status: status };
+                        if (status === 'cancelled') {
+                            const reasonInput = await promptText('Task  Reason Input.', '', { title: 'Task ' });
+                            if (reasonInput === null) return;
+                            payload.reason = String(reasonInput || '').trim();
+                        }
+                        const res = await fetch(`${API_URL}/${id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!res.ok) {
+                            const msg = await parseActionError(res, 'Status Change Failed');
+                            try { await window.AppAlert(msg, { title: "Error" }); } catch (e2) {}
+                            return;
+                        }
+                        loadData();
+                    } catch(e) { try { await window.AppAlert('Status Change Failed', { title: "Error" }); } catch (e2) {} }
+                };
+
+                const addForm = document.getElementById('add-form');
+                if(addForm) {
+                    document.getElementById('btn-submit-add').onclick = async () => {
+                        if(!addForm.reportValidity()) return;
+                        const finalDue = document.getElementById('f-due').value;
+                        const internalDue = document.getElementById('f-internal').value;
+                        if (!finalDue && !internalDue) {
+                            try {
+                                await window.AppAlert('Final Due date  Internal/ Due date Input.', { title: 'Error' });
+                            } catch (e) {}
+                            return;
+                        }
+
+                        const payload = {
+                            case_id: document.getElementById('f-case').value,
+                            title: document.getElementById('f-title').value,
+                            type: document.getElementById('f-type').value,
+                            due_date: finalDue || null,
+                            internal_due_date: internalDue || null
+                        };
+
+                        try {
+                            const res = await fetch(API_URL, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify(payload)
+                            });
+                            if(res.ok) {
+                                // Close modal
+                                const modalEl = document.getElementById('addDeadlineModal');
+                                const modal = bootstrap.Modal.getInstance(modalEl);
+                                modal.hide();
+                                addForm.reset();
+                                loadData();
+                            } else {
+                                let msg = 'Save failed';
+                                if (window.AppFetch && typeof window.AppFetch.parseJsonResponse === "function") {
+                                    try {
+                                        await window.AppFetch.parseJsonResponse(res);
+                                    } catch (e) {
+                                        msg = (e && e.message) ? e.message : msg;
+                                    }
+                                } else {
+                                    try {
+                                        const err = await res.json();
+                                        msg = err.error || msg;
+                                    } catch (e) {}
+                                }
+                                try { await window.AppAlert('Error: ' + msg, { title: "Error" }); } catch (e2) {}
+                            }
+                        } catch(e) { try { await window.AppAlert('Communication Error', { title: "Error" }); } catch (e2) {} }
+                    };
+                }
+
+                // Events
+                filterSelect.onchange = loadData;
+                mineCheckbox.onchange = loadData;
+                refreshBtn.onclick = loadData;
+                if (loadMoreBtn) loadMoreBtn.onclick = loadMore;
+                if (bulkDoneBtn) bulkDoneBtn.onclick = () => performBulkAction('done');
+                if (bulkAbandonBtn) bulkAbandonBtn.onclick = () => performBulkAction('cancelled');
+                if (bulkReopenBtn) bulkReopenBtn.onclick = () => performBulkAction('pending');
+                if (bulkClearBtn) bulkClearBtn.onclick = () => clearSelection();
+                if (selectAllRows) {
+                    selectAllRows.addEventListener('change', (event) => {
+                        const checked = !!event.target.checked;
+                        const boxes = Array.from(tableBody.querySelectorAll('.deadline-select:not(:disabled)'));
+                        boxes.forEach(box => {
+                            box.checked = checked;
+                            if (checked) selectedIds.add(box.value);
+                            else selectedIds.delete(box.value);
+                        });
+                        syncBulkUi();
+                    });
+                }
+                if (tableBody) {
+                    tableBody.addEventListener('change', (event) => {
+                        const target = event.target;
+                        if (!(target instanceof HTMLInputElement) || !target.classList.contains('deadline-select')) return;
+                        if (target.checked) selectedIds.add(target.value);
+                        else selectedIds.delete(target.value);
+                        syncBulkUi();
+                    });
+                }
+
+                // Init
+                applyInitialFilters();
+                syncBulkUi();
+                loadData();
+            });
+            </script>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

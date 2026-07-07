@@ -1,0 +1,105 @@
+{# Inline deposit controls for invoice view (non-print).
+  The printable invoice summary already reflects deposit deduction (Amount Due). #}
+{% set show_deposit_panel =
+ (deposit_balance_minor is not none and deposit_balance_minor> 0) or
+ (deposit_apply_rows and deposit_apply_rows|length> 0)
+%}
+{% set is_void_invoice = (invoice.get('billing_status') == 'void') or (invoice.get('status') == 'void') %}
+{% if has_role('admin','staff') and show_deposit_panel %}
+<details
+ class="deposit-action"
+ style="margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden;"
+ {% if deposit_apply_rows and deposit_apply_rows|length> 0 %}open{% endif %}
+>
+ <summary>
+  Retainer
+  <span class="muted text-sm"
+  > {% if deposit_balance_minor is not none %}{{ deposit_balance_minor|currency_minor(invoice['currency']) }}{% else %}-{% endif %}</span
+ >
+  <span class="muted text-sm"
+  > {{ (deposit_applied_minor or 0)|currency_minor(invoice['currency']) }}</span
+ >
+  <span class="muted text-sm"
+  > {% if deposit_outstanding_minor is not none %}{{ deposit_outstanding_minor|currency_minor(invoice['currency']) }}{% else %}-{% endif %}</span
+ >
+ </summary>
+
+ <div class="deposit-action-body">
+  <div class="row" style="gap: 8px; align-items: flex-end; flex-wrap: wrap">
+   {% if not is_void_invoice %}
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.apply_deposit', invoice_id=invoice['id']) }}"
+    data-prevent-double-submit="true"
+    style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div>
+     <div class="muted text-xs" style="margin-bottom: 4px"> Amount ( )</div>
+     <input name="amount" placeholder=": 100000" />
+    </div>
+    <div>
+     <div class="muted text-xs" style="margin-bottom: 4px">Notes</div>
+     <input name="memo" placeholder="" />
+    </div>
+    <button class="btn btn-primary" type="submit"></button>
+   </form>
+   {% else %}
+   <div class="muted text-xs">Retainer deposits are not available for void invoices.</div>
+   {% endif %}
+
+   <div class="spacer"></div>
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('billing_invoices.clients.client_deposit_ledger', client_id=invoice['client_id'], currency=invoice['currency']) }}"
+   >Retainer </a
+  >
+  </div>
+
+  {% if deposit_apply_rows and deposit_apply_rows|length> 0 %}
+  <div class="table-card" style="margin-top: 10px">
+   <table class="responsive table-compact" style="width: 100%">
+    <thead>
+     <tr>
+      <th style="text-align: left">days</th>
+      <th style="text-align: right">Amount</th>
+      <th style="text-align: left">Notes</th>
+      <th style="text-align: left">Status</th>
+      <th style="text-align: left">Cancel</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for e in deposit_apply_rows %}
+     <tr>
+      <td data-label="days">{{ (e['created_at'] or '')|local_dt }}</td>
+      <td data-label="Amount" class="right" style="text-align: right">
+       {{ e['amount_minor']|currency_minor(e['currency']) }}
+      </td>
+      <td data-label="Notes">{{ e['memo'] or '-' }}</td>
+      <td data-label="Status">
+       {% if e.get('canceled') %} Cancel {% else %} Apply {% endif %}
+      </td>
+      <td data-label="Cancel">
+       {% if not e.get('canceled') %}
+       <form
+        method="post"
+        action="{{ url_for('billing_invoices.invoices.cancel_deposit_apply', invoice_id=invoice['id']) }}"
+        style="display: inline"
+        data-confirm=" Retainer application Cancel ? "
+        data-prevent-double-submit="true"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="entry_id" value="{{ e['id'] }}" />
+        <button class="btn btn-ghost" type="submit">Cancel</button>
+       </form>
+       {% else %} - {% endif %}
+      </td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+  {% endif %}
+ </div>
+</details>
+{% endif %}

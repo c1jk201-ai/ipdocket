@@ -1,0 +1,69 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header" style="margin-bottom:16px;">
+ <h2 style="margin:0;">👥 User </h2>
+ <div class="page-actions">
+  <a class="btn btn-primary" href="{{ url_for('billing_invoices.admin.new_user') }}">✚ User</a>
+ </div>
+</div>
+
+<div class="card" style="margin-bottom:16px; padding:12px 16px;">
+ <div class="row" style="gap:8px;">
+  <span style="font-weight:600;">Filters:</span>
+  <a class="btn btn-ghost {% if status_filter == 'all' %}btn-primary{% endif %}" href="{{ url_for('billing_invoices.admin.list_users', status='all') }}">All</a>
+  <a class="btn btn-ghost {% if status_filter == 'active' %}btn-primary{% endif %}" href="{{ url_for('billing_invoices.admin.list_users', status='active') }}">active</a>
+  <a class="btn btn-ghost {% if status_filter == 'inactive' %}btn-primary{% endif %}" href="{{ url_for('billing_invoices.admin.list_users', status='inactive') }}">active</a>
+ </div>
+</div>
+
+<div class="card">
+ <div class="table-card">
+  <table class="responsive">
+   <thead>
+    <tr>
+     <th></th>
+     <th></th>
+     <th>Status</th>
+     <th> </th>
+     <th> Changedays</th>
+     <th> </th>
+     <th> Status</th>
+     <th>Actions</th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for u in users %}
+    <tr>
+     <td data-label=""><strong>{{ u['username'] }}</strong></td>
+     <td data-label="">
+      <span class="pill {% if u['role'] == 'admin' %}pill-sent{% elif u['role'] == 'staff' %}pill-draft{% else %}{% endif %}">{{ u['role'] }}</span>
+     </td>
+     <td data-label="Status">
+      {% if u['is_active'] %}
+       <span style="color:#10b981;">✓ active</span>
+      {% else %}
+       <span style="color:#dc2626;">✗ active</span>
+      {% endif %}
+     </td>
+    <td data-label=" " class="nowrap">{{ u['last_login_at']|local_dt or '-' }}</td>
+    <td data-label=" Changedays" class="nowrap">{{ u['password_changed_at']|local_dt or '-' }}</td>
+     <td data-label=" " class="right">{{ u['failed_login_count'] or 0 }}</td>
+     <td data-label=" Status">
+      {% if u['locked_until'] %}
+       <span style="color:#dc2626;" title="{{ u['locked_until']|local_dt }}">🔒 </span>
+      {% else %}
+       <span style="color:#6b7280;">-</span>
+      {% endif %}
+     </td>
+     <td data-label="Actions" class="nowrap">
+      <a class="btn btn-ghost" href="{{ url_for('billing_invoices.admin.edit_user', user_id=u['id']) }}">Edit</a>
+     </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">User none.</td></tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+{% endblock %}

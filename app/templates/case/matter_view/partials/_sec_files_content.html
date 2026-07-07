@@ -1,0 +1,308 @@
+	      <div class="legacy-section-header mb-3 d-flex justify-content-between align-items-center shadow-sm" style="position: sticky; top: 0; z-index: 10; background: #fff !important;">
+	        <div class="legacy-title d-flex align-items-center gap-2">
+	            <i class="bi bi-folder2-open text-primary"></i>
+	            <div class="fw-bold"></div>
+	            <span class="text-muted small">File Manager</span>
+            {% if current_folder %}
+                <span class="text-muted mx-1">|</span>
+                <a href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}#sec-files" class="text-decoration-none text-secondary small">Root</a>
+                <span class="text-muted small mx-1">&gt;</span>
+                <span class="fw-bold small text-primary">{{ current_folder.file_asset.original_name if current_folder and current_folder.file_asset else 'Current Folder' }}</span>
+            {% endif %}
+	        </div>
+	        <div class="case-section-actions">
+	             {% if can_edit_case %}
+	               <!-- Primary Upload (Left/Internal) -->
+	               <form id="uploadInternalForm" class="desktop-preferred-action" method="POST" action="{{ url_for('case_work.upload_fm_file', case_id=matter.matter_id) }}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                  <input type="hidden" name="category" value="internal">
+	                  <input type="hidden" name="parent_id" value="{{ fm_folder_id or '' }}">
+	                  <input type="file" name="file" style="display:none" onchange="this.form.submit()" id="upl-int-file">
+	                  <button type="button" class="btn btn-sm btn-primary shadow-sm px-3" onclick="document.getElementById('upl-int-file').click()">
+	                      <i class="bi bi-cloud-upload me-1"></i> File Upload
+	                  </button>
+	               </form>
+
+	               <!-- Hidden Right Upload (for Drag & Drop) -->
+	               <form id="uploadSubmissionForm" method="POST" action="{{ url_for('case_work.upload_fm_file', case_id=matter.matter_id) }}" enctype="multipart/form-data" style="display:none;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                  <input type="hidden" name="category" value="submission">
+	                  <input type="hidden" name="parent_id" value="{{ fm_folder_id or '' }}">
+	                  <input type="file" name="file" style="display:none" onchange="this.form.submit()" id="upl-sub-file">
+	               </form>
+
+	               <button type="button" class="btn btn-sm btn-outline-primary desktop-preferred-action" onclick="toggleBlock('newFolderForm')">
+	                  <i class="bi bi-folder-plus me-1"></i>  Folder
+	               </button>
+	             {% else %}
+	               <span class="text-muted small">read-only</span>
+	             {% endif %}
+	        </div>
+	      </div>
+
+      {% if (fm_has_prev or fm_has_next) %}
+        <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+          <div>
+            {% set _fm_total = fm_current_total_count if fm_current_total_count is defined else ((fm_files or [])|length) %}
+            {% set _fm_start = ((fm_page - 1) * fm_per_page + 1) if (fm_page and fm_per_page) else 1 %}
+            {% set _fm_end = ((fm_page - 1) * fm_per_page + (fm_files or [])|length) if (fm_page and fm_per_page) else ((fm_files or [])|length) %}
+            Current Folder: {{ _fm_total }}items ({{ _fm_start }}–{{ _fm_end }})
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="File manager pagination">
+            {% if fm_has_prev %}
+              {% if fm_folder_id %}
+                <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_folder_id=fm_folder_id, fm_page=fm_page-1, fm_per_page=fm_per_page) }}#sec-files">Previous</a>
+              {% else %}
+                <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_page=fm_page-1, fm_per_page=fm_per_page) }}#sec-files">Previous</a>
+              {% endif %}
+            {% endif %}
+            {% if fm_has_next %}
+              {% if fm_folder_id %}
+                <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_folder_id=fm_folder_id, fm_page=fm_page+1, fm_per_page=fm_per_page) }}#sec-files">Next</a>
+              {% else %}
+                <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_page=fm_page+1, fm_per_page=fm_per_page) }}#sec-files">Next</a>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+	      {% if can_edit_case %}
+	        <div id="newFolderForm" style="display:none;" class="mb-3 p-3 border rounded-3 bg-light shadow-sm desktop-preferred-action">
+	            <form method="POST" action="{{ url_for('case_work.create_fm_folder', case_id=matter.matter_id) }}" class="d-flex gap-2 align-items-center">
+	                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                <input type="hidden" name="parent_id" value="{{ fm_folder_id or '' }}">
+	                <label class="small fw-bold">Folder:</label>
+	                <input type="text" name="folder_name" class="form-control form-control-sm" style="width:250px;" placeholder=" Folder Name Input" required>
+	                <button type="submit" class="btn btn-sm btn-primary">Create</button>
+	                <button type="button" class="btn btn-sm btn-link text-muted" onclick="toggleBlock('newFolderForm')">Cancel</button>
+	            </form>
+	        </div>
+	      {% endif %}
+
+      {% set doc_type_options = [
+        ('OFFICE_ACTION', 'OA/Notice'),
+        ('SPEC', '/'),
+        ('POA', ''),
+        ('INVOICE', 'Billing'),
+        ('RECEIPT', ''),
+        ('TRANSLATION', ''),
+        ('EVIDENCE', ''),
+        ('OTHER', 'Other')
+      ] %}
+      {% set doc_type_labels = {} %}
+      {% for code, label in doc_type_options %}
+        {% set _ = doc_type_labels.update({code: label}) %}
+      {% endfor %}
+      <div class="case-file-classify">
+        <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <div class="fw-semibold">Document category</div>
+          <div class="case-file-filters btn-group btn-group-sm" role="group" id="caseFileFilters">
+            <button type="button" class="btn btn-outline-secondary active" data-doc-filter="all">All</button>
+            {% for code, label in doc_type_options %}
+              <button type="button" class="btn btn-outline-secondary" data-doc-filter="{{ code }}">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 34%;">File</th>
+                <th style="width: 16%;">DocumentType</th>
+                <th style="width: 18%;"></th>
+                <th style="width: 14%;">Upload</th>
+                <th style="width: 18%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="caseFileList">
+              {% set file_ns = namespace(count=0) %}
+              {% for mfa, fa in (fm_files or []) %}
+                {% if fa and fa.storage_type != 'folder' %}
+                  {% set file_ns.count = file_ns.count + 1 %}
+                  {% set current_doc_type = (mfa.doc_type or 'OTHER') %}
+                  <tr data-file-id="{{ fa.file_asset_id }}" data-doc-type="{{ current_doc_type }}">
+                    <td>
+                      <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <div class="text-truncate">
+                          <div class="fw-semibold text-truncate">{{ fa.original_name }}</div>
+                          <div class="text-muted" style="font-size: 11px;">{{ (fa.byte_size or 0)|filesizeformat }}</div>
+                        </div>
+                        <span class="badge bg-light text-dark border doc-type-badge">{{ doc_type_labels.get(current_doc_type, 'Other') }}</span>
+                      </div>
+	                    </td>
+	                    <td>
+	                      <select class="form-select form-select-sm doc-type-select" data-file-id="{{ fa.file_asset_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %}>
+	                        {% for code, label in doc_type_options %}
+	                          <option value="{{ code }}" {% if code == current_doc_type %}selected{% endif %}>{{ label }}</option>
+	                        {% endfor %}
+	                      </select>
+                    </td>
+                    <td>
+                      <div class="case-file-tags">
+                        {% if mfa.tags %}
+                          {% if mfa.tags is string %}
+                            <span class="badge bg-light text-secondary border">{{ mfa.tags }}</span>
+                          {% else %}
+                            {% for tag in mfa.tags %}
+                              <span class="badge bg-light text-secondary border">{{ tag }}</span>
+                            {% endfor %}
+                          {% endif %}
+                        {% else %}
+                          <span class="text-muted small">-</span>
+                        {% endif %}
+                      </div>
+                    </td>
+                    <td>{{ fa.created_at|local_date if fa.created_at else '' }}</td>
+                    <td class="d-flex gap-1">
+                      {% if mfa.previewable %}
+                        <button type="button" class="btn btn-sm btn-outline-primary js-preview-file" data-preview-url="/files/{{ fa.file_asset_id }}/preview" data-filename="{{ fa.original_name }}">Preview</button>
+                      {% endif %}
+                      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=fa.file_asset_id) }}">Download</a>
+                      {% if can_edit_case %}
+                        <form method="POST" action="{{ url_for('case_work.delete_fm_item', case_id=matter.matter_id) }}" data-confirm=" Delete" class="d-inline">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                          <input type="hidden" name="matter_file_id" value="{{ mfa.matter_file_id }}">
+                          <input type="hidden" name="current_folder_id" value="{{ fm_folder_id or '' }}">
+                          <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+              {% if file_ns.count == 0 %}
+                <tr data-empty="1">
+                  <td colspan="5" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-folder2-open"></i><span>No registered files.</span></div></td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="legacy-grid-wrap border rounded-3 shadow-sm" style="background: #fff; position: relative; overflow: visible;">
+        <table class="table table-hover table-bordered mb-0" style="table-layout: fixed; border-collapse: separate; border-spacing: 0;">
+          <thead class="table-light">
+            <tr style="background-color: #f8f9fa;">
+              <th id="left-drop-zone-header" style="width:50%; text-align:center; padding: 12px; border-bottom: 2px solid #dee2e6; z-index: 5;">Internal  (Internal)</th>
+              <th id="right-drop-zone-header" style="width:50%; text-align:center; padding: 12px; border-bottom: 2px solid #dee2e6; z-index: 5;">  (Submission)</th>
+            </tr>
+          </thead>
+          <tbody style="min-height: 200px;">
+            {% for mfa, fa in (fm_files or []) %}
+              <tr class="align-middle">
+	                <!-- Internal Slot -->
+	                <td class="p-0 position-relative {{ 'bg-light opacity-50' if (mfa.role or 'internal') != 'internal' else '' }}" style="vertical-align: middle; overflow: visible;">
+	                    {% if (mfa.role or 'internal') == 'internal' %}
+	                        <div class="d-flex justify-content-between align-items-center px-3 py-3 {% if can_edit_case %}draggable-item{% endif %} w-100 h-100" draggable="{{ 'true' if can_edit_case else 'false' }}" data-id="{{ mfa.matter_file_id }}">
+	                            <div class="d-flex align-items-center gap-2 text-truncate flex-grow-1">
+	                                {% if fa.storage_type == 'folder' %}
+	                                    <span class="fs-4">📁</span>
+	                                    <a href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_folder_id=mfa.matter_file_id) }}#sec-files" class="fw-bold text-decoration-none text-dark text-truncate">
+	                                        {{ fa.original_name }}
+	                                    </a>
+                                {% else %}
+                                    <span class="text-secondary"><i class="bi bi-file-earmark-text fs-4"></i></span>
+                                    <div class="text-truncate">
+                                        <a href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=fa.file_asset_id) }}" class="text-decoration-none text-dark fw-bold">
+                                            {{ fa.original_name }}
+                                        </a>
+                                        <div class="text-muted" style="font-size: 11px;">{{ fa.created_at|local_date if fa.created_at else '' }} | {{ (fa.byte_size or 0)|filesizeformat }}</div>
+                                    </div>
+	                                {% endif %}
+	                            </div>
+	                            {% if can_edit_case %}
+	                              <div class="dropdown desktop-preferred-action">
+	                                  <button class="btn btn-link btn-sm p-2 text-muted border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+	                                      <i class="bi bi-three-dots-vertical fs-5"></i>
+	                                  </button>
+	                                  <ul class="dropdown-menu dropdown-menu-end shadow border" style="z-index: 1050;">
+	                                      <li>
+	                                          <form method="POST" action="{{ url_for('case_work.move_fm_item', case_id=matter.matter_id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                                              <input type="hidden" name="matter_file_id" value="{{ mfa.matter_file_id }}">
+	                                              <input type="hidden" name="target_role" value="submission">
+	                                              <input type="hidden" name="current_folder_id" value="{{ fm_folder_id or '' }}">
+	                                              <button type="submit" class="dropdown-item py-2"><i class="bi bi-arrow-right me-2 text-primary"></i> to Go</button>
+	                                          </form>
+	                                      </li>
+	                                      <li><hr class="dropdown-divider"></li>
+	                                      <li>
+	                                          <form method="POST" action="{{ url_for('case_work.delete_fm_item', case_id=matter.matter_id) }}" data-confirm=" Delete">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                                              <input type="hidden" name="matter_file_id" value="{{ mfa.matter_file_id }}">
+	                                              <input type="hidden" name="current_folder_id" value="{{ fm_folder_id or '' }}">
+	                                              <button type="submit" class="dropdown-item py-2 text-danger"><i class="bi bi-trash me-2"></i> Delete</button>
+	                                          </form>
+	                                      </li>
+	                                  </ul>
+	                              </div>
+	                            {% endif %}
+	                        </div>
+	                    {% endif %}
+	                </td>
+
+	                <!-- Submission Slot -->
+	                <td class="p-0 position-relative {{ 'bg-light opacity-50' if mfa.role != 'submission' else '' }}" style="vertical-align: middle; overflow: visible;">
+	                    {% if mfa.role == 'submission' %}
+	                        <div class="d-flex justify-content-between align-items-center px-3 py-3 {% if can_edit_case %}draggable-item{% endif %} w-100 h-100" draggable="{{ 'true' if can_edit_case else 'false' }}" data-id="{{ mfa.matter_file_id }}">
+	                            {% if can_edit_case %}
+	                              <div class="dropdown desktop-preferred-action">
+	                                  <button class="btn btn-link btn-sm p-2 text-muted border-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+	                                      <i class="bi bi-three-dots-vertical fs-5"></i>
+	                                  </button>
+	                                  <ul class="dropdown-menu shadow border" style="z-index: 1050;">
+	                                      <li>
+	                                          <form method="POST" action="{{ url_for('case_work.move_fm_item', case_id=matter.matter_id) }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                                              <input type="hidden" name="matter_file_id" value="{{ mfa.matter_file_id }}">
+	                                              <input type="hidden" name="target_role" value="internal">
+	                                              <input type="hidden" name="current_folder_id" value="{{ fm_folder_id or '' }}">
+	                                              <button type="submit" class="dropdown-item py-2"><i class="bi bi-arrow-left me-2 text-primary"></i> to Go</button>
+	                                          </form>
+	                                      </li>
+	                                      <li><hr class="dropdown-divider"></li>
+	                                      <li>
+	                                          <form method="POST" action="{{ url_for('case_work.delete_fm_item', case_id=matter.matter_id) }}" data-confirm=" Delete">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	                                              <input type="hidden" name="matter_file_id" value="{{ mfa.matter_file_id }}">
+	                                              <input type="hidden" name="current_folder_id" value="{{ fm_folder_id or '' }}">
+	                                              <button type="submit" class="dropdown-item py-2 text-danger"><i class="bi bi-trash me-2"></i> Delete</button>
+	                                          </form>
+	                                      </li>
+	                                  </ul>
+	                              </div>
+	                            {% endif %}
+	                            <div class="d-flex align-items-center gap-2 text-truncate flex-grow-1 flex-row-reverse">
+	                                {% if fa.storage_type == 'folder' %}
+	                                    <span class="fs-4">📁</span>
+	                                    <a href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, fm_folder_id=mfa.matter_file_id) }}#sec-files" class="fw-bold text-decoration-none text-dark text-truncate">
+	                                        {{ fa.original_name }}
+                                    </a>
+                                {% else %}
+                                    <span class="text-secondary"><i class="bi bi-file-earmark-check fs-4 text-success"></i></span>
+                                    <div class="text-end text-truncate">
+                                        <a href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=fa.file_asset_id) }}" class="text-decoration-none text-dark fw-bold">
+                                            {{ fa.original_name }}
+                                        </a>
+                                        <div class="text-muted" style="font-size: 11px;">{{ fa.created_at|local_date if fa.created_at else '' }} | {{ (fa.byte_size or 0)|filesizeformat }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td id="empty-drop-zone" colspan="2" class="text-center py-5 text-muted bg-light" style="border: 2px dashed transparent; transition: all 0.2s;">
+	                    <i class="bi bi-inbox fs-1 d-block mb-2 opacity-25"></i>
+	                    No registered files.{% if can_edit_case %} Upload a file to add one.{% endif %}
+	                </td>
+	              </tr>
+	            {% endfor %}
+          </tbody>
+        </table>
+      </div>

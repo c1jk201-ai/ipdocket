@@ -1,0 +1,1523 @@
+{% extends 'invoice_base.html' %} {% block invoice_content %}
+<style>
+ .a_c {
+  text-align: center;
+ }
+ .a_r {
+  text-align: right;
+ }
+ .gray2 {
+  color: #9ca3af;
+ }
+ .f11 {
+  font-size: 0.9em;
+ }
+ .table-list {
+  width: 100%;
+  border-collapse: collapse;
+ }
+ .table-list th {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 4px;
+  text-align: left;
+  font-size: 12px;
+ }
+ .table-list td {
+  border-bottom: 1px solid #f3f4f6;
+  padding: 4px;
+  vertical-align: top;
+  font-size: 12px;
+  line-height: 1.2;
+ }
+ #matchInvoicesTable thead th,
+ #matchCasesTable thead th {
+  text-align: center;
+ }
+ .match-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+ }
+ .match-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+  min-height: 36px;
+  height: auto;
+  flex-wrap: wrap;
+ }
+ .match-head h4 {
+  margin: 0;
+ }
+ .match-col h4 {
+  margin: 8px 0;
+ }
+ .recommend,
+ .recommend-preview {
+  box-shadow: inset 0 0 0 2px #10b981;
+  background: #ecfdf5;
+  outline: 2px solid #10b981 !important;
+ }
+ .recommend-score-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #2158a8;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 600;
+ }
+ .recommend-filter-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  min-height: 22px;
+  text-align: right;
+ }
+ .pad-row {
+  visibility: hidden;
+  pointer-events: none;
+ }
+ .container {
+  max-width: 100%;
+ }
+ .filter-card {
+  padding: 8px 10px;
+ }
+ .filter-card .table-list th,
+ .filter-card .table-list td {
+  padding: 4px 6px;
+  font-size: 12px;
+ }
+ .selected {
+  outline: 2px solid #005EA8;
+  background: #EAF4FF;
+ }
+ .linked {
+  background: #ecfdf5;
+ }
+ /* Mode toggle styles */
+ .mode-toggle {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-left: 12px;
+ }
+ .mode-toggle button {
+  border: none;
+  background: #f9fafb;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+ }
+ .mode-toggle button.active {
+  background: #005EA8;
+  color: white;
+ }
+ .mode-toggle button:not(.active):hover {
+  background: #e5e7eb;
+ }
+ /* Dynamic grid order for mode switching */
+ .match-col.case-col { order: 1; }
+ .match-col.invoice-col { order: 2; }
+ .mode-invoice-first .match-col.invoice-col { order: 1; }
+ .mode-invoice-first .match-col.case-col { order: 2; }
+</style>
+
+<div class="page-header" style="align-items: center; gap: 6px">
+ <h2 style="margin: 0">Matter-Invoice Matching</h2>
+ <div class="mode-toggle">
+  <button id="btnModeCaseFirst" class="active">Matter to Invoice</button>
+  <button id="btnModeInvoiceFirst">Invoice to Matter</button>
+ </div>
+ <div class="page-actions">
+  <button class="btn btn-outline-primary" id="btnAutoMatchRecommend" title="Automatically link the selected matter and invoice.">
+    AutoMatching
+  </button>
+  <button class="btn" id="btnMatchingRefresh">New</button>
+ </div>
+</div>
+
+<div class="card filter-card" style="margin-top: 12px">
+ <table class="table-list">
+  <colgroup>
+   <col style="width: 15%" />
+   <col />
+  </colgroup>
+  <tbody>
+   <tr>
+    <th>Matter Entry date</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input type="date" id="caseStartDate" style="width: 180px; max-width:100%;" />
+      <span class="muted">~</span>
+      <input type="date" id="caseEndDate" style="width: 180px; max-width:100%;" />
+      <div class="spacer"></div>
+      <div class="date-preset-group" role="group" aria-label="Matter Entry date Select">
+       <button class="btn date-preset-btn" type="button" id="btnCaseToday" data-date-scope="case" data-range-days="0" aria-pressed="false"></button>
+       <button class="btn date-preset-btn" type="button" id="btnCase7" data-date-scope="case" data-range-days="7" aria-pressed="false">7days</button>
+       <button class="btn date-preset-btn" type="button" id="btnCase30" data-date-scope="case" data-range-days="30" aria-pressed="false">30days</button>
+      </div>
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Invoice issue date</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input type="date" id="startDate" style="width: 180px; max-width:100%;" />
+      <span class="muted">~</span>
+      <input type="date" id="endDate" style="width: 180px; max-width:100%;" />
+      <div class="spacer"></div>
+      <div class="date-preset-group" role="group" aria-label="Invoice issue date Select">
+       <button class="btn date-preset-btn" type="button" id="btnToday" data-date-scope="invoice" data-range-days="0" aria-pressed="false"></button>
+       <button class="btn date-preset-btn" type="button" id="btn7" data-date-scope="invoice" data-range-days="7" aria-pressed="false">7days</button>
+       <button class="btn date-preset-btn" type="button" id="btn30" data-date-scope="invoice" data-range-days="30" aria-pressed="false">30days</button>
+      </div>
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Matter Search</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input id="caseQ" placeholder="Matter reference/people/Client Search" style="width: 360px; max-width:100%;" />
+      <label style="display:inline-flex; align-items:center; gap:6px; margin:0;">
+       <input type="checkbox" id="unmatchedOnly" /> Matching Matter
+      </label>
+      <label style="display:inline-flex; align-items:center; gap:6px; margin:0;">
+       <input type="checkbox" id="caseLinkedOnly" /> Link 
+      </label>
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Invoice search</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input id="invQ" placeholder="/Client/Business profile/Internal Search" style="width: 360px; max-width:100%;" />
+      <label style="display:inline-flex; align-items:center; gap:6px; margin:0;">
+       <input type="checkbox" id="invLinkedOnly" /> Link 
+      </label>
+      <label style="display:inline-flex; align-items:center; gap:6px; margin:0;">
+       <input type="checkbox" id="invHideLinked" /> Link Hidden
+      </label>
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Invoice status</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+     <select id="invBilling" style="width: 220px; max-width:100%;">
+      <option value="">Billing status(All)</option>
+      <option value="draft">draft</option>
+      <option value="sent">sent</option>
+      <option value="tax_issued">tax_issued</option>
+      <option value="cash_issued">cash_issued</option>
+      <option value="processed">processed</option>
+      <option value="pre_overdue">pre_overdue</option>
+      <option value="void">void</option>
+     </select>
+     <select id="invPayment" style="width: 220px; max-width:100%;">
+      <option value="">Payment status (all)</option>
+      <option value="unpaid">unpaid</option>
+      <option value="pending">pending</option>
+      <option value="paid">paid</option>
+      <option value="none">none</option>
+     </select>
+     </div>
+    </td>
+   </tr>
+  </tbody>
+ </table>
+</div>
+
+<div class="card" style="margin-top: 12px">
+ <div class="match-grid" id="matchGrid">
+  <!-- Case Column (default: left) -->
+  <div class="match-col case-col">
+   <div class="match-head">
+    <h4>Matter</h4>
+    <span class="gray2 f11" style="white-space:nowrap; margin-left: 8px;">Select: <span id="selectedCaseLabel">()</span></span>
+    <div style="flex: 1;"></div>
+    <div id="caseRecommendFilterBox" class="recommend-filter-box gray2 f11"></div>
+   </div>
+   <div id="matchCasesPagingTop" class="app-pagination" aria-label="Matter Pagination"></div>
+   <table class="table-list" id="matchCasesTable">
+    <colgroup>
+     <col style="width: 25%" />
+     <col />
+     <col style="width: 22%" />
+     <col style="width: 18%" />
+     <col style="width: 14%" />
+    </colgroup>
+    <thead>
+     <tr>
+      <th>Matter reference</th>
+      <th>people</th>
+      <th>Client</th>
+      <th>Engagement date</th>
+      <th>Link</th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+   <div id="matchCasesPaging" class="app-pagination" aria-label="Matter Pagination"></div>
+   <div class="gray2 f11">row from Invoice Link/ exists.</div>
+  </div>
+
+  <!-- Invoice Column (default: right) -->
+  <div class="match-col invoice-col">
+   <div class="match-head">
+    <h4>Invoice</h4>
+    <span class="gray2 f11" style="white-space:nowrap; margin-left: 8px;">Select: <span id="selectedInvoiceLabel">()</span></span>
+    <div style="flex: 1;"></div>
+    <div id="invoiceRecommendFilterBox" class="recommend-filter-box gray2 f11"></div>
+   </div>
+   <div id="matchInvoicesPagingTop" class="app-pagination" aria-label="Invoice pagination"></div>
+   <table class="table-list" id="matchInvoicesTable">
+    <colgroup>
+     <col style="width: 10%" />
+     <col style="width: 20%" />
+     <col />
+     <col style="width: 18%" />
+     <col style="width: 14%" />
+     <col style="width: 12%" />
+     <col style="width: 12%" />
+    </colgroup>
+    <thead>
+     <tr>
+      <th>#</th>
+      <th></th>
+      <th>Client</th>
+      <th>Business profile</th>
+      <th>Issue date</th>
+      <th>Billing</th>
+      <th>Link</th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+   <div id="matchInvoicesPaging" class="app-pagination" aria-label="Invoice pagination"></div>
+   <div class="gray2 f11">Link to Immediate Matching/.</div>
+  </div>
+ </div>
+</div>
+
+<script>
+ const CSRF = document
+  .querySelector('meta[name="csrf-token"]')
+  .getAttribute("content");
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+
+ // Mode: "case_first" (default) or "invoice_first"
+ let MATCHING_MODE = "case_first";
+
+ let INV_PAGE = 1;
+ let CASE_PAGE = 1;
+ const PER_PAGE = 15;
+ let INV_LOAD_TOKEN = 0;
+ let CASE_LOAD_TOKEN = 0;
+
+ let SELECTED_INVOICE_ID = null;
+ let SELECTED_INVOICE_NO = null;
+ let SELECTED_CASE_ID = null;
+ let SELECTED_CASE_REF = null;
+
+ let LAST_INVOICE_ITEMS = [];
+ let LAST_CASE_ITEMS = [];
+ let ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+ let ACTIVE_CASE_RECOMMEND_FILTER = null;
+ let LAST_INVOICE_RECOMMEND_COUNT = 0;
+ let LAST_CASE_RECOMMEND_COUNT = 0;
+
+ let SYNC_TIMER = null;
+ let IS_DRAGGING_CASE = false;
+
+ function _clearPadRows() {
+  try {
+   document
+    .querySelectorAll("#matchInvoicesTable tbody tr.pad-row")
+    .forEach((tr) => tr.remove());
+   document
+    .querySelectorAll("#matchCasesTable tbody tr.pad-row")
+    .forEach((tr) => tr.remove());
+  } catch (e) {}
+ }
+
+ function _padTableRows(tbodySel, currentCount, targetCount, colSpan) {
+  const tbody = document.querySelector(tbodySel);
+  if (!tbody) return;
+  for (let i = currentCount; i < targetCount; i++) {
+   const tr = document.createElement("tr");
+   tr.className = "pad-row";
+   tr.innerHTML = `<td colspan="${colSpan}">&nbsp;</td>`;
+   tbody.appendChild(tr);
+  }
+ }
+
+ function padTablesToSameRowCount() {
+  try {
+   _clearPadRows();
+   const invRows = Array.from(
+    document.querySelectorAll("#matchInvoicesTable tbody tr")
+   ).filter((r) => !r.classList.contains("pad-row"));
+   const caseRows = Array.from(
+    document.querySelectorAll("#matchCasesTable tbody tr")
+   ).filter((r) => !r.classList.contains("pad-row"));
+   const target = Math.max(PER_PAGE, invRows.length, caseRows.length);
+   _padTableRows("#matchInvoicesTable tbody", invRows.length, target, 7);
+   _padTableRows("#matchCasesTable tbody", caseRows.length, target, 5);
+  } catch (e) {}
+ }
+
+ function syncRowHeights() {
+  try {
+   const invRows = Array.from(
+    document.querySelectorAll("#matchInvoicesTable tbody tr")
+   );
+   const caseRows = Array.from(
+    document.querySelectorAll("#matchCasesTable tbody tr")
+   );
+   invRows.forEach((r) => (r.style.height = "auto"));
+   caseRows.forEach((r) => (r.style.height = "auto"));
+   const n = Math.max(invRows.length, caseRows.length);
+   for (let i = 0; i < n; i++) {
+    const a = invRows[i];
+    const b = caseRows[i];
+    let h = 0;
+    if (a) h = Math.max(h, a.getBoundingClientRect().height);
+    if (b) h = Math.max(h, b.getBoundingClientRect().height);
+    if (a) a.style.height = h + "px";
+    if (b) b.style.height = h + "px";
+   }
+  } catch (e) {}
+ }
+
+ function scheduleSyncRowHeights() {
+  if (SYNC_TIMER) clearTimeout(SYNC_TIMER);
+  SYNC_TIMER = setTimeout(() => {
+   try {
+    padTablesToSameRowCount();
+   } catch (e) {}
+   try {
+    requestAnimationFrame(() => {
+     requestAnimationFrame(() => {
+      syncRowHeights();
+      setTimeout(syncRowHeights, 50);
+     });
+    });
+   } catch (e) {
+    syncRowHeights();
+   }
+  }, 0);
+ }
+
+ function clearRecommendationHighlights() {
+  document
+   .querySelectorAll("#matchInvoicesTable tbody tr.recommend-preview")
+   .forEach((tr) => tr.classList.remove("recommend-preview"));
+  document
+   .querySelectorAll("#matchCasesTable tbody tr.recommend-preview")
+   .forEach((tr) => tr.classList.remove("recommend-preview"));
+ }
+
+ function setRowRecommendationMeta(tr, recommend) {
+  const el = tr ? tr.querySelector(".js-rec-meta") : null;
+  if (!el) return;
+  if (!recommend || !recommend.recommended) {
+   el.innerHTML = "";
+   return;
+  }
+  const reasons = Array.isArray(recommend.reasons) ? recommend.reasons : [];
+  const reasonText = reasons.length
+   ? ` <span class="gray2 f11">${reasons.join(" · ")}</span>`
+   : "";
+  el.innerHTML = `<div class="mt-1"><span class="recommend-score-chip"> ${recommend.total}</span>${reasonText}</div>`;
+ }
+
+ function updateRecommendFilterBoxes() {
+  const invoiceBox = document.getElementById("invoiceRecommendFilterBox");
+  const caseBox = document.getElementById("caseRecommendFilterBox");
+  if (invoiceBox) {
+   if (ACTIVE_INVOICE_RECOMMEND_FILTER) {
+    const c = ACTIVE_INVOICE_RECOMMEND_FILTER;
+    invoiceBox.innerHTML = `
+     <span> Filters</span>
+     <span class="mono">${c.ourRef || c.matterId || "-"}</span>
+     <span>${c.clientName || c.rightName || "-"}</span>
+     <span>Current page ${LAST_INVOICE_RECOMMEND_COUNT}items</span>
+     <button type="button" class="btn btn-sm btn-outline-secondary" id="clearInvoiceRecommendFilter"></button>
+    `;
+   } else {
+    invoiceBox.innerHTML = "";
+   }
+  }
+  if (caseBox) {
+   if (ACTIVE_CASE_RECOMMEND_FILTER) {
+    const inv = ACTIVE_CASE_RECOMMEND_FILTER;
+    caseBox.innerHTML = `
+     <span> Filters</span>
+     <span class="mono">${inv.invoiceNumber || inv.invoiceId || "-"}</span>
+     <span>${inv.clientName || "-"}</span>
+     <span>Current page ${LAST_CASE_RECOMMEND_COUNT}items</span>
+     <button type="button" class="btn btn-sm btn-outline-secondary" id="clearCaseRecommendFilter"></button>
+    `;
+   } else {
+    caseBox.innerHTML = "";
+   }
+  }
+  const clearInv = document.getElementById("clearInvoiceRecommendFilter");
+  if (clearInv) {
+   clearInv.addEventListener("click", function () {
+    ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+    LAST_INVOICE_RECOMMEND_COUNT = 0;
+    INV_PAGE = 1;
+    loadInvoices().catch((e) => console.error(e));
+   });
+  }
+  const clearCase = document.getElementById("clearCaseRecommendFilter");
+  if (clearCase) {
+   clearCase.addEventListener("click", function () {
+    ACTIVE_CASE_RECOMMEND_FILTER = null;
+    LAST_CASE_RECOMMEND_COUNT = 0;
+    CASE_PAGE = 1;
+    loadCases().catch((e) => console.error(e));
+   });
+  }
+ }
+
+ function setInvoiceRecommendFilterFromCase(casePayload) {
+  if (!casePayload || !casePayload.matter_id) return;
+  ACTIVE_INVOICE_RECOMMEND_FILTER = {
+   matterId: casePayload.matter_id,
+   ourRef: casePayload.our_ref || "",
+   rightName: casePayload.right_name || "",
+   clientName: casePayload.client_name || "",
+  };
+  LAST_INVOICE_RECOMMEND_COUNT = 0;
+  INV_PAGE = 1;
+  updateRecommendFilterBoxes();
+ }
+
+ function setCaseRecommendFilterFromInvoice(invoicePayload) {
+  if (!invoicePayload || !invoicePayload.invoiceId) return;
+  ACTIVE_CASE_RECOMMEND_FILTER = {
+   invoiceId: invoicePayload.invoiceId,
+   invoiceNumber: invoicePayload.invoiceNumber || "",
+   clientName: invoicePayload.clientName || "",
+  };
+  LAST_CASE_RECOMMEND_COUNT = 0;
+  CASE_PAGE = 1;
+  updateRecommendFilterBoxes();
+ }
+
+ function _norm(s) {
+  return (s || "")
+   .toString()
+   .toLowerCase()
+   .replace(/\s+/g, " ")
+   .trim();
+ }
+
+ function _escHtml(v) {
+  return (v || "")
+   .toString()
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#39;");
+ }
+
+ function _isPartyNameMatch(a, b) {
+  const x = _norm(a);
+  const y = _norm(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  if (x.length < 2 || y.length < 2) return false;
+  return x.includes(y) || y.includes(x);
+ }
+
+ function highlightInvoicesForCase(payload) {
+  clearRecommendationHighlights();
+  const ref = _norm(payload && payload.our_ref);
+  const name = _norm(payload && payload.right_name);
+  const clientName = _norm(payload && payload.client_name);
+  const rows = document.querySelectorAll("#matchInvoicesTable tbody tr");
+  rows.forEach((tr) => {
+   const t = _norm(tr.dataset.searchText || "");
+   const invClient = _norm(tr.dataset.clientName || "");
+   let ok = false;
+   if (ref && ref.length>= 2 && t.includes(ref)) ok = true;
+   if (!ok && name && name.length>= 3 && t.includes(name)) ok = true;
+   if (!ok && _isPartyNameMatch(clientName, invClient)) ok = true;
+   if (ok) tr.classList.add("recommend-preview");
+  });
+ }
+
+ function highlightCasesForInvoice(invRow) {
+  if (IS_DRAGGING_CASE) return;
+  clearRecommendationHighlights();
+  const t = _norm(invRow && invRow.dataset.searchText);
+  const invClient = _norm(invRow && invRow.dataset.clientName);
+  if (!t && !invClient) return;
+  const rows = document.querySelectorAll("#matchCasesTable tbody tr");
+  rows.forEach((tr) => {
+   const ref = _norm(tr.dataset.ourRef || "");
+   const nm = _norm(tr.dataset.rightName || "");
+   const caseClient = _norm(tr.dataset.clientName || "");
+   let ok = false;
+   if (ref && ref.length>= 2 && t.includes(ref)) ok = true;
+   if (!ok && nm && nm.length>= 3 && t.includes(nm)) ok = true;
+   if (!ok && _isPartyNameMatch(invClient, caseClient)) ok = true;
+   if (ok) tr.classList.add("recommend-preview");
+  });
+ }
+
+ function _invoiceSearchText(it) {
+  return [
+   (it && it.number) || "",
+   (it && it.internal_reference) || "",
+   (it && it.ipm_case_ref) || "",
+   (it && it.ipm_case_id) || "",
+   (it && it.client_name) || "",
+   (it && it.biz_name) || "",
+  ].join(" ");
+ }
+
+ function _getSelectedCasePayload() {
+  if (!SELECTED_CASE_ID) return null;
+  const found = (LAST_CASE_ITEMS || []).find(
+   (c) => String(c && c.matter_id) === String(SELECTED_CASE_ID)
+  );
+  if (found) {
+   return {
+    matter_id: found.matter_id,
+    our_ref: found.our_ref || SELECTED_CASE_REF || "",
+    right_name: found.right_name || "",
+    client_name: found.client_name || "",
+   };
+  }
+  const tr = document.querySelector("#matchCasesTable tbody tr.selected");
+  if (tr) {
+   return {
+    matter_id: SELECTED_CASE_ID,
+    our_ref: tr.dataset.ourRef || SELECTED_CASE_REF || "",
+    right_name: tr.dataset.rightName || "",
+    client_name: tr.dataset.clientName || "",
+   };
+  }
+  return {
+   matter_id: SELECTED_CASE_ID,
+   our_ref: SELECTED_CASE_REF || "",
+   right_name: "",
+   client_name: "",
+  };
+ }
+
+ function _getSelectedInvoicePayload() {
+  if (!SELECTED_INVOICE_ID) {
+   return {
+    invoiceId: "",
+    invoiceNumber: "",
+    searchTextNorm: "",
+    clientName: "",
+   };
+  }
+  const found = (LAST_INVOICE_ITEMS || []).find(
+   (x) => parseInt((x && x.id) || 0, 10) === SELECTED_INVOICE_ID
+  );
+  if (found) {
+   return {
+    invoiceId: found.id,
+    invoiceNumber: found.number || SELECTED_INVOICE_NO || "",
+    searchTextNorm: _norm(_invoiceSearchText(found)),
+    clientName: found.client_name || "",
+   };
+  }
+  const tr = document.querySelector("#matchInvoicesTable tbody tr.selected");
+  return {
+   invoiceId: SELECTED_INVOICE_ID,
+   invoiceNumber: SELECTED_INVOICE_NO || (tr && tr.dataset && tr.dataset.invoiceNo) || "",
+   searchTextNorm: _norm((tr && tr.dataset && tr.dataset.searchText) || ""),
+   clientName: (tr && tr.dataset && tr.dataset.clientName) || "",
+  };
+ }
+
+ function _pickBestInvoiceForCase(casePayload) {
+  const ref = _norm(casePayload && casePayload.our_ref);
+  const name = _norm(casePayload && casePayload.right_name);
+  const clientName = _norm(casePayload && casePayload.client_name);
+  if (!ref && !name && !clientName) return null;
+
+  let best = null;
+  let bestScore = 0;
+  for (const it of LAST_INVOICE_ITEMS || []) {
+   if (!it || it.linked) continue; // already linked to the selected case
+   const t = _norm(_invoiceSearchText(it));
+   const invClient = _norm(it.client_name || "");
+   let score = 0;
+   if (ref && ref.length>= 2 && t.includes(ref)) score += 100;
+   if (name && name.length>= 3 && t.includes(name)) score += 10;
+   if (clientName && invClient) {
+    if (clientName === invClient) score += 120;
+    else if (_isPartyNameMatch(clientName, invClient)) score += 40;
+   }
+   if (score> bestScore) {
+    bestScore = score;
+    best = it;
+   }
+  }
+  return bestScore> 0 ? best : null;
+ }
+
+ function _pickBestCaseForInvoice(invoiceTextNorm, invoiceClientName) {
+  const t = _norm(invoiceTextNorm);
+  const invClient = _norm(invoiceClientName || "");
+  if (!t && !invClient) return null;
+
+  let best = null;
+  let bestScore = 0;
+  for (const it of LAST_CASE_ITEMS || []) {
+   if (!it || it.linked) continue; // already linked to the selected invoice
+   const ref = _norm(it.our_ref || "");
+   const name = _norm(it.right_name || "");
+   const caseClient = _norm(it.client_name || "");
+   let score = 0;
+   if (ref && ref.length>= 2 && t.includes(ref)) score += 100;
+   if (name && name.length>= 3 && t.includes(name)) score += 10;
+   if (invClient && caseClient) {
+    if (invClient === caseClient) score += 120;
+    else if (_isPartyNameMatch(invClient, caseClient)) score += 40;
+   }
+   if (score> bestScore) {
+    bestScore = score;
+    best = it;
+   }
+  }
+  return bestScore> 0 ? best : null;
+ }
+
+ async function autoMatchRecommend() {
+  const btn = document.getElementById("btnAutoMatchRecommend");
+  if (btn) btn.disabled = true;
+  try {
+   if (MATCHING_MODE === "case_first") {
+    if (!SELECTED_CASE_ID) {
+     try { await window.AppAlert("Matter Select.", { title: "Confirm" }); } catch (e2) {}
+     return;
+    }
+    const casePayload = _getSelectedCasePayload();
+    const bestInv = _pickBestInvoiceForCase(casePayload);
+    if (!bestInv) {
+     try { await window.AppAlert(" Invoice not found. (Our Ref/people/Client Matching items Confirm)", { title: "Confirm" }); } catch (e2) {}
+     return;
+    }
+    await fetchJSON(`${scriptRoot}/case-matching/link`, {
+     method: "POST",
+     body: JSON.stringify({ invoice_id: bestInv.id, matter_id: SELECTED_CASE_ID }),
+    });
+    loadInvoices().catch((e) => console.error(e));
+    loadCases().catch((e) => console.error(e));
+    return;
+   }
+
+   // invoice_first
+   if (!SELECTED_INVOICE_ID) {
+    try { await window.AppAlert("Invoice Select.", { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+   const invPayload = _getSelectedInvoicePayload();
+   const bestCase = _pickBestCaseForInvoice(invPayload.searchTextNorm, invPayload.clientName);
+   if (!bestCase) {
+    try { await window.AppAlert(" Matter not found. (Our Ref/people/Client-Client Matching items Confirm)", { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+   await fetchJSON(`${scriptRoot}/case-matching/link`, {
+    method: "POST",
+    body: JSON.stringify({ invoice_id: SELECTED_INVOICE_ID, matter_id: bestCase.matter_id }),
+   });
+   loadInvoices().catch((e) => console.error(e));
+   loadCases().catch((e) => console.error(e));
+  } catch (e) {
+   try { await window.AppAlert(e && e.message ? e.message : String(e), { title: "Error" }); } catch (e2) {}
+  } finally {
+   if (btn) btn.disabled = false;
+  }
+ }
+
+ function pad2(n) {
+  return String(n).padStart(2, "0");
+ }
+
+ function formatYmd(d) {
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth() + 1);
+  const da = pad2(d.getDate());
+  return `${y}-${m}-${da}`;
+ }
+
+ function setActiveDatePreset(scope, days) {
+  document.querySelectorAll(`.date-preset-btn[data-date-scope="${scope}"]`).forEach((btn) => {
+   const active = String(btn.dataset.rangeDays || "") === String(days);
+   btn.classList.toggle("is-active", active);
+   btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+ }
+
+ function sliceDays(days) {
+  const end = new Date();
+  const start = new Date(end.getTime() - (parseInt(days || 0, 10) || 0) * 86400000);
+  document.getElementById("startDate").value = formatYmd(start);
+  document.getElementById("endDate").value = formatYmd(end);
+  setActiveDatePreset("invoice", days);
+  INV_PAGE = 1;
+  CASE_PAGE = 1;
+  Promise.all([loadInvoices(), loadCases()]).catch((e) => console.error(e));
+ }
+
+ async function fetchJSON(url, opts = {}) {
+  const res = await fetch(url, {
+   headers: { "X-CSRFToken": CSRF, "Content-Type": "application/json" },
+   credentials: "same-origin",
+   ...opts,
+  });
+  if (!res.ok) {
+   let msg = "request failed";
+   try {
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) {
+     const j = await res.json();
+     msg = (j && (j.error || j.message)) || JSON.stringify(j);
+    } else {
+     msg = (await res.text()) || msg;
+    }
+   } catch (e) {}
+   throw new Error(msg);
+  }
+  return res.json();
+ }
+
+	 function renderCaseInvoicePagination(containerId, pageNum, pageCount, ariaLabel, onPageChange) {
+	  const container = document.getElementById(containerId);
+	  if (!container) return;
+	  window.AppPagination.render(container, {
+	   page: pageNum,
+	   totalPages: pageCount,
+	   ariaLabel,
+	   onPageChange,
+	  });
+	 }
+
+	 async function changeInvoicePage(nextPage) {
+	  if (nextPage === INV_PAGE) return;
+	  INV_PAGE = nextPage;
+	  try {
+	   await loadInvoices();
+	  } catch (e) {
+	   console.error(e);
+	  }
+	 }
+
+	 async function changeCasePage(nextPage) {
+	  if (nextPage === CASE_PAGE) return;
+	  CASE_PAGE = nextPage;
+	  try {
+	   await loadCases();
+	  } catch (e) {
+	   console.error(e);
+	  }
+	 }
+
+ function updateSelectionLabels() {
+  const caseLabel = document.getElementById("selectedCaseLabel");
+  const invLabel = document.getElementById("selectedInvoiceLabel");
+
+  if (MATCHING_MODE === "case_first") {
+   // Case-first mode: show selected case prominently
+   if (SELECTED_CASE_ID) {
+    caseLabel.textContent = `${SELECTED_CASE_REF || SELECTED_CASE_ID}`;
+   } else {
+    caseLabel.textContent = "()";
+   }
+   invLabel.textContent = SELECTED_INVOICE_ID ? `#${SELECTED_INVOICE_ID} ${SELECTED_INVOICE_NO || ""}`.trim() : "()";
+  } else {
+   // Invoice-first mode: show selected invoice prominently
+   if (SELECTED_INVOICE_ID) {
+    invLabel.textContent = `#${SELECTED_INVOICE_ID} ${SELECTED_INVOICE_NO || ""}`.trim();
+   } else {
+    invLabel.textContent = "()";
+   }
+   caseLabel.textContent = SELECTED_CASE_ID ? `${SELECTED_CASE_REF || SELECTED_CASE_ID}` : "()";
+  }
+ }
+
+ function invParams() {
+  const p = new URLSearchParams();
+  p.set("page", String(INV_PAGE));
+  p.set("perPage", String(PER_PAGE));
+  const s = (document.getElementById("startDate").value || "").trim();
+  const e = (document.getElementById("endDate").value || "").trim();
+  const q = (document.getElementById("invQ").value || "").trim();
+  const billing = (document.getElementById("invBilling").value || "").trim();
+  const payment = (document.getElementById("invPayment").value || "").trim();
+  const linkedOnly = document.getElementById("invLinkedOnly").checked;
+  const hideLinked = document.getElementById("invHideLinked").checked;
+  if (s) p.set("date_from", s);
+  if (e) p.set("date_to", e);
+  if (q) p.set("q", q);
+  if (billing) p.set("billing", billing);
+  if (payment) p.set("payment", payment);
+  if (linkedOnly) p.set("linkedOnly", "1");
+  if (hideLinked) p.set("hideLinked", "1");
+  // In case-first mode, pass case_id to filter invoices for that case
+  if (MATCHING_MODE === "case_first" && SELECTED_CASE_ID) {
+   p.set("case_id", String(SELECTED_CASE_ID));
+  }
+  if (ACTIVE_INVOICE_RECOMMEND_FILTER && ACTIVE_INVOICE_RECOMMEND_FILTER.matterId) {
+   p.set("recommend_case_id", String(ACTIVE_INVOICE_RECOMMEND_FILTER.matterId));
+  }
+  return p;
+ }
+
+ async function loadInvoices() {
+  const token = ++INV_LOAD_TOKEN;
+  const url = `${scriptRoot}/case-matching/invoices?${invParams().toString()}`;
+  const data = await fetchJSON(url);
+  if (token !== INV_LOAD_TOKEN) return;
+  LAST_INVOICE_ITEMS = data.items || [];
+  const tbody = document.querySelector("#matchInvoicesTable tbody");
+  tbody.innerHTML = "";
+
+  (data.items || []).forEach((it) => {
+   const tr = document.createElement("tr");
+   tr.dataset.invoiceId = String(it.id);
+   tr.dataset.invoiceNo = String(it.number || "");
+   tr.dataset.clientName = String(it.client_name || "");
+   tr.dataset.searchText = [
+    it.number || "",
+    it.internal_reference || "",
+    it.ipm_case_ref || "",
+    it.ipm_case_id || "",
+    it.client_name || "",
+    it.biz_name || "",
+   ].join(" ");
+
+   // Highlight selected based on mode
+   if (MATCHING_MODE === "invoice_first" && SELECTED_INVOICE_ID && parseInt(tr.dataset.invoiceId, 10) === SELECTED_INVOICE_ID) {
+    tr.classList.add("selected");
+   }
+   if (it.linked) tr.classList.add("linked");
+
+
+   function _tStatus(status, type) {
+    if (!status) return "";
+    const s = status.toLowerCase();
+    if (type === 'billing') {
+     if (s === 'draft') return "Draft";
+     if (s === 'sent') return "Issued";
+     if (s === 'tax_issued') return "Tax recorded";
+     if (s === 'cash_issued') return "Tax recorded";
+     if (s === 'processed') return "Tax recorded";
+     if (s === 'pre_overdue') return "Advanced cost";
+     if (s === 'void') return "Void";
+    }
+    if (type === 'payment') {
+     if (s === 'unpaid') return "Unpaid";
+     if (s === 'pending') return "Payment pending";
+     if (s === 'paid') return "Paid";
+     if (s === 'none') return "-";
+    }
+    return status;
+   }
+
+   tr.innerHTML = `
+    <td class="a_c">${it.id}</td>
+    <td class="a_c"><a href="${scriptRoot}/invoices/${it.id}">${
+    _escHtml(it.number)
+   }</a></td>
+    <td>${_escHtml(it.client_name)}<div class="js-rec-meta"></div></td>
+    <td class="a_c">${_escHtml(it.biz_name)}</td>
+    <td class="a_c">${_escHtml(it.issue_date)}</td>
+    <td class="a_c">${_escHtml(_tStatus(it.billing_status || it.status, 'billing'))}<br><span class="gray2">${
+    _escHtml(_tStatus(it.payment_status, 'payment'))
+   }</span></td>
+    <td class="a_c">${MATCHING_MODE === "case_first" ? renderInvoiceLinkButton(it) : (parseInt(it.case_count || 0, 10) || 0) + "items"}</td>
+   `;
+   if (it.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, {
+     recommended: true,
+     total: parseInt(it.recommend_score || 0, 10) || 0,
+     reasons: Array.isArray(it.recommend_reasons) ? it.recommend_reasons : [],
+    });
+   }
+
+   // Click behavior depends on mode
+   tr.addEventListener("click", function (ev) {
+    if (ev.target.tagName === "BUTTON" || ev.target.tagName === "A") return;
+    if (MATCHING_MODE === "invoice_first") {
+     SELECTED_INVOICE_ID = parseInt(it.id, 10);
+     SELECTED_INVOICE_NO = it.number || "";
+     setCaseRecommendFilterFromInvoice({
+      invoiceId: SELECTED_INVOICE_ID,
+      invoiceNumber: SELECTED_INVOICE_NO,
+      clientName: it.client_name || "",
+     });
+     updateSelectionLabels();
+     CASE_PAGE = 1;
+     loadInvoices().catch((e) => console.error(e));
+     loadCases().catch((e) => console.error(e));
+    }
+   });
+
+   tr.addEventListener("mouseenter", () => {
+    try {
+     highlightCasesForInvoice(tr);
+    } catch (e) {}
+   });
+   tr.addEventListener("mouseleave", () => {
+    if (!IS_DRAGGING_CASE) clearRecommendationHighlights();
+   });
+
+   tbody.appendChild(tr);
+  });
+
+  // Setup link buttons for case-first mode
+  if (MATCHING_MODE === "case_first") {
+   setupInvoiceLinkButtons(data.items || []);
+  }
+  LAST_INVOICE_RECOMMEND_COUNT = ACTIVE_INVOICE_RECOMMEND_FILTER
+   ? (data.items || []).filter((it) => it && it.recommended).length
+   : 0;
+  updateRecommendFilterBoxes();
+
+	  renderCaseInvoicePagination(
+	   "matchInvoicesPagingTop",
+	   data.pageNum || 1,
+	   data.pageCount || 1,
+	   "Invoice pagination",
+	   changeInvoicePage
+	  );
+	  renderCaseInvoicePagination(
+	   "matchInvoicesPaging",
+	   data.pageNum || 1,
+	   data.pageCount || 1,
+	   "Invoice pagination",
+	   changeInvoicePage
+	  );
+	  scheduleSyncRowHeights();
+	 }
+
+ function renderInvoiceLinkButton(it) {
+  if (!SELECTED_CASE_ID) {
+   return `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>Selectrequired</button>`;
+  }
+  const btnLabel = it.linked ? "" : "Link";
+  const btnCls = it.linked ? "btn btn-sm btn-outline-danger" : "btn btn-sm btn-outline-primary";
+  return `<button type="button" class="${btnCls}" data-invoice-id="${it.id}" data-linked="${it.linked ? 1 : 0}">${btnLabel}</button>`;
+ }
+
+ function setupInvoiceLinkButtons(items) {
+  const tbody = document.querySelector("#matchInvoicesTable tbody");
+  tbody.querySelectorAll("button[data-invoice-id]").forEach((btn) => {
+   btn.addEventListener("click", async function (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (!SELECTED_CASE_ID) return;
+
+    const invoiceId = parseInt(btn.dataset.invoiceId, 10);
+    const isLinked = btn.dataset.linked === "1";
+    btn.disabled = true;
+
+    try {
+     if (isLinked) {
+      await fetchJSON(`${scriptRoot}/case-matching/unlink`, {
+       method: "POST",
+       body: JSON.stringify({ invoice_id: invoiceId, matter_id: SELECTED_CASE_ID }),
+      });
+     } else {
+      await fetchJSON(`${scriptRoot}/case-matching/link`, {
+       method: "POST",
+       body: JSON.stringify({ invoice_id: invoiceId, matter_id: SELECTED_CASE_ID }),
+      });
+     }
+     loadInvoices().catch((e) => console.error(e));
+     loadCases().catch((e) => console.error(e));
+    } catch (e) {
+     try { await window.AppAlert(e.message || String(e), { title: "Error" }); } catch (e2) {}
+    } finally {
+     btn.disabled = false;
+    }
+   });
+  });
+ }
+
+ function caseParams() {
+  const p = new URLSearchParams();
+  p.set("page", String(CASE_PAGE));
+  p.set("perPage", String(PER_PAGE));
+  // In invoice-first mode, pass invoice_id to filter cases
+  if (MATCHING_MODE === "invoice_first" && SELECTED_INVOICE_ID) {
+   p.set("invoice_id", String(SELECTED_INVOICE_ID));
+  }
+  if (ACTIVE_CASE_RECOMMEND_FILTER && ACTIVE_CASE_RECOMMEND_FILTER.invoiceId) {
+   p.set("recommend_invoice_id", String(ACTIVE_CASE_RECOMMEND_FILTER.invoiceId));
+  }
+  const q = (document.getElementById("caseQ").value || "").trim();
+  const linkedOnly = document.getElementById("caseLinkedOnly").checked;
+  const unmatchedOnly = document.getElementById("unmatchedOnly").checked;
+  const cs = (document.getElementById("caseStartDate").value || "").trim();
+  const ce = (document.getElementById("caseEndDate").value || "").trim();
+  if (q) p.set("q", q);
+  // Send linkedOnly whenever checkbox is checked
+  if (linkedOnly) p.set("linkedOnly", "1");
+  if (unmatchedOnly) p.set("unmatchedOnly", "1");
+  else p.set("unmatchedOnly", "0");
+  if (cs) p.set("case_date_from", cs);
+  if (ce) p.set("case_date_to", ce);
+  return p;
+ }
+
+ async function loadCases() {
+  const token = ++CASE_LOAD_TOKEN;
+  const tbody = document.querySelector("#matchCasesTable tbody");
+  tbody.innerHTML = "";
+
+  const url = `${scriptRoot}/case-matching/cases?${caseParams().toString()}`;
+  const data = await fetchJSON(url);
+  if (token !== CASE_LOAD_TOKEN) return;
+  LAST_CASE_ITEMS = data.items || [];
+
+  (data.items || []).forEach((it) => {
+   const tr = document.createElement("tr");
+   tr.dataset.matterId = String(it.matter_id);
+   tr.dataset.ourRef = String(it.our_ref || "");
+   tr.dataset.rightName = String(it.right_name || "");
+   tr.dataset.clientName = String(it.client_name || "");
+
+   // Highlight selected based on mode
+   if (MATCHING_MODE === "case_first" && SELECTED_CASE_ID === it.matter_id) {
+    tr.classList.add("selected");
+   }
+   if (it.linked) tr.classList.add("linked");
+
+   const casePayload = {
+    matter_id: it.matter_id,
+    our_ref: it.our_ref || "",
+    right_name: it.right_name || "",
+    client_name: it.client_name || "",
+   };
+   tr.addEventListener("mouseenter", () => {
+    try {
+     highlightInvoicesForCase(casePayload);
+    } catch (e) {}
+   });
+   tr.addEventListener("mouseleave", () => {
+    clearRecommendationHighlights();
+   });
+
+   const retainedAt = (it.retained_at || "").toString().substring(0, 10);
+
+   // Link button rendering depends on mode
+   let linkCell;
+   if (MATCHING_MODE === "case_first") {
+    // In case-first mode, case row click selects the case
+    linkCell = `<td class="a_c">${(parseInt(it.invoice_count || 0, 10) || 0)}items</td>`;
+   } else {
+    // In invoice-first mode, show link/unlink button
+    const hasInvoice = !!SELECTED_INVOICE_ID;
+    const btnLabel = !hasInvoice ? "Selectrequired" : it.linked ? "" : "Link";
+    const btnCls = !hasInvoice
+     ? "btn btn-sm btn-outline-secondary"
+     : it.linked
+      ? "btn btn-sm btn-outline-danger"
+      : "btn btn-sm btn-outline-primary";
+    linkCell = `<td class="a_c"><button type="button" class="${btnCls}" ${hasInvoice ? "" : "disabled"}>${btnLabel}</button></td>`;
+   }
+
+   tr.innerHTML = `
+    <td class="a_c"><a href="/case/${it.matter_id}">${
+    _escHtml(it.our_ref || it.matter_id)
+   }</a></td>
+    <td>${_escHtml(it.right_name)}<div class="js-rec-meta"></div></td>
+    <td>${_escHtml(it.client_name)}</td>
+    <td class="a_c">${_escHtml(retainedAt)}</td>
+    ${linkCell}
+   `;
+   if (it.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, {
+     recommended: true,
+     total: parseInt(it.recommend_score || 0, 10) || 0,
+     reasons: Array.isArray(it.recommend_reasons) ? it.recommend_reasons : [],
+    });
+   }
+
+   // Click behavior depends on mode
+   tr.addEventListener("click", function (ev) {
+    if (ev.target.tagName === "BUTTON" || ev.target.tagName === "A") return;
+    if (MATCHING_MODE === "case_first") {
+     SELECTED_CASE_ID = it.matter_id;
+     SELECTED_CASE_REF = it.our_ref || "";
+     setInvoiceRecommendFilterFromCase(casePayload);
+     updateSelectionLabels();
+     INV_PAGE = 1;
+     loadCases().catch((e) => console.error(e));
+     loadInvoices().catch((e) => console.error(e));
+    }
+   });
+
+   // Setup link button for invoice-first mode
+   if (MATCHING_MODE === "invoice_first") {
+    const btn = tr.querySelector("button");
+    if (btn && SELECTED_INVOICE_ID) {
+     btn.addEventListener("click", async function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!SELECTED_INVOICE_ID) return;
+
+      btn.disabled = true;
+      try {
+       if (it.linked) {
+        await fetchJSON(`${scriptRoot}/case-matching/unlink`, {
+         method: "POST",
+         body: JSON.stringify({ invoice_id: SELECTED_INVOICE_ID, matter_id: it.matter_id }),
+        });
+       } else {
+        await fetchJSON(`${scriptRoot}/case-matching/link`, {
+         method: "POST",
+         body: JSON.stringify({ invoice_id: SELECTED_INVOICE_ID, matter_id: it.matter_id }),
+        });
+       }
+       loadInvoices().catch((e) => console.error(e));
+       loadCases().catch((e) => console.error(e));
+      } catch (e) {
+       try { await window.AppAlert(e.message || String(e), { title: "Error" }); } catch (e2) {}
+      } finally {
+       btn.disabled = false;
+      }
+     });
+    }
+   }
+
+   tbody.appendChild(tr);
+  });
+  LAST_CASE_RECOMMEND_COUNT = ACTIVE_CASE_RECOMMEND_FILTER
+   ? (data.items || []).filter((it) => it && it.recommended).length
+   : 0;
+  updateRecommendFilterBoxes();
+
+	  renderCaseInvoicePagination(
+	   "matchCasesPagingTop",
+	   data.pageNum || 1,
+	   data.pageCount || 1,
+	   "Matter Pagination",
+	   changeCasePage
+	  );
+	  renderCaseInvoicePagination(
+	   "matchCasesPaging",
+	   data.pageNum || 1,
+	   data.pageCount || 1,
+	   "Matter Pagination",
+	   changeCasePage
+	  );
+	  scheduleSyncRowHeights();
+	 }
+
+ function bindInputReload(id, fn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let t = null;
+  el.addEventListener("input", function () {
+   if (t) clearTimeout(t);
+   t = setTimeout(function () {
+    fn();
+   }, 300);
+  });
+ }
+
+ function switchMode(mode) {
+  MATCHING_MODE = mode;
+  const grid = document.getElementById("matchGrid");
+
+  if (mode === "invoice_first") {
+   grid.classList.add("mode-invoice-first");
+   document.getElementById("btnModeInvoiceFirst").classList.add("active");
+   document.getElementById("btnModeCaseFirst").classList.remove("active");
+  } else {
+   grid.classList.remove("mode-invoice-first");
+   document.getElementById("btnModeCaseFirst").classList.add("active");
+   document.getElementById("btnModeInvoiceFirst").classList.remove("active");
+  }
+
+  // Reset selection state when switching modes
+  SELECTED_INVOICE_ID = null;
+  SELECTED_INVOICE_NO = null;
+  SELECTED_CASE_ID = null;
+  SELECTED_CASE_REF = null;
+  ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+  ACTIVE_CASE_RECOMMEND_FILTER = null;
+  LAST_INVOICE_RECOMMEND_COUNT = 0;
+  LAST_CASE_RECOMMEND_COUNT = 0;
+  INV_PAGE = 1;
+  CASE_PAGE = 1;
+
+  updateRecommendFilterBoxes();
+  updateSelectionLabels();
+  loadInvoices().catch((e) => console.error(e));
+  loadCases().catch((e) => console.error(e));
+ }
+
+ document.addEventListener("DOMContentLoaded", function () {
+  const urlParams = new URLSearchParams(window.location.search);
+  const preselectCase = urlParams.get("preselect_case");
+  const preselectInvoice = urlParams.get("preselect_invoice");
+  const requestedMode = urlParams.get("mode");
+  const dateFromParam = (urlParams.get("date_from") || "").trim();
+  const dateToParam = (urlParams.get("date_to") || "").trim();
+  const caseFromParam = (urlParams.get("case_date_from") || "").trim();
+  const caseToParam = (urlParams.get("case_date_to") || "").trim();
+  const hasPreselect = Boolean(preselectCase || preselectInvoice);
+
+  const today = new Date();
+  const startDateEl = document.getElementById("startDate");
+  const endDateEl = document.getElementById("endDate");
+  const caseStartEl = document.getElementById("caseStartDate");
+  const caseEndEl = document.getElementById("caseEndDate");
+
+  if (dateFromParam || dateToParam) {
+   if (dateFromParam) startDateEl.value = dateFromParam;
+   if (dateToParam) endDateEl.value = dateToParam;
+  } else if (hasPreselect) {
+   startDateEl.value = "";
+   endDateEl.value = "";
+  } else {
+   startDateEl.value = formatYmd(new Date(today.getTime() - 30 * 86400000));
+   endDateEl.value = formatYmd(today);
+  }
+
+  if (caseFromParam || caseToParam) {
+   if (caseFromParam) caseStartEl.value = caseFromParam;
+   if (caseToParam) caseEndEl.value = caseToParam;
+  } else if (hasPreselect) {
+   caseStartEl.value = "";
+   caseEndEl.value = "";
+  } else {
+   caseStartEl.value = formatYmd(new Date(today.getTime() - 365 * 86400000));
+   caseEndEl.value = formatYmd(today);
+  }
+
+  if (!(dateFromParam || dateToParam || hasPreselect)) {
+   setActiveDatePreset("invoice", 30);
+  }
+
+  // Mode toggle buttons
+  document.getElementById("btnModeCaseFirst").addEventListener("click", () => switchMode("case_first"));
+  document.getElementById("btnModeInvoiceFirst").addEventListener("click", () => switchMode("invoice_first"));
+
+  const btnAuto = document.getElementById("btnAutoMatchRecommend");
+  if (btnAuto) {
+   btnAuto.addEventListener("click", function () {
+    autoMatchRecommend().catch((e) => console.error(e));
+   });
+  }
+
+  document.getElementById("btnMatchingRefresh").addEventListener("click", function () {
+   INV_PAGE = 1;
+   CASE_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+   loadCases().catch((e) => console.error(e));
+  });
+
+  document.getElementById("btnToday").addEventListener("click", function () {
+   sliceDays(0);
+  });
+  document.getElementById("btn7").addEventListener("click", function () {
+   sliceDays(7);
+  });
+  document.getElementById("btn30").addEventListener("click", function () {
+   sliceDays(30);
+  });
+
+  document.getElementById("btnCaseToday").addEventListener("click", function () {
+   const t = new Date();
+   document.getElementById("caseStartDate").value = formatYmd(t);
+   document.getElementById("caseEndDate").value = formatYmd(t);
+   setActiveDatePreset("case", 0);
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+  document.getElementById("btnCase7").addEventListener("click", function () {
+   const end = new Date();
+   const start = new Date(end.getTime() - 7 * 86400000);
+   document.getElementById("caseStartDate").value = formatYmd(start);
+   document.getElementById("caseEndDate").value = formatYmd(end);
+   setActiveDatePreset("case", 7);
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+  document.getElementById("btnCase30").addEventListener("click", function () {
+   const end = new Date();
+   const start = new Date(end.getTime() - 30 * 86400000);
+   document.getElementById("caseStartDate").value = formatYmd(start);
+   document.getElementById("caseEndDate").value = formatYmd(end);
+   setActiveDatePreset("case", 30);
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+
+  document.getElementById("invLinkedOnly").addEventListener("change", function () {
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  document.getElementById("invHideLinked").addEventListener("change", function () {
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  document.getElementById("caseLinkedOnly").addEventListener("change", function () {
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+
+  document.getElementById("unmatchedOnly").addEventListener("change", function () {
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+
+  document.getElementById("invBilling").addEventListener("change", function () {
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  document.getElementById("invPayment").addEventListener("change", function () {
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+
+  bindInputReload("invQ", function () {
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  bindInputReload("caseQ", function () {
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+
+  document.getElementById("startDate").addEventListener("change", function () {
+   setActiveDatePreset("invoice", "");
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  document.getElementById("endDate").addEventListener("change", function () {
+   setActiveDatePreset("invoice", "");
+   INV_PAGE = 1;
+   loadInvoices().catch((e) => console.error(e));
+  });
+  document.getElementById("caseStartDate").addEventListener("change", function () {
+   setActiveDatePreset("case", "");
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+  document.getElementById("caseEndDate").addEventListener("change", function () {
+   setActiveDatePreset("case", "");
+   CASE_PAGE = 1;
+   loadCases().catch((e) => console.error(e));
+  });
+
+  updateSelectionLabels();
+
+  if (preselectInvoice) {
+   document.getElementById("invQ").value = preselectInvoice;
+   INV_PAGE = 1;
+  }
+  if (preselectCase) {
+   document.getElementById("caseQ").value = preselectCase;
+   // Disable unmatchedOnly to show the preselected case even if it has invoices
+   document.getElementById("unmatchedOnly").checked = false;
+   CASE_PAGE = 1;
+  }
+
+  let desiredMode = MATCHING_MODE;
+  if (preselectInvoice) {
+   desiredMode = "invoice_first";
+  } else if (preselectCase) {
+   desiredMode = "case_first";
+  } else if (requestedMode === "invoice_first" || requestedMode === "case_first") {
+   desiredMode = requestedMode;
+  }
+
+  let modeSwitched = false;
+  if (desiredMode !== MATCHING_MODE) {
+   switchMode(desiredMode);
+   modeSwitched = true;
+  }
+
+  if (preselectInvoice) {
+   fetchJSON(`${scriptRoot}/case-matching/invoices?q=${encodeURIComponent(preselectInvoice)}&perPage=1`)
+    .then(data => {
+     if (data.items && data.items.length> 0) {
+      const inv = data.items[0];
+      const invId = parseInt(inv.id, 10);
+      SELECTED_INVOICE_ID = Number.isNaN(invId) ? null : invId;
+      SELECTED_INVOICE_NO = inv.number || preselectInvoice;
+      if (SELECTED_INVOICE_ID) {
+       setCaseRecommendFilterFromInvoice({
+        invoiceId: SELECTED_INVOICE_ID,
+        invoiceNumber: SELECTED_INVOICE_NO,
+        clientName: inv.client_name || "",
+       });
+      }
+      updateSelectionLabels();
+     }
+     loadInvoices().catch((e) => console.error(e));
+     loadCases().catch((e) => console.error(e));
+    })
+    .catch(e => {
+     console.error("Failed to preselect invoice:", e);
+     loadInvoices().catch((e) => console.error(e));
+     loadCases().catch((e) => console.error(e));
+    });
+  } else if (preselectCase) {
+   // Fetch the case details and pre-select it
+   fetchJSON(`${scriptRoot}/case-matching/cases?q=${encodeURIComponent(preselectCase)}&perPage=1`)
+    .then(data => {
+     if (data.items && data.items.length> 0) {
+      const c = data.items[0];
+      SELECTED_CASE_ID = c.matter_id;
+      SELECTED_CASE_REF = c.our_ref || preselectCase;
+      setInvoiceRecommendFilterFromCase({
+       matter_id: c.matter_id,
+       our_ref: c.our_ref || preselectCase,
+       right_name: c.right_name || "",
+       client_name: c.client_name || "",
+      });
+      updateSelectionLabels();
+     }
+     loadCases().catch((e) => console.error(e));
+     loadInvoices().catch((e) => console.error(e));
+    })
+    .catch(e => {
+     console.error("Failed to preselect case:", e);
+     loadCases().catch((e) => console.error(e));
+     loadInvoices().catch((e) => console.error(e));
+    });
+  } else if (!modeSwitched) {
+   loadCases().catch((e) => console.error(e));
+   loadInvoices().catch((e) => console.error(e));
+  }
+ });
+
+ window.addEventListener("resize", () => {
+  scheduleSyncRowHeights();
+ });
+</script>
+{% endblock %}

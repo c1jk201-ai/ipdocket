@@ -1,0 +1,809 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Staff/User Management{% endblock %}
+
+{% block admin_content %}
+<div class="row g-4">
+    <!-- Left: Staff List & Provisioning -->
+    <div class="col-12">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="bi bi-people me-1"></i> Staff directory and accounts</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-secondary small mb-3">
+                    Manage staff directory records and linked login accounts. Account access is controlled by
+                    <strong>Roles & Permissions</strong>; the role selectors below define which roles appear in each staff category.
+                </div>
+
+                <!-- Role Config -->
+                <div class="card card-body bg-light border-0 mb-3 p-3">
+                    <h6 class="fw-bold small mb-2">Staff Category Role Mapping</h6>
+                    <div class="row g-3">
+                        <div class="col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-primary">Administrator Role</label>
+                            <div id="cfg-staff-mgmt-roles-container" class="d-flex flex-wrap gap-1 p-2 bg-white border rounded">
+                                <!-- JS will render checkboxes here -->
+                            </div>
+                            <input type="hidden" id="cfg-staff-mgmt-roles" value="">
+                        </div>
+                        <div class="col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-success">Attorney Role (Professional)</label>
+                            <div id="cfg-staff-prof-roles-container" class="d-flex flex-wrap gap-1 p-2 bg-white border rounded">
+                                <!-- JS will render checkboxes here -->
+                            </div>
+                            <input type="hidden" id="cfg-staff-prof-roles" value="">
+                        </div>
+                        <div class="col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-warning">Process Role (Processing)</label>
+                            <div id="cfg-staff-processing-roles-container" class="d-flex flex-wrap gap-1 p-2 bg-white border rounded">
+                                <!-- JS will render checkboxes here -->
+                            </div>
+                            <input type="hidden" id="cfg-staff-processing-roles" value="">
+                        </div>
+                        <div class="col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-info">Invoice Role (Invoice)</label>
+                            <div id="cfg-staff-invoice-roles-container" class="d-flex flex-wrap gap-1 p-2 bg-white border rounded">
+                                <!-- JS will render checkboxes here -->
+                            </div>
+                            <input type="hidden" id="cfg-staff-invoice-roles" value="">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-body bg-light border-0 mb-4 p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold small mb-0">Department List Settings</h6>
+                        <button class="btn btn-sm btn-dark px-4" onclick="saveStaffRoleConfigs()">Save Changes</button>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <label class="form-label small text-muted">Department JSON (ORG_UNITS_JSON)</label>
+                            <textarea id="cfg-org-units-json" class="form-control form-control-sm font-monospace" rows="4" placeholder='{&#10;  "work": ["1", "2"],&#10;  "mgmt": ["Domestic", "Foreign"]&#10;}' style="font-size: 0.85rem;"></textarea>
+                            <div class="form-text small" id="json-validation-msg">Use JSON to define selectable department groups.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="loader" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+
+                <div id="staff-table-container"></div>
+
+                <div class="small text-muted mb-3 mt-2">
+                    Permissions/Login active <code>users</code> accounts. Department(Dept) comes from the linked user account.
+                </div>
+
+                <!-- Add Staff -->
+                <div class="card card-body border-0 bg-light">
+                    <h6 class="mt-0 small fw-bold">Add contact/staff</h6>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <input id="ns-code" class="form-control form-control-sm" placeholder="Staff code (example: jyjung)">
+                        </div>
+                        <div class="col-md-3">
+                            <input id="ns-name" class="form-control form-control-sm" placeholder="Display name">
+                        </div>
+                        <div class="col-md-3">
+                            <input id="ns-email" class="form-control form-control-sm" placeholder="Email (optional)">
+                        </div>
+                        <div class="col-md-3" id="ns-dept-container">
+                            <input id="ns-dept" class="form-control form-control-sm" placeholder="Department (optional)">
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center mt-2 gap-3">
+                        <div class="form-check">
+                            <input id="ns-active" class="form-check-input" type="checkbox" checked>
+                            <label class="form-check-label small" for="ns-active">active</label>
+                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="addStaffWithOptionalUser(false)">Add</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="addStaffWithOptionalUser(true)">Add + Create Account</button>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        Login account staff code, such as <code>jyjung</code>, is used for automatic contact linking.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Wrapper -->
+<div id="modal-wrapper"></div>
+
+<script>
+    // Initial Load
+    document.addEventListener("DOMContentLoaded", () => {
+        loadStaffList();
+    });
+
+    const availableRoles = {{ available_roles|tojson|safe }};
+    const esc = (value) =>
+        String(value == null ? "" : value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+
+    const renderRoleCheckboxes = (staffId, userRoles) => {
+        let labelText = userRoles && userRoles.length ? userRoles.join(', ') : 'Select permissions';
+        let html = `
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="min-width: 140px;">
+              <span class="text-truncate me-2" id="roleLabel-${staffId}" style="max-width: 140px; font-size: 0.8rem;">
+                 ${esc(labelText)}
+              </span>
+            </button>
+            <ul class="dropdown-menu p-2 shadow-sm" style="min-width: 200px; max-height: 250px; overflow-y: auto;">
+        `;
+        availableRoles.forEach(r => {
+            const checked = (userRoles || []).includes(r) ? 'checked' : '';
+            html += `
+              <li class="px-2 py-1 rounded" style="transition: background-color 0.2s; cursor: pointer;" onmouseover="this.classList.add('bg-light')" onmouseout="this.classList.remove('bg-light')">
+                <div class="form-check mb-0 d-flex align-items-center w-100">
+                  <input class="form-check-input role-cb-${staffId} me-2" type="checkbox" value="${esc(r)}" id="cb-${staffId}-${esc(r)}" ${checked} onchange="updateRoleLabel('${staffId}')">
+                  <label class="form-check-label small user-select-none w-100" for="cb-${staffId}-${esc(r)}" style="cursor: pointer;">${esc(r)}</label>
+                </div>
+              </li>
+            `;
+        });
+        html += `
+            </ul>
+          </div>
+        `;
+        return html;
+    };
+
+    window.updateRoleLabel = (staffId) => {
+        const cbs = document.querySelectorAll(`.role-cb-${staffId}:checked`);
+        const vals = Array.from(cbs).map(cb => cb.value);
+        const labelEl = document.getElementById(`roleLabel-${staffId}`);
+        if(labelEl) {
+            labelEl.textContent = vals.length ? vals.join(', ') : 'Select permissions';
+        }
+    };
+
+    const getSelectedRoles = (staffId) => {
+        const cbs = document.querySelectorAll(`.role-cb-${staffId}:checked`);
+        return Array.from(cbs).map(cb => cb.value);
+    };
+
+    let staffById = {};
+    let linkedUserByPartyId = {};
+    let deptGroups = null;
+    const focusPartyId = "{{ request.args.get('focus_party_id', '') }}";
+    const autoReassign = "{{ request.args.get('auto_reassign', '0') }}" === "1";
+    let autoReassignConsumed = false;
+
+    const parseOrgUnitsJson = (raw) => {
+        if (!raw) return null;
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+                return { teams: parsed };
+            }
+            if (parsed && typeof parsed === "object") {
+                return parsed;
+            }
+        } catch (e) {}
+        return null;
+    };
+
+    const renderConfigCheckboxes = (group, selectedRoles) => {
+        let html = '';
+        availableRoles.forEach(r => {
+            const checked = (selectedRoles || []).includes(r) ? 'checked' : '';
+            html += `
+              <div class="form-check form-check-inline mx-0 mb-1" style="min-width: 65px;">
+                <input class="form-check-input config-role-cb-${group}" type="checkbox" value="${esc(r)}" id="cfg-cb-${group}-${esc(r)}" ${checked}>
+                <label class="form-check-label small" for="cfg-cb-${group}-${esc(r)}" style="font-size: 0.75rem;">${esc(r)}</label>
+              </div>
+            `;
+        });
+        return html;
+    };
+
+    const getConfigSelectedRoles = (group) => {
+        const cbs = document.querySelectorAll(`.config-role-cb-${group}:checked`);
+        return Array.from(cbs).map(cb => cb.value).join(',');
+    };
+
+    const parseDeptCsv = (raw) => {
+        const items = String(raw || "")
+            .split(/[,\n]+/)
+            .map((v) => v.trim())
+            .filter((v) => v);
+        return items.length ? { teams: items } : null;
+    };
+
+    const buildDeptOptions = (groups, selected) => {
+        if (!groups) return "";
+        const selectedValue = String(selected || "").trim();
+        let html = '<option value=""></option>';
+        Object.entries(groups).forEach(([groupName, units]) => {
+            if (!Array.isArray(units)) return;
+            const label = esc(groupName || "teams");
+            html += `<optgroup label="${label}">`;
+            units.forEach((unit) => {
+                const value = String(unit || "").trim();
+                if (!value) return;
+                const isSelected = value === selectedValue ? "selected" : "";
+                html += `<option value="${esc(value)}" ${isSelected}>${esc(value)}</option>`;
+            });
+            html += "</optgroup>";
+        });
+        return html;
+    };
+
+    const renderDeptField = (fieldId, value) => {
+        if (!deptGroups) {
+            return `<input id="${fieldId}" class="form-control form-control-sm" value="${esc(value)}">`;
+        }
+        const options = buildDeptOptions(deptGroups, value);
+        return `<select id="${fieldId}" class="form-select form-select-sm">${options}</select>`;
+    };
+
+    const setNewStaffDeptField = () => {
+        const container = document.getElementById("ns-dept-container");
+        if (!container) return;
+        container.innerHTML = renderDeptField("ns-dept", "");
+    };
+
+    async function loadStaffList() {
+        document.getElementById('loader').classList.remove('d-none');
+        document.getElementById('staff-table-container').innerHTML = '';
+
+        try {
+            const [rStaff, rUsers, rConfig] = await Promise.all([
+              fetch("{{ url_for('admin.api_staff') }}"),
+              fetch("{{ url_for('admin.api_users') }}"),
+              fetch("{{ url_for('admin.api_config') }}"),
+            ]);
+
+            const rows = await rStaff.json();
+            let users = [];
+            try { users = await rUsers.json(); } catch(e) {}
+            let configs = {};
+            try { configs = await rConfig.json(); } catch(e) {}
+
+            // Populate Configs
+            const get_config = (k, d = "") => (configs && configs[k] != null ? configs[k] : d);
+            const mgmtRoles = get_config("STAFF_MANAGEMENT_ROLES", "admin,mgmt_director,mgmt_staff");
+            const profRoles = get_config("STAFF_PROFESSIONAL_ROLES", "lead_attorney,partner_attorney");
+            const processingRoles = get_config("STAFF_PROCESSING_ROLES", "patent_staff");
+            const invRoles = get_config("STAFF_INVOICE_ROLES", "admin,mgmt_director,mgmt_staff");
+
+            document.getElementById("cfg-staff-mgmt-roles").value = mgmtRoles;
+            document.getElementById("cfg-staff-prof-roles").value = profRoles;
+            document.getElementById("cfg-staff-processing-roles").value = processingRoles;
+            document.getElementById("cfg-staff-invoice-roles").value = invRoles;
+
+            document.getElementById("cfg-staff-mgmt-roles-container").innerHTML = renderConfigCheckboxes('mgmt', mgmtRoles.split(','));
+            document.getElementById("cfg-staff-prof-roles-container").innerHTML = renderConfigCheckboxes('prof', profRoles.split(','));
+            document.getElementById("cfg-staff-processing-roles-container").innerHTML = renderConfigCheckboxes('processing', processingRoles.split(','));
+            document.getElementById("cfg-staff-invoice-roles-container").innerHTML = renderConfigCheckboxes('invoice', invRoles.split(','));
+
+            const orgUnitsRaw = get_config("ORG_UNITS_JSON", "");
+            const orgUnitsEl = document.getElementById("cfg-org-units-json");
+            if (orgUnitsEl) {
+                try {
+                    // Try to pretty-print the JSON if it's valid
+                    const parsedJson = JSON.parse(orgUnitsRaw);
+                    orgUnitsEl.value = JSON.stringify(parsedJson, null, 2);
+                } catch(e) {
+                    orgUnitsEl.value = orgUnitsRaw || "";
+                }
+
+                // Add JSON validation listener
+                orgUnitsEl.addEventListener('input', function() {
+                    const msgEl = document.getElementById('json-validation-msg');
+                    try {
+                        if (this.value.trim() !== '') {
+                           JSON.parse(this.value);
+                        }
+                        msgEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle"></i> JSON is valid.</span>';
+                        this.classList.remove('is-invalid');
+                    } catch (e) {
+                        msgEl.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-triangle"></i> Invalid JSON. The department selector cannot be built.</span>';
+                        this.classList.add('is-invalid');
+                    }
+                });
+            }
+            deptGroups = parseOrgUnitsJson(orgUnitsRaw) || parseDeptCsv(get_config("CASE_DEPARTMENT_OPTIONS", ""));
+            setNewStaffDeptField();
+
+            // Process Users
+            const byPartyId = {};
+            const byUsername = {};
+            users.forEach((u) => {
+              if (u && u.staff_party_id) byPartyId[String(u.staff_party_id)] = u;
+              if (u && u.username) byUsername[String(u.username).toLowerCase()] = u;
+            });
+            linkedUserByPartyId = byPartyId;
+            staffById = {};
+            (rows || []).forEach((s) => {
+              staffById[String(s.party_id)] = s;
+            });
+            const staffPartyIds = new Set((rows || []).map((s) => String(s.party_id || "")));
+            const staffCodes = new Set(
+              (rows || [])
+                .map((s) => String(s.staff_code || "").trim().toLowerCase())
+                .filter((v) => v)
+            );
+            const unlinkedUsers = (users || []).filter((u) => {
+              if (!u || !u.is_active) return false;
+              if (u.staff_party_id && staffPartyIds.has(String(u.staff_party_id))) return false;
+              const uname = String(u.username || "").trim().toLowerCase();
+              if (uname && staffCodes.has(uname)) return false;
+              return true;
+            });
+
+            let html = `
+              <div class="table-responsive">
+              <table class="table table-sm align-middle table-hover">
+                <thead class="table-light">
+                  <tr>
+                    <th>Staff code</th>
+                    <th style="width:180px;">DisplayName</th>
+                    <th style="width:200px;">Email</th>
+                    <th style="width:140px;">Department</th>
+                    <th style="width:60px;" class="text-center">active</th>
+                    <th style="width:180px;">Roles</th>
+                    <th style="width:60px;" class="text-center">Login</th>
+                    <th style="width:160px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+            `;
+
+            (rows || []).forEach((s) => {
+              const staffCode = String(s.staff_code || "").trim();
+              const u = byPartyId[String(s.party_id)] || (staffCode ? byUsername[staffCode.toLowerCase()] : null);
+              const role = u && u.role ? u.role : "staff";
+              const userActive = u ? !!u.is_active : false;
+              const canProvision = !!staffCode && !u;
+
+              html += `
+                <tr data-party-id="${s.party_id}">
+                  <td class="text-muted small align-middle">${esc(s.staff_code)}</td>
+                  <td><input id="st-name-${s.party_id}" class="form-control form-control-sm" value="${esc(s.name_display)}"></td>
+                  <td><input id="st-email-${s.party_id}" class="form-control form-control-sm" value="${esc(s.email)}"></td>
+                  <td>${renderDeptField("st-dept-" + s.party_id, s.dept)}</td>
+                  <td class="text-center align-middle">
+                    <input id="st-active-${s.party_id}" type="checkbox" class="form-check-input" ${s.active ? "checked" : ""}>
+                  </td>
+                  <td>
+                    ${u ? renderRoleCheckboxes(s.party_id, u.roles || []) : '<div class="small text-muted mb-1 border p-1 rounded bg-light">No linked account</div>'}
+                    ${u ? `<div class="x-small text-muted mt-1 px-1">Account: ${esc(u.display_name || u.username || "")}</div>` : ''}
+                  </td>
+                  <td class="text-center align-middle">
+                    <input id="st-uactive-${s.party_id}" type="checkbox" class="form-check-input" ${userActive ? "checked" : ""} ${u ? "" : "disabled"}>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary" onclick="saveUnifiedStaff('${s.party_id}', ${u ? u.id : "null"}, '${esc(staffCode)}')"><i class="bi bi-save"></i></button>
+                        ${canProvision ? `<button class="btn btn-secondary" onclick="provisionUserForStaff('${s.party_id}', '${esc(staffCode)}')"><i class="bi bi-person-plus"></i></button>` : ""}
+                        <button class="btn btn-outline-info btn-work-summary" data-party-id="${esc(s.party_id)}" data-staff-name="${esc(s.name_display)}"><i class="bi bi-card-checklist"></i></button>
+                        <button class="btn btn-outline-warning btn-reassign" data-party-id="${esc(s.party_id)}" data-staff-name="${esc(s.name_display)}"><i class="bi bi-arrow-left-right"></i></button>
+                        <button class="btn btn-outline-danger btn-delete-staff" data-party-id="${esc(s.party_id)}" data-staff-name="${esc(s.name_display)}"><i class="bi bi-trash"></i></button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            });
+            html += '</tbody></table></div>';
+
+            const staffOptionsHtml = [
+              '<option value="">Select staff</option>',
+              ...(rows || []).map((s) => {
+                const partyId = String(s.party_id || "");
+                const linked = linkedUserByPartyId[partyId];
+                const linkedTag = linked ? ` - linked: ${linked.username || linked.email || linked.id}` : "";
+                const label = `${s.name_display || ""} (${s.staff_code || "N/A"})${linkedTag}`;
+                return `<option value="${esc(partyId)}">${esc(label)}</option>`;
+              }),
+            ].join("");
+
+            let unlinkedHtml = `
+              <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white py-2">
+                  <h6 class="mb-0">Login accounts without linked staff</h6>
+                </div>
+                <div class="card-body p-0">
+            `;
+            if (!unlinkedUsers.length) {
+              unlinkedHtml += '<div class="p-3 small text-muted">No unlinked login accounts.</div>';
+            } else {
+              unlinkedHtml += `
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle table-hover mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th style="width:160px;">UserID</th>
+                        <th style="width:180px;">DisplayName</th>
+                        <th>Email</th>
+                        <th style="width:180px;">Roles</th>
+                        <th style="width:70px;" class="text-center">active</th>
+                        <th style="width:220px;">Link staff</th>
+                        <th style="width:90px;">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+              `;
+              unlinkedUsers.forEach((u) => {
+                const role = (u && u.role) || "user";
+                const isActive = !!(u && u.is_active);
+                unlinkedHtml += `
+                  <tr>
+                    <td class="text-muted small">${esc(u.username || "")}</td>
+                    <td>${esc(u.display_name || "")}</td>
+                    <td>${esc(u.email || "")}</td>
+                    <td>
+                      ${renderRoleCheckboxes('ul-' + u.id, u.roles || [])}
+                    </td>
+                    <td class="text-center">
+                      <input id="ul-active-${u.id}" type="checkbox" class="form-check-input" ${
+                        isActive ? "checked" : ""
+                      }>
+                    </td>
+                    <td>
+                      <select id="ul-staff-${u.id}" class="form-select form-select-sm">
+                        ${staffOptionsHtml}
+                      </select>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-primary" onclick="saveUnlinkedUser(${u.id})">Save</button>
+                    </td>
+                  </tr>
+                `;
+              });
+              unlinkedHtml += `
+                    </tbody>
+                  </table>
+                </div>
+              `;
+            }
+            unlinkedHtml += `
+                </div>
+              </div>
+            `;
+            html += unlinkedHtml;
+            document.getElementById('staff-table-container').innerHTML = html;
+
+            if (focusPartyId) {
+              const selector = `tr[data-party-id="${String(focusPartyId).replaceAll('"', '\\"')}"]`;
+              const row = document.querySelector(selector);
+              if (row) {
+                row.classList.add("table-warning");
+                row.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (autoReassign && !autoReassignConsumed) {
+                  autoReassignConsumed = true;
+                  const staff = staffById[String(focusPartyId)];
+                  if (staff) {
+                    setTimeout(() => {
+                      window.showReassignModal(
+                        String(focusPartyId),
+                        String(staff.name_display || ""),
+                      );
+                    }, 200);
+                  }
+                }
+              }
+            }
+
+        } catch(e) {
+            console.error(e);
+            document.getElementById('staff-table-container').innerHTML = `<div class="alert alert-danger">Failed to load staff data: ${e.message}</div>`;
+        } finally {
+            document.getElementById('loader').classList.add('d-none');
+        }
+    }
+
+    // Include logic functions from index.html (adapted)
+    // Save Configs
+    window.saveStaffRoleConfigs = async () => {
+        // Validate JSON first
+        const jsonEl = document.getElementById("cfg-org-units-json");
+        const jsonVal = jsonEl.value.trim();
+        if (jsonVal) {
+            try {
+                JSON.parse(jsonVal);
+            } catch(e) {
+                try { await window.AppAlert("Invalid JSON. Check the department list configuration.", { title: "Error" }); } catch (e2) {}
+                jsonEl.focus();
+                return;
+            }
+        }
+
+        const payload = {
+          STAFF_MANAGEMENT_ROLES: getConfigSelectedRoles('mgmt'),
+          STAFF_PROFESSIONAL_ROLES: getConfigSelectedRoles('prof'),
+          STAFF_PROCESSING_ROLES: getConfigSelectedRoles('processing'),
+          STAFF_INVOICE_ROLES: getConfigSelectedRoles('invoice'),
+          ORG_UNITS_JSON: jsonVal,
+        };
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch("{{ url_for('admin.api_config') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+          body: JSON.stringify(payload),
+        });
+
+        if (r.ok) {
+            try { await window.AppAlert('Role and department settings saved.', { title: "Done" }); } catch (e2) {}
+            // Update hidden inputs and re-render checkboxes just in case
+            document.getElementById("cfg-staff-mgmt-roles").value = payload.STAFF_MANAGEMENT_ROLES;
+            document.getElementById("cfg-staff-prof-roles").value = payload.STAFF_PROFESSIONAL_ROLES;
+            document.getElementById("cfg-staff-processing-roles").value = payload.STAFF_PROCESSING_ROLES;
+            document.getElementById("cfg-staff-invoice-roles").value = payload.STAFF_INVOICE_ROLES;
+        } else {
+            try { await window.AppAlert('Save failed.', { title: "Error" }); } catch (e2) {}
+        }
+    };
+
+    window.updateStaff = async (partyId) => {
+        const payload = {
+          name_display: document.getElementById(`st-name-${partyId}`).value,
+          email: document.getElementById(`st-email-${partyId}`).value,
+          dept: document.getElementById(`st-dept-${partyId}`).value,
+          active: document.getElementById(`st-active-${partyId}`).checked,
+        };
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch(`{{ url_for('admin.api_staff') }}/${partyId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+          body: JSON.stringify(payload),
+        });
+        return r.ok;
+    };
+
+    window.updateUser = async (uid, pl) => {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch("{{ url_for('admin.api_users') }}", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+          body: JSON.stringify({ id: uid, ...pl }),
+        });
+        return r.ok;
+    };
+
+    window.saveUnlinkedUser = async (uid) => {
+        const payload = {
+          roles: getSelectedRoles('ul-' + uid),
+          is_active: document.getElementById(`ul-active-${uid}`).checked,
+        };
+        const staffPartyId = String(document.getElementById(`ul-staff-${uid}`)?.value || "").trim();
+
+        if (staffPartyId) {
+          const linked = linkedUserByPartyId[String(staffPartyId)];
+          if (linked && linked.id !== uid) {
+            const ok = await window.AppConfirm(`Selected staff already has linked account ${linked.username || linked.email || linked.id}. Clear the existing link and continue?`);
+            if (!ok) return;
+            await updateUser(linked.id, { staff_party_id: null });
+          }
+          const staff = staffById[String(staffPartyId)];
+          payload.staff_party_id = staffPartyId;
+          if (staff && staff.name_display) payload.display_name = staff.name_display;
+          if (staff && staff.dept) payload.department = staff.dept;
+        }
+
+        const ok = await updateUser(uid, payload);
+        if (ok) {
+          try { await window.AppAlert("Saved.", { title: "Done" }); } catch (e2) {}
+          loadStaffList();
+        } else {
+          try { await window.AppAlert("Save failed", { title: "Error" }); } catch (e2) {}
+        }
+    };
+
+    window.saveUnifiedStaff = async (partyId, userId, staffCode) => {
+        await updateStaff(partyId);
+        if (userId) {
+          await updateUser(userId, {
+            roles: getSelectedRoles(partyId),
+            is_active: document.getElementById(`st-uactive-${partyId}`).checked,
+            staff_party_id: partyId,
+            display_name: document.getElementById(`st-name-${partyId}`).value,
+            department: document.getElementById(`st-dept-${partyId}`).value,
+          });
+        }
+        try { await window.AppAlert("Saved.", { title: "Done" }); } catch (e2) {}
+    };
+
+    window.provisionUserForStaff = async (partyId, staffCode) => {
+        if (!staffCode) return;
+        const payload = {
+          staff_code: staffCode,
+          staff_party_id: partyId,
+          email: document.getElementById(`st-email-${partyId}`).value,
+          display_name: document.getElementById(`st-name-${partyId}`).value,
+          roles: getSelectedRoles(partyId),
+        };
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch("{{ url_for('admin.api_user_provision') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+          body: JSON.stringify(payload),
+        });
+        if(r.ok) {
+            loadStaffList();
+        } else {
+            try { await window.AppAlert('Account creation failed.', { title: "Error" }); } catch (e2) {}
+        }
+    };
+
+    window.addStaffWithOptionalUser = async (createUser) => {
+        const payload = {
+          staff_code: document.getElementById("ns-code").value.trim(),
+          name_display: document.getElementById("ns-name").value.trim(),
+          email: document.getElementById("ns-email").value.trim(),
+          dept: document.getElementById("ns-dept").value.trim(),
+          active: document.getElementById("ns-active").checked,
+        };
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        // Add Staff
+        const r = await fetch("{{ url_for('admin.api_staff') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+          body: JSON.stringify(payload),
+        });
+        const res = await r.json();
+
+        if (!res.success) {
+             try { await window.AppAlert(res.error || "Add Failed", { title: "Error" }); } catch (e2) {}
+             return;
+        }
+
+        // Provision User
+        if (createUser) {
+          await fetch("{{ url_for('admin.api_user_provision') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+            body: JSON.stringify({
+              staff_code: payload.staff_code,
+              staff_party_id: res.party_id,
+              email: payload.email,
+              display_name: payload.name_display,
+              role: "staff",
+            }),
+          });
+        }
+        loadStaffList();
+        // Clear form
+        document.getElementById("ns-code").value = "";
+        document.getElementById("ns-name").value = "";
+        document.getElementById("ns-email").value = "";
+        document.getElementById("ns-dept").value = "";
+    };
+
+    document.getElementById('staff-table-container').addEventListener('click', (event) => {
+        const workBtn = event.target.closest('.btn-work-summary');
+        if (workBtn) return window.showWorkSummary(workBtn.dataset.partyId, workBtn.dataset.staffName || '');
+        const reassignBtn = event.target.closest('.btn-reassign');
+        if (reassignBtn) return window.showReassignModal(reassignBtn.dataset.partyId, reassignBtn.dataset.staffName || '');
+        const deleteBtn = event.target.closest('.btn-delete-staff');
+        if (deleteBtn) return window.deleteStaff(deleteBtn.dataset.partyId, deleteBtn.dataset.staffName || '');
+    });
+
+    // Work Summary & Reassign (Simplified Modal Logic)
+    window.showWorkSummary = async (partyId, staffName) => {
+        const r = await fetch(`{{ url_for('admin.api_staff') }}/${partyId}/work-summary`);
+        const data = await r.json();
+        if(!data.success) { try { await window.AppAlert(data.error, { title: "Error" }); } catch (e2) {} return; }
+
+        const modalHtml = `
+          <div class="modal fade" id="workSummaryModal" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title"></h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between"><span>Pending Dockets</span><span class="badge bg-primary">${data.pending_dockets}</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Active Worklogs</span><span class="badge bg-info">${data.active_worklogs}</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Assigned Matters</span><span class="badge bg-secondary">${data.assigned_cases}</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span>Communications</span><span class="badge bg-warning text-dark">${data.communications}</span></li>
+                    <li class="list-group-item d-flex justify-content-between fw-bold"><span>Total</span><span class="badge bg-dark">${data.total}</span></li>
+                  </ul>
+                  ${data.can_delete
+                    ? '<div class="alert alert-success mt-3 mb-0">This staff record can be deleted.</div>'
+                    : '<div class="alert alert-warning mt-3 mb-0">Cannot delete while related tasks remain.</div>'
+                  }
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('modal-wrapper').innerHTML = modalHtml;
+        const titleEl = document.querySelector('#workSummaryModal .modal-title');
+        if (titleEl) titleEl.textContent = `${staffName} Work Summary`;
+        new bootstrap.Modal(document.getElementById('workSummaryModal')).show();
+    };
+
+    window.showReassignModal = async (partyId, staffName) => {
+        const r = await fetch("{{ url_for('admin.api_staff') }}");
+        const staffList = await r.json();
+        const otherStaff = staffList.filter(s => s.party_id !== partyId && s.active);
+
+        const modalHtml = `
+          <div class="modal fade" id="reassignModal" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Reassign Tasks</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <p id="reassign-desc"></p>
+                  <select id="reassign-target" class="form-select"></select>
+                  <div class="alert alert-warning mt-3">This action moves assigned work to the selected staff member.</div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="button" id="btn-execute-reassign" class="btn btn-warning">Reassign</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('modal-wrapper').innerHTML = modalHtml;
+        const descEl = document.getElementById('reassign-desc');
+        if (descEl) descEl.textContent = `Move ${staffName}'s assigned tasks to another staff member.`;
+        const selectEl = document.getElementById('reassign-target');
+        if (selectEl) {
+          otherStaff.forEach((s) => {
+            const option = document.createElement('option');
+            option.value = String(s.party_id || '');
+            option.textContent = `${String(s.name_display || '')} (${String(s.staff_code || 'N/A')})`;
+            selectEl.appendChild(option);
+          });
+        }
+        const executeBtn = document.getElementById('btn-execute-reassign');
+        if (executeBtn) {
+          executeBtn.addEventListener('click', () => window.executeReassign(partyId));
+        }
+        new bootstrap.Modal(document.getElementById('reassignModal')).show();
+    };
+
+    window.executeReassign = async (sourcePartyId) => {
+        const targetPartyId = document.getElementById('reassign-target').value;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch(`{{ url_for('admin.api_staff') }}/${sourcePartyId}/reassign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify({ target_party_id: targetPartyId })
+        });
+        const data = await r.json();
+        if(data.success) {
+            try { await window.AppAlert('Reassignment completed.', { title: "Done" }); } catch (e2) {}
+            bootstrap.Modal.getInstance(document.getElementById('reassignModal')).hide();
+        } else {
+            try { await window.AppAlert('Failed: ' + data.error, { title: "Error" }); } catch (e2) {}
+        }
+    };
+
+    window.deleteStaff = async (partyId, staffName) => {
+        if(!await window.AppConfirm(`Delete staff record for ${staffName}?`)) return;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const r = await fetch(`{{ url_for('admin.api_staff') }}/${partyId}`, {
+          method: 'DELETE',
+          headers: { 'X-CSRFToken': csrfToken }
+        });
+        const data = await r.json();
+        if(data.success) {
+            try { await window.AppAlert('Deleted.', { title: "Done" }); } catch (e2) {}
+            loadStaffList();
+        } else {
+            try { await window.AppAlert('Delete failed: ' + data.error, { title: "Error" }); } catch (e2) {}
+        }
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,124 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h2 class="mb-0">Task List</h2>
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <label class="small text-muted">Rows</label>
+    <select class="form-select form-select-sm" name="per_page" onchange="this.form.submit()">
+      {% for n in (per_page_options or [20,50,100,200,500]) %}
+      <option value="{{ n }}" {% if (per_page or 50) == n %}selected{% endif %}>{{ n }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">USPTO Document Analysis</div>
+  <div class="card-body">
+    <form id="usptoForm" onsubmit="return false;">
+      <div class="row g-2">
+        <div class="col-md-5">
+          <input
+            class="form-control"
+            type="file"
+            id="usptoFile"
+            name="file"
+            accept=".pdf,.txt,.text"
+          />
+        </div>
+        <div class="col-md-5">
+          <textarea
+            class="form-control"
+            id="usptoText"
+            rows="2"
+            placeholder="Paste USPTO Office Action, Notice of Allowance, IDS, or filing receipt text"
+          ></textarea>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-outline-primary" onclick="analyzeUspto()">
+            Analyze
+          </button>
+        </div>
+        <div class="col-12 small" id="usptoMsg"></div>
+      </div>
+    </form>
+  </div>
+  <script>
+    async function analyzeUspto() {
+      const fileEl = document.getElementById("usptoFile");
+      const textEl = document.getElementById("usptoText");
+      const msgEl = document.getElementById("usptoMsg");
+      const pastedText = (textEl.value || "").trim();
+      if ((!fileEl.files || !fileEl.files[0]) && !pastedText) {
+        msgEl.innerText = "Select a USPTO PDF/TXT file or paste text.";
+        return;
+      }
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const fd = new FormData();
+      if (fileEl.files && fileEl.files[0]) fd.append("file", fileEl.files[0]);
+      if (pastedText) fd.append("text", pastedText);
+      if (csrfToken) fd.append("csrf_token", csrfToken);
+      msgEl.innerText = "Analyzing...";
+      const res = await fetch("/api/parse/uspto", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        const warnings = (data.warnings || []).join(" ");
+        const dueDate = data.due_date ? ` Due: ${data.due_date}.` : "";
+        msgEl.innerText = `${data.doc_name || "USPTO document"} - ${data.task_type || "US document review"}.${dueDate} Confidence: ${data.confidence || "LOW"}.${warnings ? " " + warnings : ""}`;
+      } else {
+        const err = await res.json().catch(() => ({}));
+        msgEl.innerText = `Error: ${err.error || res.statusText}`;
+      }
+    }
+  </script>
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Matter</th>
+      <th>Due date</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for flow in workflows %}
+    <tr class="{% if flow.is_urgent %}table-danger{% endif %}">
+      <td>
+        <a class="text-decoration-none" href="{{ url_for('workflow.detail', workflow_id=flow.id) }}">
+          {{ flow.name|workflow_title }}
+        </a>
+      </td>
+      <td>
+        {% if flow.matter %}
+        <a class="text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=flow.matter.matter_id, workflow_id='wf_' ~ flow.id, _anchor='sec-workflow') }}">{{ flow.matter.our_ref }}</a>
+        {% else %}
+        -
+        {% endif %}
+      </td>
+      <td>
+        {% if flow.due_date %}
+          <a class="text-decoration-none" href="{{ url_for('deadlines.calendar_month', date=flow.due_date) }}">{{ flow.due_date }}</a>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>
+        <a class="text-decoration-none" href="{{ url_for('workflow.detail', workflow_id=flow.id) }}">{{ flow.status }}</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="4">No in-progress tasks.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% set workflow_pagination_args = request.args.to_dict(flat=True) %}
+{% set _ = workflow_pagination_args.update({'per_page': per_page or 50}) %}
+{{ ui.pagination(request.endpoint, page or 1, pages or 1, workflow_pagination_args, 'Task Pagination') }}
+{% endblock %}

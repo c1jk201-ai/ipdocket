@@ -1,0 +1,64 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-semibold m-0">EML Preview</h3>
+      <div class="text-muted small">{{ original_name }}</div>
+    </div>
+    <div>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=file_asset_id) }}">Download</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2 small">
+        <div class="col-md-6"><span class="text-muted">Title</span> <span class="ms-1 fw-semibold">{{ subject }}</span></div>
+        <div class="col-md-6"><span class="text-muted"> </span> <span class="ms-1">{{ from_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted"> </span> <span class="ms-1">{{ to_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted"></span> <span class="ms-1">{{ cc_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted"></span> <span class="ms-1">{{ date_str }}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header bg-light py-2">
+      <span class="fw-bold small text-secondary"></span>
+    </div>
+    <div class="card-body">
+      {% if body_html %}
+        <iframe
+          title="EML HTML Preview"
+          sandbox=""
+          style="width:100%; height:70vh; border:1px solid #e2e6ef; border-radius:8px; background:#fff;"
+          srcdoc="{{ body_html|e }}">
+        </iframe>
+      {% elif body_text %}
+        <pre class="small mb-0" style="white-space:pre-wrap;">{{ body_text }}</pre>
+      {% else %}
+        <div class="text-muted small"> none.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if attachments %}
+  <div class="card">
+    <div class="card-header bg-light py-2">
+      <span class="fw-bold small text-secondary"> File</span>
+    </div>
+    <div class="card-body">
+      <ul class="list-unstyled mb-0 small">
+        {% for a in attachments %}
+          <li class="mb-1">
+            <span class="fw-semibold">{{ a.filename }}</span>
+            <span class="text-muted ms-2">{{ a.content_type }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

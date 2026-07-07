@@ -1,0 +1,128 @@
+.app-prod-fab {
+ position: fixed;
+ right: 16px;
+ bottom: 16px;
+ z-index: 1050;
+}
+
+.app-prod-panel {
+ position: fixed;
+ right: 16px;
+ bottom: 64px;
+ width: 360px;
+ max-width: calc(100vw - 32px);
+ max-height: 70vh;
+ overflow: auto;
+ z-index: 1050;
+ border-radius: 8px;
+ border: 1px solid rgba(216, 225, 234, 0.95);
+ box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16) !important;
+}
+
+.app-cmdk {
+ position: fixed;
+ inset: 0;
+ z-index: 1060;
+ display: none;
+}
+.app-cmdk.show {
+ display: block;
+}
+.app-cmdk-backdrop {
+ position: absolute;
+ inset: 0;
+ background: rgba(16, 24, 40, 0.42);
+}
+.app-cmdk-dialog {
+ position: absolute;
+ left: 50%;
+ top: 15%;
+ transform: translateX(-50%);
+ width: 720px;
+ max-width: calc(100vw - 32px);
+ border-radius: 8px;
+ border: 1px solid rgba(216, 225, 234, 0.95);
+ box-shadow: 0 24px 56px rgba(15, 23, 42, 0.2) !important;
+}
+.app-cmdk #ipmCmdkResults {
+ max-height: 55vh;
+ overflow: auto;
+}
+.app-cmdk .list-group-item.active {
+ background: var(--app-legal-blue-soft);
+ border-color: var(--app-legal-blue-border);
+ color: var(--app-text);
+}
+
+.app-quickadd-dialog {
+ position: absolute;
+ left: 50%;
+ top: 10%;
+ transform: translateX(-50%);
+ width: 760px;
+ max-width: calc(100vw - 32px);
+ border-radius: 8px;
+ border: 1px solid rgba(216, 225, 234, 0.95);
+ box-shadow: 0 24px 56px rgba(15, 23, 42, 0.2) !important;
+}
+
+.app-quickadd-pane {
+ display: none;
+}
+.app-quickadd-pane.active {
+ display: block;
+}
+
+.app-quickadd-results {
+ max-height: 200px;
+ overflow: auto;
+}
+
+.app-toast-wrap {
+ position: fixed;
+ left: 16px;
+ bottom: 16px;
+ z-index: 1070;
+ max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 991.98px) {
+ .app-prod-fab,
+ .app-prod-panel {
+  display: none !important;
+ }
+
+ .app-cmdk-dialog,
+ .app-quickadd-dialog {
+  top: auto;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - max(0.75rem, env(safe-area-inset-top, 0px)));
+  transform: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  overflow: hidden;
+ }
+
+ .app-cmdk-dialog .card-body,
+ .app-quickadd-dialog .card-body {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+ }
+
+ .app-cmdk #ipmCmdkResults {
+  max-height: min(58dvh, 420px);
+ }
+
+ .app-quickadd-dialog {
+  display: flex;
+  flex-direction: column;
+ }
+
+ .app-quickadd-dialog> .card-body {
+  min-height: 0;
+ }
+}

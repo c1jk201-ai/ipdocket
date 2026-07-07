@@ -1,0 +1,141 @@
+{% extends 'invoice_base.html' %}
+{% set invoice_wrapper_class = 'invoice-tax-ledger' %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block invoice_content %}
+ <div class="card">
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+   <div>
+    <h3 class="mt-0 mb-1">Invoice tax records</h3>
+    <div class="muted text-sm">Review invoices marked tax-recorded and their process types.</div>
+   </div>
+   <div class="spacer"></div>
+   <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.invoices.list_invoices') }}">Invoice list</a>
+   <a class="btn btn-primary btn-sm" href="{{ url_for('billing_invoices.invoices.tax_issue') }}">Tax documentation queue</a>
+  </div>
+ </div>
+
+ <div class="card mt-3">
+  <form class="row g-2 align-items-end" method="get">
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period start</label>
+    <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period end</label>
+    <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Process type</label>
+    <select name="tax_issue_type">
+     <option value="">All</option>
+     {% for key, label in type_labels.items() %}
+      <option value="{{ key }}" {% if request.args.get('tax_issue_type') == key %}selected{% endif %}>{{ label }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Process source</label>
+    <select name="source">
+     <option value="">All</option>
+     <option value="tax_issue_page" {% if request.args.get('source') == 'tax_issue_page' %}selected{% endif %}>Tax documentation</option>
+     <option value="manual_status" {% if request.args.get('source') == 'manual_status' %}selected{% endif %}>Manual change</option>
+     <option value="manual_detail" {% if request.args.get('source') == 'manual_detail' %}selected{% endif %}>Manual detail handling</option>
+     <option value="bulk_update" {% if request.args.get('source') == 'bulk_update' %}selected{% endif %}>Bulk change</option>
+     <option value="tax_invoice_import" {% if request.args.get('source') == 'tax_invoice_import' %}selected{% endif %}>File import</option>
+     <option value="bank_activity" {% if request.args.get('source') == 'bank_activity' %}selected{% endif %}>Bank activity</option>
+     <option value="legacy" {% if request.args.get('source') == 'legacy' %}selected{% endif %}>Legacy data</option>
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for profile in all_profiles %}
+      <option value="{{ profile['id'] }}" {% if request.args.get('business_profile_id') == profile['id']|string %}selected{% endif %}>{{ profile['name'] }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-6">
+    <label>Search</label>
+    <input name="q" value="{{ request.args.get('q','') }}" placeholder="Invoice number, Client, Our Ref, Matter reference" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Rows per page</label>
+    <select name="per_page">
+     <option value="50" {% if per_page == 50 %}selected{% endif %}>50 items</option>
+     <option value="100" {% if per_page == 100 %}selected{% endif %}>100 items</option>
+     <option value="200" {% if per_page == 200 %}selected{% endif %}>200 items</option>
+    </select>
+   </div>
+   <div class="col-12 d-flex gap-2 justify-content-end">
+    <a class="btn btn-ghost" href="{{ url_for('costs.invoice_tax_ledger') }}">Reset</a>
+    <button class="btn btn-primary" type="submit">Search</button>
+   </div>
+  </form>
+ </div>
+
+ <div class="card mt-3">
+  <div class="d-flex gap-2 flex-wrap">
+   {% for key, label in type_labels.items() %}
+    <span class="pill pill-sm tax_issued">{{ label }} {{ summary_counts.get(key, 0) }}</span>
+   {% endfor %}
+   <span class="muted text-sm ms-auto">Total {{ total_count }}items</span>
+  </div>
+ </div>
+
+ <div class="card mt-3">
+  <div class="table-card table-card-scroll">
+   <table class="responsive table-compact">
+    <thead>
+     <tr>
+      <th class="w-120">Process date</th>
+      <th>Invoice</th>
+      <th>Client</th>
+      <th>Our Ref</th>
+      <th class="a_r">Invoice amount</th>
+      <th class="a_c">Payment</th>
+      <th class="a_c">Tax status</th>
+      <th class="a_c">Process type</th>
+      <th class="a_c">Process source</th>
+      <th>Business profile</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for row in rows %}
+     <tr>
+      <td data-label="Process date">{{ (row.get('tax_issued_at') or row.get('issue_date') or '')[:10] }}</td>
+      <td data-label="Invoice">
+       <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=row['id']) }}">{{ row.get('number') }}</a>
+      </td>
+      <td data-label="Client">{{ row.get('client_name') or '-' }}</td>
+      <td data-label="Our Ref">{{ row.get('internal_reference') or row.get('ipm_case_ref') or '-' }}</td>
+      <td class="a_r" data-label="Invoice amount">{{ currency(row.get('total') or 0, row.get('currency') or 'USD') }}</td>
+      <td class="a_c" data-label="Payment">
+       {% if row.get('payment_status') == 'paid' %}
+        <span class="pill pill-sm paid">Paid</span>
+       {% elif row.get('payment_status') == 'pending' %}
+        <span class="pill pill-sm payment_pending">Payment pending</span>
+       {% else %}
+        <span class="pill pill-sm unpaid">Unpaid</span>
+       {% endif %}
+      </td>
+      <td class="a_c" data-label="Tax status"><span class="pill pill-sm tax_issued">Tax recorded</span></td>
+      <td class="a_c" data-label="Process type">{{ row.get('tax_issue_type_label') or 'Uncategorized' }}</td>
+      <td class="a_c" data-label="Process source">{{ row.get('tax_issue_source_label') or 'Legacy data' }}</td>
+      <td data-label="Business profile">{{ row.get('business_name') or '-' }}</td>
+     </tr>
+     {% else %}
+     <tr>
+      <td colspan="10" class="muted a_c">No tax records.</td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set tax_ledger_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = tax_ledger_pagination_args.update({'per_page': per_page}) %}
+ {{ ui.pagination('costs.invoice_tax_ledger', page, total_pages, tax_ledger_pagination_args, 'Invoice tax records Pagination') }}
+{% endblock %}

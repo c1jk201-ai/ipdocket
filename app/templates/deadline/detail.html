@@ -1,0 +1,678 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<style>
+  .deadline-detail-page {
+    max-width: 1280px;
+  }
+  .deadline-hero {
+    background: #fff;
+    border: 1px solid rgba(16, 24, 40, 0.1);
+    border-left: 4px solid #b7791f;
+  }
+  .deadline-kicker {
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--bs-secondary-color);
+  }
+  .deadline-title {
+    font-size: clamp(1.4rem, 2.4vw, 2rem);
+    line-height: 1.15;
+  }
+  .deadline-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: #f8fafc;
+    color: #475569;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .deadline-stat {
+    height: 100%;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 8px;
+    background: #fff;
+    padding: 1rem;
+  }
+  .deadline-stat-label {
+    font-size: 0.76rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.35rem;
+  }
+  .deadline-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .deadline-stat-sub {
+    margin-top: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--bs-secondary-color);
+  }
+  .deadline-section .card-title {
+    font-size: 1rem;
+  }
+  .deadline-kv {
+    display: grid;
+    grid-template-columns: minmax(100px, 140px) 1fr;
+    gap: 0.5rem 0.9rem;
+  }
+  .deadline-kv dt {
+    margin: 0;
+    color: var(--bs-secondary-color);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+  .deadline-kv dd {
+    margin: 0;
+    font-weight: 600;
+    word-break: break-word;
+  }
+  .deadline-note {
+    white-space: pre-wrap;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    padding: 0.9rem 1rem;
+    min-height: 86px;
+  }
+  .deadline-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  .deadline-list-item {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    padding: 0.85rem 0.95rem;
+    background: #fff;
+  }
+  .deadline-list-title {
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .deadline-list-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.7rem;
+    margin-top: 0.45rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.8rem;
+  }
+  .deadline-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+  }
+  .deadline-meta-card {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    background: #fff;
+  }
+  .deadline-meta-label {
+    color: var(--bs-secondary-color);
+    font-size: 0.76rem;
+    margin-bottom: 0.2rem;
+  }
+  .deadline-meta-value {
+    font-weight: 700;
+    word-break: break-word;
+  }
+  .deadline-staff-group + .deadline-staff-group {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed rgba(148, 163, 184, 0.22);
+  }
+  .deadline-staff-role {
+    font-size: 0.8rem;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.45rem;
+  }
+  .deadline-staff-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .deadline-staff-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 8px;
+    padding: 0.28rem 0.65rem;
+    background: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    color: #334155;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .deadline-tech {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .deadline-tech-item {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    background: #fff;
+    padding: 0.7rem 0.8rem;
+  }
+  .deadline-tech-item code {
+    word-break: break-all;
+  }
+  .deadline-technical-details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  .deadline-technical-details summary::-webkit-details-marker {
+    display: none;
+  }
+  .deadline-link-panel {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: 1rem;
+    height: 100%;
+  }
+  .deadline-audit-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.65rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+  }
+  .deadline-audit-change {
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    color: #334155;
+    word-break: break-word;
+  }
+  @media (max-width: 767.98px) {
+    .deadline-kv {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div
+  id="app-page-meta"
+  class="d-none"
+  data-type="docket"
+  data-id="{{ docket.docket_id }}"
+  data-title="{{ docket.name_free or docket.name_ref or ('Deadline ' ~ docket.docket_id) }}"
+  data-subtitle="{{ (matter.our_ref or '') }}"
+  data-url="{{ request.path }}"
+></div>
+
+<div class="container-fluid mt-3 deadline-detail-page">
+  {% set status_label = 'OpenIn Progress' %}
+  {% set status_badge = 'bg-primary' %}
+  {% set status_icon = 'bi-clock-history' %}
+  {% if status == 'overdue' %}
+    {% set status_label = 'DeadlineOverdue' %}
+    {% set status_badge = 'bg-danger' %}
+    {% set status_icon = 'bi-exclamation-circle-fill' %}
+  {% elif status == 'done' %}
+    {% set status_label = 'Done' %}
+    {% set status_badge = 'bg-success' %}
+    {% set status_icon = 'bi-check-circle-fill' %}
+  {% elif status == 'cancelled' %}
+    {% set status_label = 'Cancel' %}
+    {% set status_badge = 'bg-secondary' %}
+    {% set status_icon = 'bi-x-circle-fill' %}
+  {% elif status == 'expired' %}
+    {% set status_label = 'DeadlineOverdue()' %}
+    {% set status_badge = 'bg-secondary' %}
+    {% set status_icon = 'bi-slash-circle-fill' %}
+  {% endif %}
+
+  {% set status_filter = 'todo' %}
+  {% if status in ['done', 'cancelled', 'expired'] %}
+    {% set status_filter = 'done' %}
+  {% elif status == 'overdue' %}
+    {% set status_filter = 'overdue' %}
+  {% endif %}
+
+  {% set done_label = 'Done' %}
+  {% if done_state == 'done' %}
+    {% set done_label = 'Done' %}
+  {% elif done_state == 'cancelled' %}
+    {% set done_label = 'Cancel' %}
+  {% elif done_state == 'expired' %}
+    {% set done_label = 'DeadlineOverdue()' %}
+  {% endif %}
+  {% set case_deadline_url = url_for('case_work.case_detail', case_id=matter.matter_id, docket_id=docket.docket_id, _anchor='sec-deadlines') %}
+
+  {% set owner_name = owner.name_display if owner else '-' %}
+  {% set due_caption = due_basis or 'Deadline None' %}
+  {% set due_countdown = none %}
+  {% if days_until_due is not none %}
+    {% if days_until_due < 0 %}
+      {% set due_countdown = (days_until_due * -1) ~ ' ' %}
+    {% elif days_until_due == 0 %}
+      {% set due_countdown = 'Today Deadline' %}
+    {% else %}
+      {% set due_countdown = 'D-' ~ days_until_due %}
+    {% endif %}
+  {% endif %}
+
+  <div class="card border-0 shadow-sm mb-3 deadline-hero">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div>
+          <div class="deadline-kicker mb-2">Deadline Details</div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <h1 class="deadline-title fw-semibold mb-0">{{ docket.name_free or docket.name_ref or '(Title None)' }}</h1>
+            <span class="badge {{ status_badge }}"><i class="bi {{ status_icon }} me-1"></i>{{ status_label }}</span>
+          </div>
+          <div class="text-muted">
+            <a href="{{ case_deadline_url }}" class="text-decoration-none">{{ matter.our_ref or '-' }}</a>
+            <span class="mx-1">·</span>
+            {{ matter.right_name or '-' }}
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('deadlines.list_view') }}">List</a>
+          <a class="btn btn-outline-primary btn-sm" href="{{ case_deadline_url }}">Matter Deadline</a>
+          {% if linked_workflows|length == 1 %}
+            <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('workflow.detail', workflow_id=linked_workflows[0].id) }}"> Task</a>
+          {% endif %}
+          <a class="btn btn-primary btn-sm" href="{{ case_deadline_url }}">Matter detail</a>
+        </div>
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mb-4">
+        <span class="deadline-chip"><i class="bi bi-tag"></i>{{ display_category }}</span>
+        <span class="deadline-chip"><i class="bi bi-diagram-3"></i>{{ source_label }}</span>
+        {% if is_auto_docket %}
+          <span class="deadline-chip"><i class="bi bi-gear-wide-connected"></i>Auto Create</span>
+        {% endif %}
+        {% if is_locked %}
+          <span class="deadline-chip"><i class="bi bi-lock"></i></span>
+        {% endif %}
+        {% if is_legacy_reference %}
+          <span class="deadline-chip"><i class="bi bi-hourglass-split"></i>Legacy  Docket</span>
+        {% endif %}
+        <span class="deadline-chip"><i class="bi bi-eye{% if not is_visible_now %}-slash{% endif %}"></i>{{ 'In Progress' if is_visible_now else '' }}</span>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <div class="deadline-stat">
+            <div class="deadline-stat-label">Task  Deadline</div>
+            <div class="deadline-stat-value">
+              {% if effective_due_date %}
+                <a href="{{ url_for('deadlines.calendar_month', date=effective_due_date) }}" class="text-decoration-none">{{ effective_due_date|us_date }}</a>
+              {% else %}
+                Settings
+              {% endif %}
+            </div>
+            <div class="deadline-stat-sub">
+              {{ due_caption }}
+              {% if due_countdown %}
+                <span class="mx-1">·</span>{{ due_countdown }}
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="deadline-stat">
+            <div class="deadline-stat-label">Task </div>
+            <div class="deadline-stat-value">
+              {% if visible_from_date %}
+                {{ visible_from_date|us_date }}
+              {% else %}
+                Immediate
+              {% endif %}
+            </div>
+            <div class="deadline-stat-sub">{{ 'Task/ In Progress' if is_visible_now else '  ' }}</div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="deadline-stat">
+            <div class="deadline-stat-label">Contact</div>
+            <div class="deadline-stat-value">
+              {% if owner %}
+                <a href="{{ url_for('deadlines.list_view', owner=owner.party_id, owner_name=owner.name_display, filter=status_filter) }}" class="text-decoration-none">{{ owner.name_display }}</a>
+              {% else %}
+                -
+              {% endif %}
+            </div>
+            <div class="deadline-stat-sub">
+              {% if owner %}
+                <a href="{{ url_for('worklog.index', owner_role='owner', owner=owner.party_id, filter='todo') }}" class="text-decoration-none">Task View</a>
+              {% else %}
+                 
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="deadline-stat">
+            <div class="deadline-stat-label">completed status</div>
+            <div class="deadline-stat-value">{{ done_label }}</div>
+            <div class="deadline-stat-sub">{{ done_date|us_date if done_date else 'Done None' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if is_legacy_reference %}
+    <div class="alert alert-warning border-0 shadow-sm">
+      <div class="fw-semibold mb-1">Legacy  Docket</div>
+      <div class="small mb-0"> Item `V2_LIMIT` Transferred Data  Current Deadline  exists.  Process target Deadline  Matter   Deadline Link   exists.</div>
+    </div>
+  {% elif not effective_due_date %}
+    <div class="alert alert-secondary border-0 shadow-sm">
+      <div class="fw-semibold mb-1">Task  Deadline none</div>
+      <div class="small mb-0">Final Due date Internal Due date   exists.  Item   Data Link    Status  exists.</div>
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm deadline-section mb-3">
+        <div class="card-body">
+          <h2 class="card-title fw-semibold mb-3">Deadline </h2>
+          <dl class="deadline-kv">
+            <dt>Matter reference</dt>
+            <dd><a href="{{ case_deadline_url }}" class="text-decoration-none">{{ matter.our_ref or '-' }}</a></dd>
+
+            <dt>Matter</dt>
+            <dd>{{ matter.right_name or '-' }}</dd>
+
+            <dt>Applicant</dt>
+            <dd>
+              {% if applicants %}
+                {% for name in (applicants.split(';') or []) %}
+                  {% set n = (name or '')|trim %}
+                  {% if n %}
+                    <a href="{{ url_for('customers.clients', q=n) }}" class="text-decoration-none">{{ n }}</a>{% if not loop.last %}, {% endif %}
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </dd>
+
+            <dt>Type</dt>
+            <dd>
+              <a href="{{ url_for('deadlines.list_view', category=docket.category, filter=status_filter) }}" class="text-decoration-none">{{ display_category }}</a>
+              {% if docket.category and docket.category != display_category %}
+                <span class="text-muted small">({{ docket.category }})</span>
+              {% endif %}
+            </dd>
+
+            <dt>Final Due date(Statutory deadline)</dt>
+            <dd>
+              {% if due_date %}
+                <a href="{{ url_for('deadlines.calendar_month', date=due_date) }}" class="text-decoration-none">{{ due_date|us_date }}</a>
+              {% else %}
+                -
+              {% endif %}
+            </dd>
+
+            <dt>Internal/ Due date</dt>
+            <dd>
+              {% if internal_due_date %}
+                <a href="{{ url_for('deadlines.internal_close', filter='all', date=internal_due_date) }}" class="text-decoration-none">{{ internal_due_date|us_date }}</a>
+              {% else %}
+                -
+              {% endif %}
+            </dd>
+
+            <dt>Task </dt>
+            <dd>{{ visible_from_date|us_date if visible_from_date else 'Immediate' }}</dd>
+
+            <dt> </dt>
+            <dd>{{ docket.name_ref or '-' }}</dd>
+
+            <dt>completed status</dt>
+            <dd>{{ done_label }}</dd>
+
+            <dt>Done</dt>
+            <dd>{{ done_date|us_date if done_date else '-' }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm deadline-section mb-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="card-title fw-semibold mb-0"> </h2>
+            <div class="small text-muted">Deadlinefrom  Link  Task .</div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="deadline-link-panel">
+                <div class="fw-semibold mb-2">Task</div>
+                {% if linked_workflows %}
+                  <div class="deadline-list">
+                    {% for wf in linked_workflows %}
+                      <div class="deadline-list-item">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <div class="deadline-list-title">
+                              <a href="{{ url_for('workflow.detail', workflow_id=wf.id) }}" class="text-decoration-none">{{ wf.title }}</a>
+                            </div>
+                            <div class="deadline-list-meta">
+                              <span>Status {{ wf.status }}</span>
+                              {% if wf.due_date %}<span>Deadline {{ wf.due_date|us_date }}</span>{% endif %}
+                              {% if wf.assignee_name %}<span>Process {{ wf.assignee_name }}</span>{% endif %}
+                              {% if wf.attorney_name %}<span> {{ wf.attorney_name }}</span>{% endif %}
+                              {% if wf.manager_name %}<span> {{ wf.manager_name }}</span>{% endif %}
+                            </div>
+                          </div>
+                          <span class="badge bg-light text-dark border">#{{ wf.id }}</span>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-muted small">Link Task none.</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="deadline-link-panel">
+                <div class="fw-semibold mb-2">Task Log</div>
+                {% if linked_worklogs %}
+                  <div class="deadline-list">
+                    {% for wl in linked_worklogs %}
+                      <div class="deadline-list-item">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <div class="deadline-list-title">{{ wl.task_name }}</div>
+                            <div class="deadline-list-meta">
+                              <span>Status {{ wl.status }}</span>
+                              {% if wl.due_date %}<span>Deadline {{ wl.due_date|us_date }}</span>{% endif %}
+                              {% if wl.owner_name %}<span>Responsible {{ wl.owner_name }}</span>{% endif %}
+                            </div>
+                            {% if wl.description %}
+                              <div class="small mt-2 text-body-secondary">{{ wl.description }}</div>
+                            {% endif %}
+                          </div>
+                          <span class="badge bg-light text-dark border">#{{ wl.id }}</span>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="text-muted small">Log Task Log none.</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm deadline-section">
+        <div class="card-body">
+          <h2 class="card-title fw-semibold mb-3">Notes / Auto Create </h2>
+          {% if memo_metadata_rows %}
+            <div class="deadline-meta-grid mb-3">
+              {% for row in memo_metadata_rows %}
+                <div class="deadline-meta-card">
+                  <div class="deadline-meta-label">{{ row.label }}</div>
+                  <div class="deadline-meta-value">{{ row.value }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          {% if memo_plain %}
+            <div class="deadline-note">{{ memo_plain }}</div>
+          {% elif not memo_metadata_rows %}
+            <div class="deadline-note text-muted">Log Notes none.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm deadline-section mb-3">
+        <div class="card-body">
+          <h2 class="card-title fw-semibold mb-3">Matter Responsible </h2>
+          {% for role_key in ['attorney', 'handler', 'manager'] %}
+            {% set staff_rows = case_staff.get(role_key) or [] %}
+            <div class="deadline-staff-group">
+              <div class="deadline-staff-role">{{ case_staff_role_labels.get(role_key, role_key) }}</div>
+              {% if staff_rows %}
+                <div class="deadline-staff-tags">
+                  {% for row in staff_rows %}
+                    <span class="deadline-staff-tag">{{ row.name }}</span>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="text-muted small"> None</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          {% if snapshot_staff %}
+            <div class="deadline-staff-group">
+              <div class="deadline-staff-role"></div>
+              <div class="deadline-list">
+                {% for row in snapshot_staff %}
+                  <div class="deadline-list-item py-2">
+                    <div class="small text-muted">{{ row.label }}</div>
+                    <div class="fw-semibold">{{ row.name }}</div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm deadline-section mb-3">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="card-title fw-semibold mb-0"> Matter  Deadline</h2>
+            <a href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, _anchor='sec-deadlines') }}" class="small text-decoration-none">Show all</a>
+          </div>
+          {% if related_deadlines %}
+            <div class="deadline-list">
+              {% for item in related_deadlines %}
+                <div class="deadline-list-item">
+                  <div class="deadline-list-title">
+                    <a href="{{ url_for('deadlines.docket_detail', docket_id=item.docket_id) }}" class="text-decoration-none">{{ item.title }}</a>
+                  </div>
+                  <div class="deadline-list-meta">
+                    <span>{{ item.category_label }}</span>
+                    {% if item.effective_due %}
+                      <span>{{ item.effective_due|us_date }}</span>
+                    {% else %}
+                      <span>Deadline None</span>
+                    {% endif %}
+                    <span>{{ item.status }}</span>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small"> Matter  Deadline none.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm deadline-section mb-3">
+        <div class="card-body">
+          <h2 class="card-title fw-semibold mb-3">Change history</h2>
+          {% if deadline_audit_rows %}
+            <div class="deadline-list">
+              {% for log in deadline_audit_rows %}
+                <div class="deadline-list-item">
+                  <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div class="deadline-list-title">{{ log.action_label }}</div>
+                    <span class="badge bg-light text-dark border">#{{ log.id }}</span>
+                  </div>
+                  <div class="deadline-audit-meta">
+                    <span>{{ log.actor }}</span>
+                    <span>{{ log.created_at|local_dt_min if log.created_at else '-' }}</span>
+                  </div>
+                  {% if log.changes %}
+                    {% for change in log.changes[:4] %}
+                      <div class="deadline-audit-change">
+                        <strong>{{ change.get('label') }}</strong>
+                        {{ change.get('from') }} → {{ change.get('to') }}
+                      </div>
+                    {% endfor %}
+                    {% if log.changes|length > 4 %}
+                      <div class="text-muted small mt-1"> {{ log.changes|length - 4 }}items Item</div>
+                    {% endif %}
+                  {% else %}
+                    <div class="text-muted small mt-2">{{ log.summary }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-muted small">Log Change history none.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <details class="card border-0 shadow-sm deadline-section deadline-technical-details">
+        <summary class="card-body d-flex justify-content-between align-items-center gap-2">
+          <h2 class="card-title fw-semibold mb-0"> </h2>
+          <span class="text-muted small"><i class="bi bi-chevron-down me-1"></i>Expand</span>
+        </summary>
+        <div class="card-body border-top pt-3">
+          <div class="deadline-tech">
+            <div class="deadline-tech-item">
+              <div class="small text-muted mb-1">Deadline ID</div>
+              <code>{{ docket.docket_id }}</code>
+            </div>
+            <div class="deadline-tech-item">
+              <div class="small text-muted mb-1">Matter ID</div>
+              <code>{{ matter.matter_id }}</code>
+            </div>
+            <div class="deadline-tech-item">
+              <div class="small text-muted mb-1"> Type</div>
+              <div class="fw-semibold">{{ source_label }}</div>
+            </div>
+            <div class="deadline-tech-item">
+              <div class="small text-muted mb-1">Raw ID</div>
+              <code>{{ docket.raw_id or '-' }}</code>
+            </div>
+            <div class="deadline-tech-item">
+              <div class="small text-muted mb-1"> </div>
+              <code>{{ docket.name_ref or '-' }}</code>
+            </div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+{% endblock %}

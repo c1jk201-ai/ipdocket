@@ -1,0 +1,133 @@
+{% extends "layouts/base.html" %} {% block content %}
+<h3 class="mb-4 fw-semibold">Create matter</h3>
+<form
+  method="POST"
+  action="{{ url_for('case_work.edit', case_id=case.id) if case else url_for('case_work.create_matter') }}"
+  class="needs-validation"
+  novalidate
+>
+  {{ form.hidden_tag() }}
+
+  <div class="card shadow-sm mb-4 border-0">
+    <div class="card-header bg-light fw-semibold">Basic Information</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label"
+            >{{ form.our_ref.label }} <span class="text-danger">*</span></label
+          >
+          <div class="input-group">
+            {{ form.our_ref(class="form-control", id="our_ref") }}
+          </div>
+          <div class="form-text">Default format: country + type code + YY + sequence (for example, USP260001)</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.client_ref.label }}</label>
+          {{ form.client_ref(class="form-control") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.category.label }}</label>
+          {{ form.category(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.country.label }}</label>
+          {{ form.country(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.in_out_type.label }}</label>
+          {{ form.in_out_type(class="form-select") }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4 border-0">
+    <div class="card-header bg-light fw-semibold">Matter Details</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label"
+            >Client <span class="text-danger">*</span></label
+          >
+          <div class="input-group">
+            {{ form.client_name(class="form-control", readonly=True,
+            id="clientName") }} {{ form.client_id(type="hidden", id="clientId")
+            }}
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">{{ form.title.label }}</label>
+          {{ form.title(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.filing_date.label }}</label>
+          {{ form.filing_date(class="form-control", type="date") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.filing_no.label }}</label>
+          {{ form.filing_no(class="form-control") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.reg_date.label }}</label>
+          {{ form.reg_date(class="form-control", type="date") }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">{{ form.reg_no.label }}</label>
+          {{ form.reg_no(class="form-control") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.attorney_id.label }}</label>
+          {{ form.attorney_id(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.manager_id.label }}</label>
+          {{ form.manager_id(class="form-select") }}
+        </div>
+        <div class="col-12">
+          <label class="form-label">{{ form.summary.label }}</label>
+          {{ form.summary(class="form-control") }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4 border-0">
+    <div class="card-header bg-light fw-semibold">
+      <span>Additional Information (Custom Fields)</span>
+    </div>
+    <div class="card-body" id="customFieldContainer">
+      <div class="row g-3 mb-2 custom-row">
+        <div class="col-md-4">
+          <input
+            type="text"
+            class="form-control"
+            placeholder="Field name"
+            onblur="updateFieldName(this)"
+          />
+        </div>
+        <div class="col-md-8">
+          <input
+            type="text"
+            class="form-control"
+            disabled
+            placeholder="Enter a field name first"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+</form>
+
+<script>
+  function updateFieldName(input) {
+    const row = input.closest(".row");
+    const valueInput = row.querySelectorAll("input")[1];
+    if (input.value.trim() !== "") {
+      valueInput.name = "custom_field_" + input.value.trim();
+      valueInput.disabled = false;
+      valueInput.focus();
+    }
+  }
+</script>
+{% endblock %}

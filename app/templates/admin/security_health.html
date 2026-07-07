@@ -1,0 +1,62 @@
+{% extends "admin/base.html" %}
+{% block title %}Security Settings{% endblock %}
+{% block admin_description %}Review security health, required actions, and key rotation status.{% endblock %}
+
+{% block admin_page_content %}
+{% if health %}
+  {% set items = health.get('items', []) %}
+  {% set overall = health.get('overall', 'unknown') %}
+  {% set key_rotation = (items | selectattr('key', 'equalto', 'key_rotation') | list | first) %}
+
+  <div class="card mb-3">
+    <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <div class="small text-uppercase text-muted fw-semibold mb-1">Overall</div>
+        <div class="fs-4 fw-bold">{{ overall }}</div>
+      </div>
+      <div class="small text-muted">Review each security status item and required action.</div>
+    </div>
+  </div>
+
+  {% if key_rotation and key_rotation.get('status') == 'warn' %}
+    <div class="alert alert-warning">
+      <div class="fw-semibold">Key Rotation Required</div>
+      <div class="mt-1">{{ key_rotation.get('message') }}</div>
+      <form method="post" action="{{ url_for('admin_security_health.accept_key_rotation_post') }}" style="margin-top:10px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-sm btn-warning">Accept Key Rotation</button>
+      </form>
+    </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-header bg-white py-3">
+      <div class="fw-semibold">Security Items</div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Key</th>
+              <th>Status</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+              <tr>
+                <td>{{ it.get('key') }}</td>
+                <td>{{ it.get('status') }}</td>
+                <td>{{ it.get('message') }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% else %}
+  <div class="alert alert-danger mb-0">Failed to load security health.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends 'invoice_base.html' %}
+{% set invoice_wrapper_class = 'is-fluid' %}
+{% block invoice_content %}
+
+ <div
+  id="app-page-meta"
+  class="d-none"
+  data-type="bank_activity_deposit"
+  data-id="{{ (tx.tid or '') }}"
+  data-title="Deposit Details"
+  data-subtitle="{{ (tx.tid or '') }}"
+  data-url="{{ request.path }}"
+></div>
+
+ <div class="page-header gap-2">
+  <h2 class="mb-0">Deposit Details</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.bank_activity.matching_page') }}">DepositMatching</a>
+   <a class="btn" href="{{ url_for('billing_invoices.bank_activity.page') }}">Bank activity</a>
+  </div>
+ </div>
+
+ <div class="card mt-3">
+  <div class="controls-row justify-content-between">
+   <div><strong>TID</strong></div>
+   <div class="muted mono">{{ tx.tid or '-' }}</div>
+  </div>
+  <table class="table-list mt-2">
+   <colgroup>
+    <col class="w-15p" />
+    <col />
+   </colgroup>
+   <tbody>
+    <tr>
+     <th>days</th>
+     <td>{{ tx.trdt or tx.trdate or '-' }}</td>
+    </tr>
+    <tr>
+     <th>Deposit</th>
+     <td class="a_r">{{ "{:,}".format((tx.acc_in or 0) | int) }}</td>
+    </tr>
+    <tr>
+     <th></th>
+     <td class="a_r">{{ "{:,}".format((tx.acc_out or 0) | int) }}</td>
+    </tr>
+    <tr>
+     <th></th>
+     <td class="a_r">{{ "{:,}".format((tx.balance or 0) | int) }}</td>
+    </tr>
+    <tr>
+     <th>Bank account</th>
+     <td>{{ (tx.bank_code or '') ~ ' ' ~ (tx.account_number or '') }}</td>
+    </tr>
+    <tr>
+     <th></th>
+     <td>
+      <div>{{ tx.remark1 or '-' }}</div>
+      {% if tx.remark2 %}<div class="muted f11">{{ tx.remark2 }}</div>{% endif %}
+      {% if tx.remark3 %}<div class="muted f11">{{ tx.remark3 }}</div>{% endif %}
+     </td>
+    </tr>
+    <tr>
+     <th>Notes</th>
+     <td class="mono">{{ tx.memo or '-' }}</td>
+    </tr>
+    <tr>
+     <th>Tax documentation</th>
+     <td>
+      {% set issued = (tx.tax_invoice_issued or 0) | int %}
+      {% if issued == 1 %}
+       <span class="pill paid"></span>
+       {% if tx.tax_invoice_issued_at %}<span class="muted f11 ms-2">{{ tx.tax_invoice_issued_at }}</span>{% endif %}
+      {% else %}
+       <span class="pill payment_pending"></span>
+      {% endif %}
+      {% if tx.tax_invoice_override is not none %}
+       <span class="muted f11 ms-2">override={{ tx.tax_invoice_override }}</span>
+      {% endif %}
+     </td>
+    </tr>
+    <tr>
+     <th>Save</th>
+     <td>
+      {% if tx.updated_at %}<div class="muted f11">updated_at: {{ tx.updated_at }}</div>{% endif %}
+      {% if tx.created_at %}<div class="muted f11">created_at: {{ tx.created_at }}</div>{% endif %}
+      {% if tx.reg_dt %}<div class="muted f11">reg_dt: {{ tx.reg_dt }}</div>{% endif %}
+      {% if tx.job_id %}<div class="muted f11">job_id: {{ tx.job_id }}</div>{% endif %}
+     </td>
+    </tr>
+   </tbody>
+  </table>
+ </div>
+
+ <div class="card mt-3">
+  <div class="controls-row justify-content-between">
+   <div><strong>Link Invoice</strong></div>
+   <div class="muted f11">memo INV  payment_meta(tid) .</div>
+  </div>
+  <div class="mt-2">
+   {% if invoices and invoices|length %}
+    <table class="table-list table-compact table-head-center">
+     <colgroup>
+      <col class="w-10p" />
+      <col />
+      <col class="w-22p" />
+      <col class="w-20p" />
+      <col class="w-18p" />
+     </colgroup>
+     <thead>
+      <tr>
+       <th class="a_c">ID</th>
+       <th class="a_c"></th>
+       <th class="a_c">Client</th>
+       <th class="a_c">Matter</th>
+       <th class="a_c"></th>
+      </tr>
+     </thead>
+     <tbody>
+      {% for inv in invoices %}
+       <tr>
+        <td class="a_c">{{ inv.id }}</td>
+        <td class="a_c">
+         <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv.id) }}" class="blue3 text-decoration-none">{{ inv.number or inv.id }}</a>
+        </td>
+        <td class="a_c">
+         {% if inv.client_id %}
+          <a href="{{ url_for('billing_invoices.clients.view_client', client_id=inv.client_id) }}" class="text-decoration-none">{{ inv.client_name or inv.client_id }}</a>
+         {% else %}
+          {{ inv.client_name or '-' }}
+         {% endif %}
+        </td>
+        <td class="a_c">
+         {% if inv.ipm_case_id %}
+          <a href="{{ url_for('case_work.case_detail', case_id=inv.ipm_case_id, invoice_id=inv.id, _anchor='sec-cost') }}" class="text-decoration-none">
+           {{ inv.ipm_case_ref or inv.ipm_case_id }}
+          </a>
+         {% elif inv.ipm_case_ref %}
+          <a href="{{ url_for('case_work.case_list', q=inv.ipm_case_ref) }}" class="text-decoration-none">
+           {{ inv.ipm_case_ref }}
+          </a>
+         {% else %}
+          -
+         {% endif %}
+        </td>
+        <td class="a_c">
+         <a class="btn btn-sm btn-ghost" href="{{ url_for('billing_invoices.bank_activity.matching_invoice_detail', invoice_id=inv.id) }}">Matching</a>
+        </td>
+       </tr>
+      {% endfor %}
+     </tbody>
+    </table>
+   {% elif inv_no %}
+    <div class="muted">
+     Notesfrom Invoice number found: <span class="mono">{{ inv_no }}</span>
+     <span class="muted ms-2">|</span>
+     <a href="{{ url_for('billing_invoices.invoices.list_invoices', q=inv_no) }}" class="text-decoration-none">Invoice search</a>
+    </div>
+   {% else %}
+    <div class="muted">Link Invoice not found.</div>
+   {% endif %}
+  </div>
+ </div>
+
+{% endblock %}

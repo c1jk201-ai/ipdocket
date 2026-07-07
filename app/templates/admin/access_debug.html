@@ -1,0 +1,309 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Access Review{% endblock %}
+
+{% block admin_content %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="small text-muted mb-3">
+      Enter a user and optional matter to inspect account links, assignment facts, and access policy results.
+    </div>
+    <div class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">User</label>
+        <input id="f-user" class="form-control form-control-sm" placeholder="user_id / username / email" />
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">Matter (optional)</label>
+        <input id="f-matter" class="form-control form-control-sm" placeholder="matter_id / Our Ref" />
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold">Action</label>
+        <select id="f-action" class="form-select form-select-sm">
+          <option value="view">view</option>
+          <option value="edit_case">edit_case</option>
+          <option value="assign_staff">assign_staff</option>
+          <option value="delete_case">delete_case</option>
+          <option value="invoice">invoice</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button id="btn-run" class="btn btn-primary btn-sm">
+          <i class="bi bi-search"></i> Analyze
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="result-wrap" class="d-none">
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">User</div>
+        <div class="card-body small" id="user-summary"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Matter</div>
+        <div class="card-body small" id="matter-summary"></div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Decision</div>
+        <div class="card-body small" id="decision-summary"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold">Policy Reason</div>
+    <div class="card-body small">
+      <div class="text-muted mb-2" id="policy-ref"></div>
+      <div id="reason-tree"></div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">Matter Staff Assignments</span>
+      <span class="small text-muted" id="assignment-count"></span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 120px;">Role</th>
+              <th>Contact</th>
+              <th style="width: 120px;">Department</th>
+              <th style="width: 140px;">Link User</th>
+              <th style="width: 120px;">Account Role</th>
+            </tr>
+          </thead>
+          <tbody id="assignment-body">
+            <tr><td colspan="5" class="text-center text-muted py-3">No assignments.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-white fw-semibold">Shortcuts</div>
+    <div class="card-body d-flex flex-wrap gap-2" id="shortcut-links"></div>
+  </div>
+</div>
+
+<div id="error-box" class="alert alert-danger d-none"></div>
+
+<style>
+  .tree-node {
+    border-left: 2px solid #dee2e6;
+    margin-left: 0.5rem;
+    padding-left: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .tree-node .node-title {
+    font-weight: 600;
+  }
+  .tree-pass {
+    color: #198754;
+  }
+  .tree-fail {
+    color: #dc3545;
+  }
+</style>
+
+<script>
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function renderTreeNodes(nodes, depth = 0) {
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      return '<div class="text-muted">No policy nodes.</div>';
+    }
+    return nodes.map((node) => {
+      const passed = Boolean(node.passed);
+      const badgeClass = passed ? "bg-success" : "bg-danger";
+      const statusText = passed ? "PASS" : "FAIL";
+      const childrenHtml = renderTreeNodes(node.children || [], depth + 1);
+      return `
+        <div class="tree-node" style="margin-left:${depth * 10}px;">
+          <div class="node-title ${passed ? "tree-pass" : "tree-fail"}">
+            ${escapeHtml(node.label || "-")}
+            <span class="badge ${badgeClass} ms-1">${statusText}</span>
+          </div>
+          <div class="small text-muted mb-1">${escapeHtml(node.detail || "")}</div>
+          ${(node.children || []).length ? childrenHtml : ""}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderAssignments(rows) {
+    const body = document.getElementById("assignment-body");
+    if (!Array.isArray(rows) || rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No assignments.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map((row) => {
+      return `
+        <tr>
+          <td><code>${escapeHtml(row.staff_role_code || "-")}</code></td>
+          <td>
+            ${escapeHtml(row.staff_name || "-")}
+            ${row.staff_party_id ? `<div class="x-small text-muted">${escapeHtml(row.staff_party_id)}</div>` : ""}
+          </td>
+          <td>${escapeHtml(row.staff_dept || "-")}</td>
+          <td>${escapeHtml(row.linked_username || "-")}</td>
+          <td>${escapeHtml(row.linked_user_role || "-")}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function setError(message) {
+    const errorBox = document.getElementById("error-box");
+    const wrap = document.getElementById("result-wrap");
+    if (!message) {
+      errorBox.classList.add("d-none");
+      errorBox.textContent = "";
+      return;
+    }
+    wrap.classList.add("d-none");
+    errorBox.textContent = message;
+    errorBox.classList.remove("d-none");
+  }
+
+  async function runAccessDebug() {
+    setError("");
+    const user = document.getElementById("f-user").value.trim();
+    const matter = document.getElementById("f-matter").value.trim();
+    const action = document.getElementById("f-action").value;
+    if (!user) {
+      setError("Enter a user value.");
+      return;
+    }
+
+    const qs = new URLSearchParams();
+    qs.set("user", user);
+    if (matter) qs.set("matter", matter);
+    qs.set("action", action);
+
+    try {
+      const r = await fetch(`{{ url_for('admin.api_access_debug') }}?${qs.toString()}`);
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.ok) {
+        setError(data.error || "Analysis failed");
+        return;
+      }
+
+      document.getElementById("result-wrap").classList.remove("d-none");
+
+      const userInfo = data.user || {};
+      const matterInfo = data.matter || null;
+      const evaluation = data.evaluation || null;
+      const userHtml = `
+        <div><strong>${escapeHtml(userInfo.display_name || userInfo.username || "-")}</strong></div>
+        <div>ID: ${escapeHtml(userInfo.id)}</div>
+        <div>username: ${escapeHtml(userInfo.username || "-")}</div>
+        <div>email: ${escapeHtml(userInfo.email || "-")}</div>
+        <div>role: <code>${escapeHtml(userInfo.role || "-")}</code></div>
+        <div>department: ${escapeHtml(userInfo.department || "-")}</div>
+        <div>staff_party_id: ${escapeHtml(userInfo.staff_party_id || "-")}</div>
+      `;
+      document.getElementById("user-summary").innerHTML = userHtml;
+
+      const matterHtml = matterInfo
+        ? `
+            <div><strong>${escapeHtml(matterInfo.our_ref || matterInfo.matter_id || "-")}</strong></div>
+            <div>matter_id: ${escapeHtml(matterInfo.matter_id || "-")}</div>
+            <div>old_our_ref: ${escapeHtml(matterInfo.old_our_ref || "-")}</div>
+            <div>your_ref: ${escapeHtml(matterInfo.your_ref || "-")}</div>
+            <div>title: ${escapeHtml(matterInfo.right_name || "-")}</div>
+            <div>deleted: ${matterInfo.is_deleted ? '<span class="text-danger">yes</span>' : '<span class="text-success">no</span>'}</div>
+          `
+        : '<div class="text-muted">No matter selected. Showing user-level lookup only.</div>';
+      document.getElementById("matter-summary").innerHTML = matterHtml;
+
+      if (evaluation) {
+        const allowed = Boolean(evaluation.allowed);
+        const facts = evaluation.facts || {};
+        document.getElementById("decision-summary").innerHTML = `
+          <div class="mb-1">action: <code>${escapeHtml(evaluation.action || "-")}</code></div>
+          <div class="mb-1">allowed: ${allowed
+            ? '<span class="badge bg-success">Allowed</span>'
+            : '<span class="badge bg-danger">Denied</span>'}</div>
+          <div class="small text-muted">direct_assigned=${escapeHtml(facts.direct_assigned)} / team_assigned=${escapeHtml(facts.team_assigned)}</div>
+        `;
+        document.getElementById("policy-ref").textContent = evaluation.policy_ref || "";
+        document.getElementById("reason-tree").innerHTML = renderTreeNodes(evaluation.tree || []);
+      } else {
+        document.getElementById("decision-summary").innerHTML =
+          '<div class="text-muted">No matter selected, so no matter policy decision was evaluated.</div>';
+        document.getElementById("policy-ref").textContent = "";
+        document.getElementById("reason-tree").innerHTML =
+          '<div class="text-muted">Enter a matter to display policy reasons.</div>';
+      }
+
+      const assignments = data.assignments || [];
+      document.getElementById("assignment-count").textContent = matterInfo ? `${assignments.length} assignments` : "No matter selected";
+      renderAssignments(assignments);
+
+      const links = data.shortcuts || {};
+      const shortcutButtons = [];
+      if (links.case_detail_url) {
+        shortcutButtons.push(`
+          <a class="btn btn-outline-primary btn-sm" href="${escapeHtml(links.case_detail_url)}">
+            Open Matter Detail
+          </a>
+        `);
+      }
+      if (links.matter_edit_url) {
+        shortcutButtons.push(`
+          <a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(links.matter_edit_url)}">
+            Edit Matter Staff
+          </a>
+        `);
+      }
+      if (links.team_reassign_url) {
+        shortcutButtons.push(`
+          <a class="btn btn-outline-warning btn-sm" href="${escapeHtml(links.team_reassign_url)}">
+            Open Team Reassignment
+          </a>
+        `);
+      }
+      if (links.users_admin_url) {
+        shortcutButtons.push(`
+          <a class="btn btn-outline-dark btn-sm" href="${escapeHtml(links.users_admin_url)}">
+            Open User Admin
+          </a>
+        `);
+      }
+      document.getElementById("shortcut-links").innerHTML =
+        shortcutButtons.join("") || '<span class="text-muted">No shortcuts.</span>';
+    } catch (error) {
+      setError(`Analysis error: ${error.message}`);
+    }
+  }
+
+  document.getElementById("btn-run").addEventListener("click", runAccessDebug);
+  document.getElementById("f-user").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") runAccessDebug();
+  });
+  document.getElementById("f-matter").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") runAccessDebug();
+  });
+</script>
+{% endblock %}

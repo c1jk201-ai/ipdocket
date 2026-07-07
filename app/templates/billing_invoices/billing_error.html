@@ -1,0 +1,8 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="card" style="max-width:600px; margin:50px auto; text-align:center;">
+ <h2 style="color:#dc2626; margin-top:0;">⚠️ Error {{ e.code or 500 }}</h2>
+ <p style="font-size:1.1em; margin:20px 0;">{{ e.description or "An error occurred while processing the request." }}</p>
+ <a class="btn btn-primary" href="{{ back_url }}">Previous to</a>
+</div>
+{% endblock %}

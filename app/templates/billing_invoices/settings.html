@@ -1,0 +1,78 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="card mb-12">
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-6 col-lg-4">
+    <label> Business profile</label>
+    <select name="profile_id" onchange="this.form.submit()">
+     {% for profile in all_profiles %}
+      <option value="{{ profile['id'] }}" {% if bp['id'] == profile['id'] %}selected{% endif %}>{{ profile['name'] }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-8">
+    <div class="muted text-sm">Current </div>
+    <div class="text-bold">{{ bp.name }}</div>
+   </div>
+  </form>
+ </div>
+
+ <form method="post" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="profile_id" value="{{ bp['id'] }}" />
+  <h2 class="mt-0">{{ bp.name }} - Business profile </h2>
+  <div class="grid grid-2">
+   <div>
+    <label>Companypeople</label>
+    <input name="name" value="{{ bp.name or '' }}" />
+   </div>
+   <div>
+    <label>Email</label>
+    <input name="email" value="{{ bp.email or '' }}" />
+   </div>
+   <div>
+    <label>Phone</label>
+    <input name="phone" value="{{ bp.phone or '' }}" />
+   </div>
+   <div>
+    <label>Tax ID / EIN</label>
+    <input name="tax_id" value="{{ bp.tax_id or '' }}" />
+   </div>
+   <div class="grid-2 span-full">
+    <label>Address</label>
+    <input name="address" value="{{ bp.address or '' }}" />
+   </div>
+   <div class="grid-2 span-full">
+    <label>Logo image</label>
+    {% if bp.logo_path %}
+     <div class="mb-8">
+      <img src="{{ bp.logo_path|invoice_logo_url }}" alt="Current logo" class="logo-img logo-border" loading="lazy" decoding="async" />
+     </div>
+    {% endif %}
+    <input type="file" name="logo_file" accept="image/*" />
+    <div class="muted text-xs mt-4">Uploading a new image replaces the existing image. Maximum 5 MB.</div>
+   </div>
+   <div class="grid-2 span-full">
+    <label>Bank account - Formatting supported</label>
+    <textarea name="bank_account" rows="3" class="textarea-mono" placeholder="Example: Bank of America 123456789">{{ bp.bank_account or '' }}</textarea>
+    <div class="muted text-xs mt-4">
+     Formatting: **bold** | *italic* | Enter for line breaks | - bullets | 1. numbered lists
+    </div>
+   </div>
+   <div>
+    <label>Currency (example: USD)</label>
+    <input name="currency" value="{{ bp.currency or 'USD' }}" />
+   </div>
+   <div>
+    <label>Sales tax(%)</label>
+    <input name="vat_rate" type="number" step="0.01" value="{{ bp.vat_rate or 0 }}" />
+   </div>
+   <div>
+    <label>Next Invoice number</label>
+    <input name="next_invoice_no" type="number" value="{{ bp.next_invoice_no or 1 }}" />
+   </div>
+  </div>
+  <div class="actionbar row">
+   <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+ </form>
+{% endblock %}

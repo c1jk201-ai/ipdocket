@@ -1,0 +1,1852 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ {# ===== Standardize outgoing mode once at the top of the template ===== #}
+ {% set outgoing_mode = outgoing_mode if (outgoing_mode is defined) else (invoice['is_outgoing'] if (invoice and 'is_outgoing' in invoice.keys()) else 0) %}
+ {% set invoice_wrapper_class = 'invoice-form is-narrow' %}
+ {% set selected_business_profile = business_profile or {} %}
+ {# ============================================================== #}
+ <form method="post" id="invoice-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="is_outgoing" id="is_outgoing" value="{{ 1 if outgoing_mode else 0 }}">
+  <input type="hidden" name="ipm_case_id" value="{{ (request.form.get('ipm_case_id') or request.args.get('ipm_case_id') or (invoice['ipm_case_id'] if (invoice and ('ipm_case_id' in invoice.keys())) else '')) or '' }}">
+  <input type="hidden" name="ipm_case_ref" value="{{ (request.form.get('ipm_case_ref') or request.args.get('ipm_case_ref') or (invoice['ipm_case_ref'] if (invoice and ('ipm_case_ref' in invoice.keys())) else '')) or '' }}">
+  {% if duplicate_warning %}
+   <input type="hidden" name="confirm_duplicate" value="1" />
+  {% endif %}
+  <div class="grid grid-2 invoice-form-grid">
+   <div class="card">
+    <h2 class="mt-0">Invoice information</h2>
+    <div class="grid grid-2">
+     <div>
+      <label class="req">Business profile</label>
+      <select name="business_profile_id" required onchange="onBusinessChange(this)">
+       {% for profile in all_profiles %}
+        <option value="{{ profile['id'] }}" data-vat="{{ profile['vat_rate'] }}" data-currency="{{ profile['currency'] }}" {% if invoice and invoice['business_profile_id']==profile['id'] %}selected{% elif not invoice and profile['id']==selected_business_profile.get('id') %}selected{% endif %}>{{ profile['name'] }}</option>
+       {% endfor %}
+      </select>
+     </div>
+     <input type="hidden" id="vat_rate" value="{{ selected_business_profile.get('vat_rate', 0) }}" />
+     <div class="span-full mt-4">
+      <div class="muted text-xs d-flex align-center gap-8 flex-wrap">
+       <button type="button" id="settlement_toggle_btn" class="btn btn-ghost btn-sm text-xs" onclick="toggleSettlement()">
+        Additional settlement profile settings
+       </button>
+       <span>Default: 100% is settled to the selected business profile. Split across additional representatives or accounts if needed.</span>
+      </div>
+      <div id="settlement_container" class="panel-dashed mt-6 is-hidden">
+       <div class="row align-center gap-8 mb-6">
+        <div class="text-strong text-sm">Settlement split settings</div>
+        <div class="spacer"></div>
+        <button type="button" class="btn btn-ghost btn-sm text-xs" onclick="addSettlementRow()">Add split</button>
+       </div>
+       <div id="settlement_rows" class="rows gap-4"></div>
+       <div id="settlement_summary" class="muted text-xs mt-4">Total: 0%</div>
+      </div>
+     </div>
+     <div class="span-full">
+      <label>Select or enter client</label>
+      <div class="dropdown-root">
+       <input type="text" id="client_search" placeholder="Search clients or create a new client..." autocomplete="off" />
+       <input type="hidden" id="client_select" name="client_id" value="" />
+       <div id="client_dropdown" class="dropdown-panel is-hidden">
+        <div class="client-option dropdown-item" data-id="" data-address="" data-phone="" data-manager="">
+         <strong class="dropdown-title">New client</strong>
+        </div>
+        {% for c in clients %}
+         <div class="client-option dropdown-item"
+          data-id="{{ c['id'] }}"
+          data-name="{{ c['name'] }}"
+          data-address="{{ c['address'] or '' }}"
+          data-phone="{{ c['phone'] or '' }}"
+          data-manager="{{ c['manager'] or '' }}"
+          {% if invoice and invoice['client_id']==c['id'] %}data-selected="true"{% elif (not invoice) and ((request.args.get('client_id')|string == c['id']|string) or (prefill_client_id|string == c['id']|string)) %}data-selected="true"{% endif %}>
+          <div class="text-strong">{{ c['name'] }}</div>
+          {% if c['phone'] or c['address'] %}
+           <div class="dropdown-subtext">
+            {% if c['phone'] %}📞 {{ c['phone'] }}{% endif %}
+            {% if c['address'] %} | 📍 {{ c['address'][:30] }}{% if c['address']|length> 30 %}...{% endif %}{% endif %}
+           </div>
+          {% endif %}
+         </div>
+        {% endfor %}
+       </div>
+      </div>
+     </div>
+     <div id="new_client_fields" class="span-full is-hidden">
+      <div class="panel-dashed">
+       <div class="row align-center justify-between gap-8 mb-12">
+        <h4 class="m-0 text-soft text-sm">New client information</h4>
+        <button type="button" class="btn btn-ghost btn-sm text-xs" onclick="openLLMModal()">
+         Extract with LLM
+        </button>
+       </div>
+       <div class="grid grid-2">
+        <div>
+         <label class="req">Client name</label>
+         <input id="new_client_name" name="new_client_name" value="{{ invoice['new_client_name'] if invoice and 'new_client_name' in invoice else '' }}" placeholder="Required: enter client name" />
+        </div>
+        <div>
+         <label>Client name (English)</label>
+         <input id="new_client_name_en" name="new_client_name_en" value="{{ invoice['new_client_name_en'] if invoice and 'new_client_name_en' in invoice else '' }}" placeholder="Optional: English client name" />
+        </div>
+        <div>
+         <label>Phone</label>
+         <input id="new_client_phone" name="new_client_phone" value="{{ invoice['new_client_phone'] if invoice and 'new_client_phone' in invoice else '' }}" placeholder="Optional: phone" />
+        </div>
+        <div>
+         <label>Email</label>
+         <input id="new_client_email" name="new_client_email" value="{{ invoice['new_client_email'] if invoice and 'new_client_email' in invoice else '' }}" placeholder="Optional: email" />
+        </div>
+        <div>
+         <label>Contact</label>
+         <input id="new_client_manager" name="new_client_manager" value="{{ invoice['new_client_manager'] if invoice and 'new_client_manager' in invoice else '' }}" placeholder="Optional: contact name" />
+        </div>
+        <div class="span-full">
+         <label>Address</label>
+         <input id="new_client_address" name="new_client_address" value="{{ invoice['new_client_address'] if invoice and 'new_client_address' in invoice else '' }}" placeholder="Optional: address" />
+        </div>
+        <div class="span-full">
+         <label>Notes</label>
+         <textarea id="new_client_notes" name="new_client_notes" rows="2" placeholder="Optional: additional notes">{{ invoice['new_client_notes'] if invoice and 'new_client_notes' in invoice else '' }}</textarea>
+        </div>
+       </div>
+
+       <!-- Duplicate client warning -->
+       <div id="duplicate_warning" class="duplicate-warning mt-12 is-hidden">
+        <div class="row align-start gap-8">
+         <span class="text-xl">⚠️</span>
+         <div class="flex-1">
+          <div class="text-bold text-warning-strong mb-8">A client with the same name already exists</div>
+          <div class="text-sm text-warning-deep mb-8">If this is the same client, select the existing record below:</div>
+          <div id="duplicate_matches" class="rows gap-8"></div>
+         </div>
+         <button type="button" class="btn-icon text-warning-strong" onclick="closeDuplicateWarning()">×</button>
+        </div>
+       </div>
+      </div>
+     </div>
+     <div id="existing_client_info" class="span-full is-hidden">
+      <div class="panel-info">
+       <h4 class="m-0 mb-8 text-soft text-sm">Selected client information</h4>
+       <div class="text-sm leading-relaxed">
+        <div><strong>Address:</strong> <span id="info_address" class="muted">-</span></div>
+        <div><strong>Phone:</strong> <span id="info_phone" class="muted">-</span></div>
+        <div><strong>Contact:</strong> <span id="info_manager" class="muted">-</span></div>
+       </div>
+      </div>
+     </div>
+     <div>
+      <label>Number (auto-generated if blank)</label>
+      <input name="number" value="{{ invoice['number'] if invoice else '' }}" placeholder="Leave blank to auto-generate" />
+     </div>
+     <div>
+      <label>Internal reference</label>
+      <input name="internal_reference" value="{{ invoice['internal_reference'] if invoice else '' }}" placeholder="Example: PO-2025-001" />
+      <div class="muted text-xs mt-4">
+       Enter the matter Our Ref/former Our Ref/Your Ref to auto-link a unique match when saving.
+      </div>
+     </div>
+     <div>
+      <label class="req">Issue date</label>
+      <input type="date" name="issue_date" value="{{ invoice['issue_date'] if invoice else today }}" required />
+     </div>
+     <div>
+      <label class="req">Due date</label>
+      <input type="date" name="due_date" value="{{ invoice['due_date'] if invoice else next_month }}" required />
+     </div>
+     <div>
+      <label>Status</label>
+      <select name="status">
+       <option value="draft" {% if invoice and invoice['status']=='draft' %}selected{% elif not invoice %}selected{% endif %}>Draft</option>
+       <option value="sent" {% if invoice and invoice['status']=='sent' %}selected{% endif %}>Issued</option>
+       {% if selected_business_profile.get('currency') != 'USD' %}
+       <option value="paid" {% if invoice and invoice['payment_status'] == 'paid' %}selected{% endif %}>Paid</option>
+       {% endif %}
+       <option value="payment_pending" {% if invoice and invoice['payment_status'] == 'pending' %}selected{% endif %}>Payment pending</option>
+       {% if invoice and invoice['status'] in ['tax_issued','cash_issued','processed'] %}
+       <option value="{{ invoice['status'] }}" selected>Tax recorded</option>
+       {% endif %}
+       <option value="void" {% if invoice and invoice['status']=='void' %}selected{% endif %}>Void</option>
+       <option value="pre_overdue" {% if invoice and invoice['status']=='pre_overdue' %}selected{% endif %}>{{ t('status_pre_overdue') }}</option>
+      </select>
+     </div>
+     <div>
+      <label>Invoice language (document issue language)</label>
+      <select id="invoice_language" name="invoice_language">
+       {% set inv_lang = invoice['language'] if invoice and 'language' in invoice.keys() else 'en' %}
+       <option value="en" {% if inv_lang=='en' %}selected{% endif %}>English</option>
+      </select>
+     </div>
+     <div class="span-full">
+      <label>Notes (optional) - Formatting supported</label>
+      <textarea name="notes" rows="5" class="textarea-mono">{{ invoice['notes'] if invoice else '' }}</textarea>
+      <div class="muted text-xs mt-4">
+       Formatting: **bold** | *italic* | Enter for line breaks | - bullets | 1. numbered lists
+      </div>
+     </div>
+    </div>
+   </div>
+
+   <div class="card">
+    <h2 class="mt-0">Select template (optional)</h2>
+    <p class="muted mb-12">Selecting a template adds preset items{% if invoice and 'id' in invoice %} while keeping existing items{% endif %}.</p>
+
+    <div>
+     <label>Search/select template</label>
+     <div class="dropdown-root">
+      <input type="text" id="template_search" placeholder="Search by template name..." autocomplete="off" />
+      <div id="template_dropdown" class="dropdown-panel is-hidden">
+       <div class="tpl-option dropdown-item" data-id="" data-name="">
+        <strong class="text-soft">None</strong>
+       </div>
+       {% for tpl in templates %}
+       <div class="tpl-option dropdown-item" data-id="{{ tpl['id'] }}" data-name="{{ tpl['name'] }}" data-desc="{{ tpl['description'] or '' }}">
+        <div class="text-strong">{{ tpl['name'] }}</div>
+        {% if tpl['description'] %}<div class="muted text-xs">{{ tpl['description'] }}</div>{% endif %}
+       </div>
+       {% endfor %}
+      </div>
+     </div>
+    </div>
+
+    <!-- Hidden select retained for data attributes. -->
+    <select id="template_select" onchange="loadTemplate()" class="visually-hidden">
+     <option value="">No template</option>
+     {% for tpl in templates %}
+      <option value="{{ tpl['id'] }}" data-items='{{ tpl["default_items"] or "[]" }}' data-notes="{{ tpl['notes'] or '' }}" data-business-profile-id="{{ tpl['business_profile_id'] or '' }}" data-language="{{ tpl['language'] or '' }}">
+       {{ tpl['name'] }} - {{ tpl['description'] or '' }}
+      </option>
+     {% endfor %}
+    </select>
+   </div>
+
+  </div>
+
+  <div class="card mt-12">
+   <div class="page-header">
+    <h2 class="m-0">Line items</h2>
+    <div class="page-actions">
+     <button class="btn" type="button" onclick="addRow()">Add item</button>
+     <a class="btn btn-outline-primary" href="{{ toggle_mode_url }}" role="button" id="fxToggleBtn"
+       onclick="toggleFx(); return false;">
+       {{ 'Standard mode' if outgoing_mode else 'Foreign currency mode' }}
+     </a>
+    </div>
+   </div>
+   <div id="fxPanel" class="muted fx-panel is-hidden">
+    <div class="text-strong mb-4">Exchange rate</div>
+    <div id="fxBaseLines" class="fx-base-lines"></div>
+   </div>
+   <div id="fxOutgoingLayout" class="fx-outgoing-layout is-hidden">
+    <div class="muted text-strong mb-6">Currency, professional fees, official fees, and USD amount</div>
+    <div id="fxOutgoingDomestic"></div>
+    <div id="fxOutgoingForeign" class="mt-8"></div>
+    <div id="fxOutgoingTotals" class="mt-8"></div>
+   </div>
+   <div class="table-card mt-8">
+   <table id="items-table">
+    <thead>
+     <tr>
+      <th class="w-25p">Description</th>
+      <th class="w-10p">Type</th>
+      <th class="w-10p">Qty</th>
+      <th class="w-15p">Unit price</th>
+      <th class="w-12p">Discount (%)</th>
+      <th class="right w-15p">Amount</th>
+      <th class="w-8p"></th>
+     </tr>
+    </thead>
+    <tbody id="items-body">
+     {% set items = items or [] %}
+     {% if not items %}
+      {% set items = [{'description':'','qty':'','unit_price':'','item_type':'service','discount':'0','is_taxable':1}] %}
+     {% endif %}
+     {% for it in items %}
+     <tr>
+      <td data-label="Description">
+       <input name="description[]" value="{{ it['description'] }}" placeholder="Example: professional service" />
+       <div class="phase-controls">
+        <div class="row align-center gap-6">
+         <span class="text-xs text-soft outgoing-phase-field{% if not outgoing_mode %} is-hidden{% endif %}"></span>
+        {% set _ph = (it.get('phase') or 'app') %}
+        <select name="phase[]" class="phase-select input-inline-sm outgoing-phase-field{% if not outgoing_mode %} is-hidden{% endif %}" onchange="updateEstimatedDefault(this)">
+         <option value="app" {% if _ph=='app' %}selected{% endif %}>Filing</option>
+         <option value="oa" {% if _ph=='oa' %}selected{% endif %}>OA/Examination</option>
+         <option value="reg" {% if _ph=='reg' %}selected{% endif %}>Registration</option>
+        </select>
+        <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+         {% set _is_est = (it.get('is_estimated') if it.get('is_estimated') is not none else (1 if _ph in ['oa', 'reg'] else 0)) %}
+         <input type="hidden" name="is_estimated_base[]" value="{{ '1' if _is_est else '0' }}" class="estimated-base">
+         <input type="checkbox" name="is_estimated_chk[]" value="1" class="estimated-checkbox" {% if _is_est %}checked{% endif %} onchange="updateEstimatedHidden(this)">
+         Estimated cost
+        </label>
+        </div>
+       </div>
+       <div class="fx-controls is-hidden">
+        <div class="fx-row">
+         <select name="fx_currency[]" class="fx-currency input-inline-sm">
+          {% set _cur = (it.get('fx_currency') or '')|upper %}
+          <option value="USD" {% if _cur=='USD' %}selected{% endif %}>USD</option>
+          <option value="JPY" {% if _cur=='JPY' %}selected{% endif %}>JPY</option>
+          <option value="EUR" {% if _cur=='EUR' %}selected{% endif %}>EUR</option>
+          <option value="CNY" {% if _cur=='CNY' %}selected{% endif %}>CNY</option>
+          <option value="__MORE__">More currencies</option>
+         </select>
+         <input type="number" name="fx_fee[]" class="fx-fee input-inline-sm" step="0.01" placeholder="Fee" value="{{ it.get('fx_fee') if it.get('fx_fee') is not none else '' }}" />
+         <input type="number" name="fx_gov[]" class="fx-gov input-inline-sm" step="0.01" placeholder="Official fee" value="{{ it.get('fx_gov') if it.get('fx_gov') is not none else '' }}" />
+         <input type="number" name="fx_markup[]" class="fx-markup input-inline-sm" step="0.1" value="{{ it.get('fx_markup') if it.get('fx_markup') is not none else 2 }}" placeholder="(%)" />
+         <input type="hidden" name="fx_rate_used[]" class="fx-rate-used" value="{{ it.get('fx_rate_used') if it.get('fx_rate_used') is not none else '' }}" />
+         <span class="fx-usd muted text-nowrap">→ USD amount: 0</span>
+         {# Foreign expense Apply sales tax  ( from ) #}
+         <span class="muted text-xs">
+          <input type="hidden" name="foreign_vat_base[]" value="{% if it.get('item_type')=='foreign' and it.get('is_taxable') %}1{% else %}0{% endif %}" class="fx-vat-hidden">
+          <label class="d-inline-flex align-center gap-4 cursor-pointer">
+           <input type="checkbox" name="foreign_vat_chk[]" value="1" class="fx-vat" {% if it.get('item_type')=='foreign' and it.get('is_taxable') %}checked{% endif %} onchange="updateForeignVatHidden(this)"> Apply sales tax
+          </label>
+         </span>
+        </div>
+       </div>
+      </td>
+      <td data-label="Type">
+       <select name="item_type[]" onchange="onTypeChange(this)">
+        <option value="service" {% if it.get('item_type')=='service' or not it.get('item_type') %}selected{% endif %}>Service fee</option>
+        <option value="admin" {% if it.get('item_type')=='admin' %}selected{% endif %}>Official fee</option>
+        <option value="foreign" {% if it.get('item_type')=='foreign' %}selected{% endif %}>Foreign expense</option>
+       </select>
+      </td>
+      <td data-label="Qty"><input name="qty[]" type="number" step="1" value="{{ it['qty'] }}" oninput="recalc()" /></td>
+      <td data-label="Unit price"><input name="unit_price[]" type="number" step="0.01" value="{{ it['unit_price'] }}" oninput="recalc()" /></td>
+      <td data-label="Discount"><input name="discount[]" type="number" step="0.1" min="0" max="100" value="{{ it.get('discount', 0) }}" oninput="recalc()" placeholder="0" /></td>
+      <td data-label="Amount" class="right amount-cell">0</td>
+      <td data-label="Actions" class="right"><button class="btn btn-danger" type="button" onclick="removeRow(this)">Delete</button></td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+   </div>
+
+   <div class="invoice-summary">
+    <div class="flex-1">
+      <!-- Left side spacer or future content (e.g. Terms) -->
+    </div>
+    <div class="invoice-summary-panel">
+      <div class="card">
+        <div class="row"><div class="muted">Service fees</div><div class="spacer"></div><div id="service_total" class="nowrap">0</div></div>
+        <div class="row"><div class="muted">Official fees</div><div class="spacer"></div><div id="admin_total" class="nowrap">0</div></div>
+        <div class="row"><div class="muted">Foreign expenses</div><div class="spacer"></div><div id="foreign_total" class="nowrap">0</div></div>
+        <div class="row"><div class="muted">Estimated costs</div><div class="spacer"></div><div id="estimated_total" class="nowrap">0</div></div>
+        <div class="row summary-divider"><div class="muted"></div><div class="spacer"></div><div id="subtotal" class="nowrap">0</div></div>
+        <div class="row"><div class="muted">Sales tax (service fees)</div><div class="spacer"></div><div id="tax" class="nowrap">0</div></div>
+        <div class="row summary-total"><div>Total due</div><div class="spacer"></div><div id="total" class="nowrap">0</div></div>
+      </div>
+
+      {# Make deposit options available in both create and edit modes #}
+       <details class="mt-8" {% if (request.form.get('use_deposit') == '1') %}open{% endif %}>
+        <summary class="muted text-xs" style="cursor:pointer;">Retainer</summary>
+        <div class="panel-dashed mt-6">
+         <label class="d-inline-flex align-center gap-6 text-xs cursor-pointer">
+          <input type="checkbox" name="use_deposit" value="1" {% if (request.form.get('use_deposit') == '1') %}checked{% endif %}>
+          Retainer application
+         </label>
+         <div class="grid grid-2 mt-6">
+          <div>
+           <label class="muted text-xs">Amount</label>
+           <input name="deposit_amount" value="{{ request.form.get('deposit_amount') or '' }}" placeholder="Example: 1000" />
+          </div>
+          <div>
+           <label class="muted text-xs">Notes (optional)</label>
+           <input name="deposit_memo" value="{{ request.form.get('deposit_memo') or '' }}" placeholder="" />
+          </div>
+         </div>
+         <div class="muted text-xs mt-4">Retainers are not applied to void invoices. Saving can update payment status to Paid or Payment pending.</div>
+        </div>
+       </details>
+
+      <div class="summary-actions">
+        {% if invoice and 'id' in invoice and invoice['status'] != 'tax_issued' %}
+        <button class="btn btn-ghost text-danger mr-auto" type="button" data-confirm="Delete this invoice?" data-confirm-form="delete-form-{{ invoice['id'] }}">Delete</button>
+        {% endif %}
+        <a class="btn btn-ghost" href="{{ url_for('list_invoices') }}">Cancel</a>
+        <button class="btn btn-primary min-w-100" type="submit" form="invoice-form">
+        {% if duplicate_warning %}Save duplicate{% else %}Save{% endif %}
+        </button>
+      </div>
+    </div>
+   </div>
+  </div>
+
+ </form>
+
+ {% if invoice and 'id' in invoice and invoice['status'] != 'tax_issued' %}
+  <form id="delete-form-{{ invoice['id'] }}" method="post" action="{{ url_for('billing_invoices.invoices.delete_invoice', invoice_id=invoice['id']) }}" class="is-hidden">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+  </form>
+ {% endif %}
+
+<script>
+// Mobile padding script removed as requested
+document.addEventListener('DOMContentLoaded', function(){
+ // Clean up any left over body classes if necessary
+ document.body.classList.remove('has-actionbar');
+});
+
+function setHidden(el, hidden) {
+ if (!el) return;
+ el.classList.toggle('is-hidden', hidden);
+}
+
+function setModalVisible(modal, visible) {
+ if (!modal) return;
+ modal.classList.toggle('show', visible);
+ modal.toggleAttribute('hidden', !visible);
+}
+
+// Settlement Business profile  (from )
+window.initialSettlementSplits = {{ settlement_splits|default([])|tojson }};
+
+// Business profileSelect User Change
+window._businessProfileUserChanged = false;
+window._businessProfileInitialValue = null;
+
+function syncBusinessProfileState(sel) {
+ if (!sel) return;
+ const opt = sel.options[sel.selectedIndex];
+ const vat = parseFloat(opt?.getAttribute('data-vat') || '0');
+ const vatInput = document.getElementById('vat_rate');
+ if (vatInput) {
+  vatInput.value = isNaN(vat) ? 0 : vat;
+ }
+ try {
+  window.bpCurrency = (opt?.getAttribute('data-currency') || 'USD').toUpperCase();
+ } catch (e) {}
+}
+
+function onBusinessChange(sel, _programmatic){
+ if (!_programmatic) {
+  window._businessProfileUserChanged = true;
+ }
+ syncBusinessProfileState(sel);
+ recalc();
+}
+
+// Settlement UI
+function toggleSettlement(){
+ const cont = document.getElementById('settlement_container');
+ const btn = document.getElementById('settlement_toggle_btn');
+ if(!cont || !btn) return;
+ const isHidden = cont.classList.contains('is-hidden');
+ if(!isHidden){
+  setHidden(cont, true);
+ } else {
+  setHidden(cont, false);
+  const rows = document.getElementById('settlement_rows');
+  if(rows && rows.children.length === 0){
+   const bpSel = document.querySelector('select[name="business_profile_id"]');
+   const currentId = bpSel ? bpSel.value : '';
+   addSettlementRow(currentId, 100);
+  }
+ }
+}
+
+function addSettlementRow(bpId, percent){
+ const rows = document.getElementById('settlement_rows');
+ if(!rows) return;
+ const row = document.createElement('div');
+ row.className = 'row align-center gap-8';
+ const baseSel = document.querySelector('select[name="business_profile_id"]');
+ let optionsHtml = '';
+ if(baseSel){
+  optionsHtml = Array.from(baseSel.options).map(function(opt){
+   const val = opt.value;
+   const selected = (bpId && String(bpId) === String(val)) ? ' selected' : '';
+   return '<option value="' + val + '"' + selected + '>' + opt.textContent + '</option>';
+  }).join('');
+ }
+ const pctVal = (percent !== undefined && percent !== null) ? percent : '';
+ row.innerHTML = `
+  <div class="flex-1">
+   <select name="settle_bp_id[]">${optionsHtml}</select>
+  </div>
+  <div class="settlement-percent">
+   <input type="number" name="settle_percent[]" min="0" max="100" step="0.1" value="${pctVal}" class="a_r w-80 input-inline-sm" oninput="updateSettlementTotal()" />
+   <span class="muted">%</span>
+   <button type="button" class="btn btn-ghost btn-xs" onclick="removeSettlementRow(this)">✕</button>
+  </div>
+ `;
+ rows.appendChild(row);
+ updateSettlementTotal();
+}
+
+function removeSettlementRow(btn){
+ const row = btn && btn.closest('.row');
+ if(row){ row.remove(); }
+ updateSettlementTotal();
+}
+
+function updateSettlementTotal(){
+ const inputs = document.querySelectorAll('input[name="settle_percent[]"]');
+ let total = 0;
+ inputs.forEach(function(inp){
+  const v = parseFloat(inp.value || '0');
+  if(!isNaN(v)) total += v;
+ });
+ const summary = document.getElementById('settlement_summary');
+ if(summary){
+  summary.textContent = 'Total: ' + total.toFixed(1).replace(/\.0$/, '') + '%';
+  summary.classList.toggle('text-danger', !(Math.abs(total - 100) < 0.01 || total === 0));
+ }
+}
+
+function initSettlement(){
+ const cont = document.getElementById('settlement_container');
+ const btn = document.getElementById('settlement_toggle_btn');
+ if(!cont || !btn) return;
+ if(window.initialSettlementSplits && window.initialSettlementSplits.length){
+  setHidden(cont, false);
+  window.initialSettlementSplits.forEach(function(s){
+   addSettlementRow(s.business_profile_id, s.percent);
+  });
+ }
+ updateSettlementTotal();
+}
+
+// Client Search Select
+let allClientOptions = [];
+
+function _isInitialSearchChar(ch){
+ return /^[A-Za-z]$/.test(ch);
+}
+
+function isCompactQuery(s){
+ if(!s) return false;
+ const t = String(s).trim();
+ if(!t) return false;
+ for(let i=0;i<t.length;i++){
+  const ch = t[i];
+  if(ch === ' ') continue;
+  if(!_isInitialSearchChar(ch)) return false;
+ }
+ return true;
+}
+
+function toCompact(s){
+ if(!s) return '';
+ const str = String(s);
+ const out = [];
+ for(let i=0;i<str.length;i++){
+  const ch = str[i];
+  if(_isInitialSearchChar(ch)){
+   out.push(ch);
+  } else if(/[0-9]/.test(ch)){
+   out.push(ch);
+  }
+ }
+ return out.join('');
+}
+
+function initClientSearch() {
+ const searchInput = document.getElementById('client_search');
+ const dropdown = document.getElementById('client_dropdown');
+ const clientSelect = document.getElementById('client_select');
+ const newClientFields = document.getElementById('new_client_fields');
+ const existingClientInfo = document.getElementById('existing_client_info');
+
+ // Client Save
+ allClientOptions = Array.from(document.querySelectorAll('.client-option'));
+
+ // Select Client Confirm
+ const selectedOption = allClientOptions.find(opt => opt.dataset.selected === 'true');
+ if (selectedOption) {
+  const clientId = selectedOption.dataset.id;
+  const clientName = selectedOption.dataset.name;
+  searchInput.value = clientName;
+  clientSelect.value = clientId;
+  showClientInfo(clientId, selectedOption.dataset.address, selectedOption.dataset.phone, selectedOption.dataset.manager);
+ }
+
+ // Display entered client information automatically after validation errors.
+ const newClientNameValue = document.getElementById('new_client_name').value;
+ if (newClientNameValue && newClientNameValue.trim() !== '') {
+  setHidden(newClientFields, false);
+  setHidden(existingClientInfo, true);
+  searchInput.value = 'New client';
+  clientSelect.value = '';
+  document.getElementById('new_client_name').required = true;
+ }
+
+ // Search Input  Display
+ searchInput.addEventListener('focus', function() {
+  setHidden(dropdown, false);
+  filterClients(searchInput.value);
+ });
+
+ // Search Input Filters
+ searchInput.addEventListener('input', function() {
+  setHidden(dropdown, false);
+  filterClients(searchInput.value);
+ });
+
+ // Client
+ allClientOptions.forEach(option => {
+  option.addEventListener('click', function() {
+   const clientId = this.dataset.id;
+   const clientName = this.dataset.name || 'New client';
+   const address = this.dataset.address || '';
+   const phone = this.dataset.phone || '';
+   const manager = this.dataset.manager || '';
+
+   searchInput.value = clientName;
+   clientSelect.value = clientId;
+   setHidden(dropdown, true);
+
+   if (clientId === '') {
+    // ? client
+    setHidden(newClientFields, false);
+    setHidden(existingClientInfo, true);
+    document.getElementById('new_client_name').required = true;
+   } else {
+    // Existing Client
+    setHidden(newClientFields, true);
+    setHidden(existingClientInfo, false);
+    document.getElementById('new_client_name').required = false;
+    showClientInfo(clientId, address, phone, manager);
+   }
+  });
+ });
+
+ //   Close
+ document.addEventListener('click', function(e) {
+  if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+   setHidden(dropdown, true);
+  }
+ });
+}
+
+function filterClients(searchTerm) {
+ const raw = (searchTerm || '').toString();
+ const term = raw.toLowerCase();
+ const isCho = isCompactQuery(raw);
+ const qCho = isCho ? raw.replace(/\s+/g, '') : '';
+ allClientOptions.forEach(option => {
+  const nameRaw = (option.dataset.name || 'New client').toString();
+  const phoneRaw = (option.dataset.phone || '').toString();
+  const addressRaw = (option.dataset.address || '').toString();
+  const name = nameRaw.toLowerCase();
+  const phone = phoneRaw.toLowerCase();
+  const address = addressRaw.toLowerCase();
+  const textLower = `${name} ${phone} ${address}`;
+
+  let ok = false;
+  if (!raw.trim()) {
+   ok = true;
+  } else if (isCho) {
+   const textCho = toCompact(`${nameRaw} ${phoneRaw} ${addressRaw}`).replace(/\s+/g, '');
+   ok = textCho.includes(qCho);
+  } else {
+   ok = textLower.includes(term);
+  }
+
+  if (ok || option.dataset.id === '') {
+   setHidden(option, false);
+  } else {
+   setHidden(option, true);
+  }
+ });
+}
+
+function showClientInfo(clientId, address, phone, manager) {
+ document.getElementById('info_address').textContent = address || '-';
+ document.getElementById('info_phone').textContent = phone || '-';
+ document.getElementById('info_manager').textContent = manager || '-';
+}
+
+function toggleClientInput(){
+ // ? - initClientSearch Process
+}
+
+// Client Duplicate Confirm
+let duplicateCheckTimeout = null;
+let duplicateCheckToken = 0;
+
+function checkDuplicateCustomer() {
+ const name = document.getElementById('new_client_name').value.trim();
+ const phone = document.getElementById('new_client_phone').value.trim();
+ const email = document.getElementById('new_client_email').value.trim();
+ const address = document.getElementById('new_client_address').value.trim();
+ const token = ++duplicateCheckToken;
+
+ if (!name) {
+  closeDuplicateWarning();
+  return;
+ }
+
+ // CSRF
+ const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+          document.querySelector('input[name="csrf_token"]')?.value;
+
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+
+ // AJAX
+ fetch(`${scriptRoot}/invoices/check_duplicate_customer`, {
+  method: 'POST',
+  headers: {
+   'Content-Type': 'application/json',
+   'X-CSRFToken': csrfToken
+  },
+  body: JSON.stringify({ name, phone, email, address })
+ })
+ .then(response => response.json())
+ .then(data => {
+  if (token !== duplicateCheckToken) return;
+  if (data.success && data.matches && data.matches.length> 0) {
+   showDuplicateWarning(data.matches);
+  } else {
+   closeDuplicateWarning();
+  }
+ })
+ .catch(error => {
+  if (token !== duplicateCheckToken) return;
+  console.error('Duplicate Confirm Error:', error);
+ });
+}
+
+function debouncedDuplicateCheck() {
+ clearTimeout(duplicateCheckTimeout);
+ duplicateCheckTimeout = setTimeout(checkDuplicateCustomer, 500);
+}
+
+function showDuplicateWarning(matches) {
+ const warning = document.getElementById('duplicate_warning');
+ const matchesContainer = document.getElementById('duplicate_matches');
+
+ matchesContainer.innerHTML = '';
+
+ matches.forEach(match => {
+  const matchDiv = document.createElement('div');
+  matchDiv.className = 'duplicate-match';
+  matchDiv.onclick = () => selectExistingCustomer(match.id, match.name);
+
+  let matchInfo = `<div class="text-strong mb-4">${match.name}</div>`;
+  matchInfo += `<div class="text-sm text-warning-deep">`;
+  if (match.phone) matchInfo += `<div>📞 ${match.phone}</div>`;
+  if (match.email) matchInfo += `<div>✉️ ${match.email}</div>`;
+  if (match.address) matchInfo += `<div>📍 ${match.address}</div>`;
+  if (match.manager) matchInfo += `<div>👤 ${match.manager}</div>`;
+  matchInfo += `</div>`;
+  matchInfo += `<div class="text-xs text-warning-strong text-strong mt-6">`;
+  matchInfo += match.reasons.join(', ');
+  matchInfo += ` (: ${match.score})</div>`;
+  matchInfo += `<div class="text-sm text-success-strong mt-4">Client selected</div>`;
+
+  matchDiv.innerHTML = matchInfo;
+  matchesContainer.appendChild(matchDiv);
+ });
+
+ setHidden(warning, false);
+}
+
+function selectExistingCustomer(clientId, clientName) {
+ // Existing Client Select
+ const searchInput = document.getElementById('client_search');
+ const clientSelect = document.getElementById('client_select');
+ const newClientFields = document.getElementById('new_client_fields');
+
+ searchInput.value = clientName;
+ clientSelect.value = clientId;
+ setHidden(newClientFields, true);
+ closeDuplicateWarning();
+
+ // Client information Display
+ const option = allClientOptions.find(opt => opt.dataset.id == clientId);
+ if (option) {
+  showClientInfo(clientId, option.dataset.address, option.dataset.phone, option.dataset.manager);
+ }
+}
+
+function closeDuplicateWarning() {
+ const warning = document.getElementById('duplicate_warning');
+ setHidden(warning, true);
+}
+
+// Input  Add
+function initDuplicateCheck() {
+ const nameField = document.getElementById('new_client_name');
+ const phoneField = document.getElementById('new_client_phone');
+ const emailField = document.getElementById('new_client_email');
+ const addressField = document.getElementById('new_client_address');
+
+ if (nameField) {
+  nameField.addEventListener('blur', checkDuplicateCustomer);
+  nameField.addEventListener('input', debouncedDuplicateCheck);
+ }
+ if (phoneField) phoneField.addEventListener('blur', checkDuplicateCustomer);
+ if (emailField) emailField.addEventListener('blur', checkDuplicateCustomer);
+ if (addressField) addressField.addEventListener('blur', checkDuplicateCustomer);
+}
+
+function addRow(){
+ const tr = document.createElement('tr');
+ tr.innerHTML = `
+  <td data-label="Description">
+   <input name="description[]" placeholder=": Design Actions" />
+   <div class="phase-controls">
+    <div class="row align-center gap-6">
+     <span class="text-xs text-soft outgoing-phase-field is-hidden"></span>
+    <select name=\"phase[]\" class=\"phase-select input-inline-sm outgoing-phase-field is-hidden\" onchange=\"updateEstimatedDefault(this)\">
+     <option value=\"app\" selected>Filing</option>
+     <option value=\"oa\">OA/Examination</option>
+     <option value=\"reg\">Registration</option>
+    </select>
+    <label class=\"d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer\">
+     <input type=\"hidden\" name=\"is_estimated_base[]\" value=\"0\" class=\"estimated-base\">
+     <input type=\"checkbox\" name=\"is_estimated_chk[]\" value=\"1\" class=\"estimated-checkbox\" onchange=\"updateEstimatedHidden(this)\">
+     Estimated cost
+    </label>
+    </div>
+   </div>
+   <div class="fx-controls is-hidden">
+    <div class="fx-row">
+     <select name="fx_currency[]" class="fx-currency input-inline-sm">
+      <option value="USD">USD</option>
+      <option value="JPY">JPY</option>
+      <option value="EUR">EUR</option>
+      <option value="CNY">CNY</option>
+          <option value="__MORE__">More currencies</option>
+     </select>
+     <input type="number" name="fx_fee[]" class="fx-fee input-inline-sm" step="0.01" placeholder="Fee" />
+     <input type="number" name="fx_gov[]" class="fx-gov input-inline-sm" step="0.01" placeholder="Official fee" />
+     <input type="number" name="fx_markup[]" class="fx-markup input-inline-sm" step="0.1" value="2" placeholder="(%)" />
+     <input type="hidden" name="fx_rate_used[]" class="fx-rate-used" value="" />
+     <span class="fx-usd muted text-nowrap">→ USD amount: 0</span>
+     <span class="muted text-xs">
+      <input type="hidden" name="foreign_vat_base[]" value="0" class="fx-vat-hidden">
+      <label class="d-inline-flex align-center gap-4 cursor-pointer">
+       <input type="checkbox" name="foreign_vat_chk[]" value="1" class="fx-vat" onchange="updateForeignVatHidden(this)"> Apply sales tax
+      </label>
+     </span>
+    </div>
+   </div>
+  </td>
+  <td data-label="Type">
+   <select name="item_type[]" onchange="onTypeChange(this)">
+    <option value="service">Service fee</option>
+    <option value="admin">Official fee</option>
+    <option value="foreign">Foreign expense</option>
+   </select>
+  </td>
+  <td data-label="Qty"><input name="qty[]" type="number" step="1" value="1" oninput="recalc()" /></td>
+  <td data-label="Unit price"><input name="unit_price[]" type="number" step="0.01" value="0" oninput="recalc()" /></td>
+  <td data-label="Discount"><input name="discount[]" type="number" step="0.1" min="0" max="100" value="0" oninput="recalc()" placeholder="0" /></td>
+  <td data-label="Amount" class="right amount-cell">0</td>
+  <td data-label="Actions" class="right"><button class="btn btn-danger" type="button" onclick="removeRow(this)">Delete</button></td>
+ `;
+ document.getElementById('items-body').appendChild(tr);
+ styleRow(tr);
+ (function(){ const sel = tr.querySelector('select[name="item_type[]"]'); if(sel){ sel.addEventListener('change', function(){ onTypeChange(this); }); } })();
+ bindFxInputs(tr);
+ // rowfrom Currency Apply
+ try{ if(window.fxFetched){ populateFxCurrencyOptions(); } }catch(e){}
+ syncOutgoingPhaseFields(tr);
+ recalc();
+}
+function removeRow(btn){ btn.closest('tr').remove(); recalc(); }
+const CURRENCY_SCALE = { USD: 0, USD: 2, EUR: 2, JPY: 0, CNY: 2 };
+const ITEM_TYPE_ALIASES = {
+ service: "service",
+ admin: "admin",
+ foreign: "foreign",
+ "Service fee": "service",
+ "Service fee": "service",
+ "Official fee": "admin",
+ "Foreign expense": "foreign",
+ "Foreign expense": "foreign",
+ // English labels (defensive; some pages/users may see EN labels)
+ "service fee": "service",
+ "official fee": "admin",
+ "foreign cost": "foreign",
+ "foreign fee": "foreign",
+};
+function getCurrencyScale(){
+ const cur = (window.bpCurrency || 'USD').toUpperCase();
+ return Object.prototype.hasOwnProperty.call(CURRENCY_SCALE, cur) ? CURRENCY_SCALE[cur] : 2;
+}
+function roundCurrency(n){
+ const scale = getCurrencyScale();
+ const factor = Math.pow(10, scale);
+ return Math.round((n + Number.EPSILON) * factor) / factor;
+}
+function normalizeItemType(raw){
+ const key = (raw || "").toString().trim();
+ if(!key){ return null; }
+ const lower = key.toLowerCase();
+ if(Object.prototype.hasOwnProperty.call(ITEM_TYPE_ALIASES, lower)){ return ITEM_TYPE_ALIASES[lower]; }
+ if(Object.prototype.hasOwnProperty.call(ITEM_TYPE_ALIASES, key)){ return ITEM_TYPE_ALIASES[key]; }
+ return null;
+}
+function getItemType(sel){
+ if(!sel){ return "service"; }
+ // Prefer the *visible* label when it can be mapped.
+ // This prevents mis-classification if option values are accidentally swapped/mis-set.
+ const label = sel.options && sel.selectedIndex>= 0 ? (sel.options[sel.selectedIndex].textContent || "") : "";
+ const byLabel = normalizeItemType(label);
+ const byValue = normalizeItemType(sel.value);
+ return byLabel || byValue || "service";
+}
+function parseNum(v){ return parseFloat(v || '0') || 0; }
+function formatUSD(n){ return new Intl.NumberFormat('en-US').format(n); }
+function styleRow(tr){
+ try{
+  const sel = tr.querySelector('select[name="item_type[]"]');
+  const type = getItemType(sel);
+  tr.classList.remove('type-service','type-admin','type-foreign');
+  tr.classList.add('type-' + (type || 'service'));
+ } catch(e){}
+}
+function onTypeChange(sel){
+ const tr = sel.closest('tr');
+ if(tr) styleRow(tr);
+ recalc();
+ // Foreign expenseto  Currency '+View'
+ try{
+  const t = getItemType(sel);
+  if(window.fxFetched && window.fxEnabled && t === 'foreign'){
+   populateFxCurrencyOptions();
+  }
+ }catch(e){}
+}
+function updateEstimatedDefault(phaseSelect){
+ const tr = phaseSelect.closest('tr');
+ if(!tr) return;
+ const checkbox = tr.querySelector('.estimated-checkbox');
+ if(!checkbox) return;
+ const phase = phaseSelect.value;
+ // OA/Examination, Registration Defaultto Estimated cost
+ if(phase === 'oa' || phase === 'reg'){
+  checkbox.checked = true;
+ } else {
+  checkbox.checked = false;
+ }
+ updateEstimatedHidden(checkbox);
+}
+function updateEstimatedHidden(checkbox){
+ const tr = checkbox.closest('tr');
+ if(!tr) return;
+ const hidden = tr.querySelector('.estimated-base');
+ if(!hidden) return;
+ hidden.value = checkbox.checked ? '1' : '0';
+ recalc();
+}
+function updateForeignVatHidden(checkbox){
+ try{
+  const tr = checkbox.closest('tr'); if(!tr) return;
+  const hidden = tr.querySelector('.fx-vat-hidden'); if(hidden){ hidden.value = checkbox.checked ? '1' : '0'; }
+ }catch(e){}
+ try{ recalc(); }catch(e){}
+}
+function isRowEstimated(tr){
+ try{
+  const hidden = tr.querySelector('.estimated-base');
+  if(hidden){ return hidden.value === '1'; }
+  const cb = tr.querySelector('.estimated-checkbox');
+  return !!(cb && cb.checked);
+ }catch(e){
+  return false;
+ }
+}
+function applyRowStyles(){
+ document.querySelectorAll('#items-body tr').forEach(function(tr){
+  styleRow(tr);
+  const sel = tr.querySelector('select[name="item_type[]"]');
+  if(sel && !sel._bound){ sel.addEventListener('change', function(){ onTypeChange(this); }); sel._bound = true; }
+ });
+}
+function recalc(){
+ const rows = document.querySelectorAll('#items-body tr');
+ let serviceTotal = 0;
+ let adminTotal = 0;
+ let foreignTotal = 0;
+ let estimatedTotal = 0;
+ let taxableTotal = 0;
+ rows.forEach(r=>{
+  const qty = parseNum(r.querySelector('input[name="qty[]"]').value);
+  const unitInput = r.querySelector('input[name="unit_price[]"]');
+  let unit = parseNum(unitInput.value);
+  const discountPct = parseNum(r.querySelector('input[name="discount[]"]').value);
+  const itemType = getItemType(r.querySelector('select[name="item_type[]"]'));
+  // FX Apply(): Foreign expensefrom Exchange rate Unit price USD auto
+  // NOTE: FX Unit price fx_fee+fx_gov Total 0 unit_price (Manual Input ).
+  if(itemType === 'foreign' && window.fxEnabled){
+   const fxCtl = r.querySelector('.fx-controls');
+   if(fxCtl) setHidden(fxCtl, false);
+   if(window.fxRates){
+    const cur = (r.querySelector('.fx-currency')?.value || 'USD').toUpperCase();
+    const fee = parseNum(r.querySelector('.fx-fee')?.value);
+    const gov = parseNum(r.querySelector('.fx-gov')?.value);
+    const mkp = parseNum(r.querySelector('.fx-markup')?.value);
+    const fxSum = fee + gov;
+    const rec = window.fxRates[cur];
+    if(rec){
+     let rate = rec.sending; // Default: USD
+     try{ if((window.bpCurrency||'USD').toUpperCase() !== 'USD'){ rate = rec.receiving; } }catch(e){}
+     // User Exchange rate(override)  Apply
+     if(window.fxOverrides && window.fxOverrides[cur] != null){
+      const ov = parseFloat(window.fxOverrides[cur]);
+      if(!isNaN(ov) && ov> 0){ rate = ov; }
+     }
+     const rateInput = r.querySelector('.fx-rate-used');
+     if(rateInput){ rateInput.value = (fxSum> 0 ? rate : ''); }
+     if(fxSum> 0){
+      const eff = rate * (1 + (mkp||0)/100);
+      const usd = roundCurrency(fxSum * eff);
+      unit = usd;
+      if(unitInput){ unitInput.value = usd; }
+      const fxK = r.querySelector('.fx-usd'); if(fxK){ fxK.textContent = '→ USD amount: ' + formatUSD(usd); }
+     } else {
+      const fxK = r.querySelector('.fx-usd'); if(fxK){ fxK.textContent = '→ USD amount: ' + formatUSD(0); }
+     }
+    }
+   }
+  } else {
+   const fxCtl = r.querySelector('.fx-controls'); if(fxCtl) setHidden(fxCtl, true);
+  }
+  const itemAmount = qty * unit;
+  const discountAmount = itemAmount * (discountPct / 100);
+  const amt = roundCurrency(itemAmount - discountAmount);
+  const isEstimated = isRowEstimated(r);
+  const amountCell = r.querySelector('.amount-cell');
+  r.classList.toggle('is-estimated-line', isEstimated);
+  if(amountCell){
+   amountCell.textContent = formatUSD(amt) + (isEstimated ? ' (Estimated)' : '');
+  }
+  if(isEstimated){
+   estimatedTotal += amt;
+   return;
+  }
+
+  if(itemType === 'service'){
+   serviceTotal += amt;
+   taxableTotal += amt;
+  } else if(itemType === 'admin'){
+   adminTotal += amt;
+  } else if(itemType === 'foreign'){
+   foreignTotal += amt;
+   const vatChk = r.querySelector('.fx-vat');
+   if(vatChk && vatChk.checked){
+    taxableTotal += amt;
+   }
+  }
+ });
+ const subtotal = roundCurrency(serviceTotal + adminTotal + foreignTotal);
+ const vat = parseFloat(document.getElementById('vat_rate').value || '0');
+ // target: Service fee + ( Foreign expense Apply sales tax Item)
+ const tax = roundCurrency(taxableTotal * (vat/100));
+ const total = roundCurrency(subtotal + tax);
+
+ document.getElementById('service_total').textContent = formatUSD(serviceTotal);
+ document.getElementById('admin_total').textContent = formatUSD(adminTotal);
+ document.getElementById('foreign_total').textContent = formatUSD(foreignTotal);
+ const estimatedEl = document.getElementById('estimated_total');
+ if(estimatedEl){ estimatedEl.textContent = formatUSD(estimatedTotal); }
+ document.getElementById('subtotal').textContent = formatUSD(subtotal);
+ document.getElementById('tax').textContent = formatUSD(tax);
+ document.getElementById('total').textContent = formatUSD(total);
+ // expose latest totals
+ window.fxLatest = { serviceTotal, adminTotal, foreignTotal, subtotal, tax, total };
+ if(window.fxEnabled){
+  try{ updateFxBaseLines(); }catch(e){}
+  try{ renderFxOutgoingLayout(); }catch(e){}
+ } else {
+  const fxOL = document.getElementById('fxOutgoingLayout'); if(fxOL) setHidden(fxOL, true);
+ }
+}
+
+// ---------------- FX helpers ----------------
+window.fxEnabled = false;
+window.fxFetched = false;
+window.fxRates = null;
+window.bpCurrency = (function(){ try { const sel = document.querySelector('select[name="business_profile_id"]'); const opt = sel ? sel.options[sel.selectedIndex] : null; return (opt?.getAttribute('data-currency') || 'USD').toUpperCase(); } catch(e){ return 'USD'; } })();
+window.fxOverrides = {};
+window.fxShowAll = false; // '+View' Status (Default: 4items)
+
+function syncOutgoingPhaseFields(root){
+ const scope = root || document;
+ scope.querySelectorAll('.outgoing-phase-field').forEach(el=> setHidden(el, !window.fxEnabled));
+}
+
+function toggleFx(){
+ window.fxEnabled = !window.fxEnabled;
+ const p = document.getElementById('fxPanel');
+ const ol = document.getElementById('fxOutgoingLayout');
+ const btn = document.getElementById('fxToggleBtn');
+ if(window.fxEnabled){
+  setHidden(p, false);
+  setHidden(ol, false);
+  btn.classList.add('btn-primary');
+  btn.textContent = 'Standard mode';
+  if(!window.fxFetched){ fetchFxRatesOnce(); }
+ } else {
+  setHidden(p, true);
+  setHidden(ol, true);
+  btn.classList.remove('btn-primary');
+  btn.textContent = 'Foreign currency mode';
+ }
+ try{
+  const io = document.getElementById('is_outgoing');
+  if(io){ io.value = window.fxEnabled ? '1' : '0'; }
+  syncOutgoingPhaseFields();
+ }catch(e){}
+ // show/hide per-row controls
+ document.querySelectorAll('#items-body tr').forEach(showOrHideFxControls);
+ recalc();
+}
+
+function populateFxCurrencyOptions(){
+ try{
+  const rates = window.fxRates || {};
+  const keys = Object.keys(rates).sort();
+  if(!keys.length) return;
+  const majors = ['USD','JPY','CNY','EUR'];
+  document.querySelectorAll('.fx-currency').forEach(sel=>{
+   const cur = (sel.value || 'USD').toUpperCase();
+   // Default: 4items + (Current Select Add )
+   const showAll = !!window.fxShowAll;
+   const list = [];
+   if(showAll){
+    // USD ,
+    if(keys.includes('USD')) list.push('USD');
+    list.push(...keys.filter(k=>k!=='USD'));
+   } else {
+    list.push(...majors.filter(m=> keys.includes(m)));
+    if(cur && !majors.includes(cur) && keys.includes(cur)){
+     list.push(cur);
+    }
+   }
+   // Duplicate
+   const used = new Set();
+   const finalList = list.filter(ccy=>{ if(used.has(ccy)) return false; used.add(ccy); return true; });
+   const opts = finalList.map(k=> `<option value="${k}"${cur===k ? ' selected':''}>${k}</option>`);
+   if(!showAll){ opts.push('<option value="__MORE__">More currencies</option>'); }
+   sel.innerHTML = opts.join('');
+  });
+ }catch(e){}
+}
+
+function fetchFxRatesOnce(){
+ try{
+  const csrf = document.querySelector('input[name="csrf_token"]').value;
+  const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+  return fetch(`${scriptRoot}/invoices/fx_rates?currencies=ALL`, { headers: { 'X-CSRFToken': csrf } })
+   .then(r=>r.json())
+   .then(data=>{
+    if(data && data.success){
+     window.fxRates = data.rates || {};
+     window.fxFetched = true;
+     try{ populateFxCurrencyOptions(); }catch(e){}
+     updateFxBaseLines();
+     recalc();
+    }
+   })
+   .catch(()=>{});
+ }catch(e){ return Promise.resolve(); }
+}
+
+function getSelectedFxCurrencies(){
+ const set = new Set();
+ document.querySelectorAll('#items-body tr').forEach(tr=>{
+  const type = getItemType(tr.querySelector('select[name="item_type[]"]'));
+  if(type==='foreign'){
+   // Only consider currencies from rows that actually use FX amounts.
+   // Avoid showing base-rate lines just because selects default to USD.
+   const fee = parseNum(tr.querySelector('.fx-fee')?.value);
+   const gov = parseNum(tr.querySelector('.fx-gov')?.value);
+   if((fee + gov) <= 0){ return; }
+   const sel = tr.querySelector('.fx-currency');
+   if(sel && sel.value){ set.add(sel.value.toUpperCase()); }
+  }
+ });
+ return Array.from(set).sort();
+}
+function updateFxBaseLines(){
+ const box = document.getElementById('fxBaseLines');
+ if(!box || !window.fxRates){ return; }
+ const selected = getSelectedFxCurrencies();
+ if(!selected.length){ box.innerHTML = ''; return; }
+ const parts = selected.map(ccy => {
+  const r = window.fxRates[ccy]; if(!r) return '';
+  const val = (window.fxOverrides && window.fxOverrides[ccy] != null)
+   ? parseFloat(window.fxOverrides[ccy])
+   : (((window.bpCurrency||'USD').toUpperCase() === 'USD') ? Number(r.sending) : Number(r.receiving));
+  return `1 ${ccy} <input type="number" step="0.01" value="${val}" data-ccy="${ccy}" class="fx-base-input input-inline-sm w-90 a_r" />`;
+ }).filter(Boolean);
+ box.innerHTML = parts.join(' \u00B7 ');
+ box.querySelectorAll('.fx-base-input').forEach(inp=>{
+  inp.addEventListener('input', function(){
+   const c = this.getAttribute('data-ccy');
+   const v = parseFloat(this.value);
+   if(!isNaN(v)) { window.fxOverrides[c] = v; } else { delete window.fxOverrides[c]; }
+   recalc();
+  });
+ });
+}
+
+function renderFxOutgoingLayout(){
+ const cont = document.getElementById('fxOutgoingLayout');
+ if(!cont) return;
+ const dWrap = document.getElementById('fxOutgoingDomestic');
+ const fWrap = document.getElementById('fxOutgoingForeign');
+ const tWrap = document.getElementById('fxOutgoingTotals');
+ if(!(dWrap && fWrap && tWrap)) return;
+
+ // Build domestic (service/admin)
+ let domesticRows = [];
+ let foreignRows = [];
+ let commonMarkup = null; let uniformMarkup = true;
+ document.querySelectorAll('#items-body tr').forEach(r=>{
+  if(isRowEstimated(r)){ return; }
+  const type = getItemType(r.querySelector('select[name="item_type[]"]'));
+  const desc = (r.querySelector('input[name="description[]"]').value || '').trim();
+  const qty = parseNum(r.querySelector('input[name="qty[]"]').value);
+  const unit = parseNum(r.querySelector('input[name="unit_price[]"]').value);
+  const discount = parseNum(r.querySelector('input[name="discount[]"]').value);
+  const amount = qty * unit * (1 - (discount||0)/100);
+  if(type === 'foreign'){
+   const cur = (r.querySelector('.fx-currency')?.value || 'USD').toUpperCase();
+   const fee = parseNum(r.querySelector('.fx-fee')?.value);
+   const gov = parseNum(r.querySelector('.fx-gov')?.value);
+   const mkp = parseNum(r.querySelector('.fx-markup')?.value);
+   if(commonMarkup === null){ commonMarkup = mkp; }
+   if(commonMarkup !== mkp){ uniformMarkup = false; }
+   let rate = 0;
+   if(window.fxRates && window.fxRates[cur]){
+    rate = ((window.bpCurrency||'USD').toUpperCase() === 'USD') ? window.fxRates[cur].sending : window.fxRates[cur].receiving;
+    if(window.fxOverrides && window.fxOverrides[cur] != null){
+     const ov = parseFloat(window.fxOverrides[cur]); if(!isNaN(ov) && ov> 0){ rate = ov; }
+    }
+   }
+   const eff = rate * (1 + (mkp||0)/100);
+   const usd = (fee + gov) * eff;
+   foreignRows.push({ region: desc || '', cur, fee, gov, mkp, usd });
+  } else {
+   domesticRows.push({ desc: desc || (type==='admin'?'Official fee':'Service fee'), amount });
+  }
+ });
+
+ // Domestic render
+ const domTable = [
+  '<table class="mini-table">',
+  '<thead><tr><th class="w-40p">Domestic cost</th><th class="right w-60p">Amount</th></tr></thead>',
+  '<tbody>',
+  ...domesticRows.map(r=> `<tr><td>${escapeHtml(r.desc)}</td><td class="right">${formatUSD(r.amount)}</td></tr>`),
+  '</tbody>',
+  '</table>'
+ ].join('');
+ const domSubtotal = (window.fxLatest?.serviceTotal || 0) + (window.fxLatest?.adminTotal || 0);
+ dWrap.innerHTML = domTable + `<div class="row justify-end gap-12 mt-4"><div class="muted">Domestic cost subtotal(taxable)</div><div class="text-strong">${formatUSD(domSubtotal)}</div></div>`;
+
+ // Foreign render
+ const mkLabel = uniformMarkup && commonMarkup != null ? ` (${(commonMarkup||0)}% exchange rate)` : ' (exchange rate applied)';
+ const fHead = `<div class="text-strong">Foreign expense${mkLabel}</div>`;
+ const fTable = [
+  '<table class="mini-table mt-4">',
+  '<thead><tr><th class="w-18p"></th><th class="w-12p">Currency</th><th class="w-18p">Fee</th><th class="w-18p">Official fee</th><th class="right w-34p">USD amount</th></tr></thead>',
+  '<tbody>',
+  ...foreignRows.map(r=> `<tr><td>${escapeHtml(r.region)}</td><td>${r.cur}</td><td>${new Intl.NumberFormat('en-US').format(r.fee)}</td><td>${new Intl.NumberFormat('en-US').format(r.gov)}</td><td class="right">${formatUSD(r.usd)}</td></tr>`),
+  '</tbody>',
+  '</table>'
+ ].join('');
+ const foreignSubtotal = (window.fxLatest?.foreignTotal || 0);
+ fWrap.innerHTML = fHead + fTable + `<div class="row justify-end gap-12 mt-4"><div class="muted">Foreign expense subtotal(non-taxable)</div><div class="text-strong">${formatUSD(foreignSubtotal)}</div></div>`;
+
+ // Totals render
+ const subtotal = window.fxLatest?.subtotal || 0;
+ const tax = window.fxLatest?.tax || 0;
+ const total = window.fxLatest?.total || 0;
+ tWrap.innerHTML = `
+  <div class="row justify-end gap-16">
+   <div class="muted">Filing cost total</div><div class="text-bold">${new Intl.NumberFormat('en-US', {maximumFractionDigits:2}).format(total)}</div>
+  </div>
+ `;
+
+ setHidden(cont, false);
+}
+
+function escapeHtml(s){
+ try{ return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }catch(e){ return s||''; }
+}
+
+function showOrHideFxControls(tr){
+ const type = getItemType(tr.querySelector('select[name="item_type[]"]'));
+ const fxCtl = tr.querySelector('.fx-controls');
+ if(!fxCtl) return;
+ setHidden(fxCtl, !(window.fxEnabled && type === 'foreign'));
+}
+
+function bindFxInputs(tr){
+ const sels = tr.querySelectorAll('.fx-currency, .fx-fee, .fx-gov, .fx-markup');
+ sels.forEach(el=> el.addEventListener('input', recalc));
+ // '+View'
+ try{
+  tr.querySelectorAll('.fx-currency').forEach(sel=>{
+   if(sel._fxMoreBound) return;
+   sel._fxMoreBound = true;
+   sel.addEventListener('mousedown', async function(){
+    try{ if(!window.fxFetched){ await fetchFxRatesOnce(); } populateFxCurrencyOptions(); }catch(e){}
+   });
+   sel.addEventListener('focus', async function(){
+    try{ if(!window.fxFetched){ await fetchFxRatesOnce(); } populateFxCurrencyOptions(); }catch(e){}
+   });
+   sel.addEventListener('change', function(){
+    if(this.value === '__MORE__'){
+     window.fxShowAll = true;
+     populateFxCurrencyOptions();
+     // Existing Select  Default USD
+     try{ this.value = 'USD'; }catch(e){}
+     recalc();
+    }
+   });
+  });
+ }catch(e){}
+}
+function _showBpToast(msg, type) {
+ // type: 'info' | 'warning'
+ let container = document.getElementById('bp-toast-container');
+ if (!container) {
+  container = document.createElement('div');
+  container.id = 'bp-toast-container';
+  container.style.cssText = 'position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+  document.body.appendChild(container);
+ }
+ const toast = document.createElement('div');
+ const bg = type === 'warning' ? '#fef3cd' : '#e0f2fe';
+ const border = type === 'warning' ? '#ffc107' : '#38bdf8';
+ const color = type === 'warning' ? '#856404' : '#075985';
+ toast.style.cssText = `background:${bg};color:${color};border:1px solid ${border};border-radius:8px;padding:10px 18px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.12);pointer-events:auto;opacity:0;transition:opacity .3s ease;max-width:360px;`;
+ toast.textContent = msg;
+ container.appendChild(toast);
+ requestAnimationFrame(() => { toast.style.opacity = '1'; });
+ setTimeout(() => {
+  toast.style.opacity = '0';
+  setTimeout(() => toast.remove(), 350);
+ }, 4000);
+}
+
+function loadTemplate(){
+ const sel = document.getElementById('template_select');
+ const opt = sel.options[sel.selectedIndex];
+ if(!opt.value) return;
+
+ const items = JSON.parse(opt.getAttribute('data-items') || '[]');
+ const notes = opt.getAttribute('data-notes') || '';
+ const businessProfileId = opt.getAttribute('data-business-profile-id') || '';
+ const language = opt.getAttribute('data-language') || '';
+
+ // Notes ( Notes )
+ document.querySelector('textarea[name="notes"]').value = notes;
+
+ const bpSel = document.querySelector('select[name="business_profile_id"]');
+ if (bpSel && businessProfileId) {
+  const canAutoApply =
+   !window._businessProfileUserChanged ||
+   !bpSel.value ||
+   String(bpSel.value) === String(window._businessProfileInitialValue || '');
+  if (canAutoApply) {
+   bpSel.value = String(businessProfileId);
+  }
+  onBusinessChange(bpSel, true);
+ }
+
+ // Language Select (Template  )
+ if(language) {
+  const languageSelect = document.getElementById('invoice_language');
+  if(languageSelect) {
+   languageSelect.value = language;
+  }
+ }
+
+ // existing items Delete
+ const tbody = document.getElementById('items-body');
+ tbody.innerHTML = '';
+
+ // Template Item Add
+ let hasOutgoingData = false;
+ items.forEach(it => {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+   <td data-label="Description"><input name="description[]" value="${it.description}" placeholder="Example: professional service" /></td>
+   <td data-label="Type">
+    <select name="item_type[]" onchange="onTypeChange(this)">
+     <option value="service" ${it.item_type=='service'?'selected':''}>Service fee</option>
+     <option value="admin" ${it.item_type=='admin'?'selected':''}>Official fee</option>
+     <option value="foreign" ${it.item_type=='foreign'?'selected':''}>Foreign expense</option>
+    </select>
+   </td>
+   <td data-label="Qty"><input name="qty[]" type="number" step="1" value="${it.qty}" oninput="recalc()" /></td>
+   <td data-label="Unit price"><input name="unit_price[]" type="number" step="0.01" value="${it.unit_price}" oninput="recalc()" /></td>
+   <td data-label="Discount"><input name="discount[]" type="number" step="0.1" min="0" max="100" value="${it.discount || 0}" oninput="recalc()" placeholder="0" /></td>
+   <td data-label="Amount" class="right amount-cell">0</td>
+   <td data-label="Actions" class="right"><button class="btn btn-danger" type="button" onclick="removeRow(this)">Delete</button></td>
+  `;
+  tbody.appendChild(tr);
+
+  //  hidden inputto Add
+  const descInput = tr.querySelector('input[name="description[]"]');
+  const phase = it.phase || 'app';
+  const isEstimated = (it.is_estimated === true || String(it.is_estimated || '0') === '1') ? 1 : 0;
+  const fxCurrency = it.fx_currency || '';
+  const fxFee = it.fx_fee || '';
+  const fxGov = it.fx_gov || '';
+  const fxMarkup = (it.fx_markup !== undefined && it.fx_markup !== null && it.fx_markup !== '') ? it.fx_markup : '2';
+  const fxRateUsed = it.fx_rate_used || '';
+  const isTaxable = (it.is_taxable === true || String(it.is_taxable || '0') === '1') ? 1 : 0;
+
+  // Phase Add
+  descInput.insertAdjacentHTML('afterend', `
+   <div class="phase-controls">
+    <div class="row align-center gap-6">
+    <span class="text-xs text-soft outgoing-phase-field is-hidden"></span>
+    <select name="phase[]" class="phase-select input-inline-sm outgoing-phase-field is-hidden" onchange="updateEstimatedDefault(this)">
+     <option value="app" ${phase=='app'?'selected':''}>Filing</option>
+     <option value="oa" ${phase=='oa'?'selected':''}>OA/Examination</option>
+     <option value="reg" ${phase=='reg'?'selected':''}>Registration</option>
+    </select>
+    <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+     <input type="hidden" name="is_estimated_base[]" value="${isEstimated}" class="estimated-base">
+     <input type="checkbox" name="is_estimated_chk[]" value="1" class="estimated-checkbox" ${isEstimated ? 'checked':''} onchange="updateEstimatedHidden(this)">
+     Estimated cost
+    </label>
+    </div>
+   </div>
+  `);
+
+  // Foreign expense Add (Sales tax )
+  descInput.insertAdjacentHTML('afterend', `
+   <div class="fx-controls is-hidden">
+    <div class="fx-row">
+     <select name="fx_currency[]" class="fx-currency input-inline-sm">
+      <option value="USD" ${fxCurrency=='USD'?'selected':''}>USD</option>
+      <option value="JPY" ${fxCurrency=='JPY'?'selected':''}>JPY</option>
+      <option value="EUR" ${fxCurrency=='EUR'?'selected':''}>EUR</option>
+      <option value="CNY" ${fxCurrency=='CNY'?'selected':''}>CNY</option>
+      <option value="__MORE__">More currencies</option>
+     </select>
+     <input type="number" name="fx_fee[]" class="fx-fee input-inline-sm" step="0.01" placeholder="Fee" value="${fxFee}" />
+     <input type="number" name="fx_gov[]" class="fx-gov input-inline-sm" step="0.01" placeholder="Official fee" value="${fxGov}" />
+     <input type="number" name="fx_markup[]" class="fx-markup input-inline-sm" step="0.1" value="${fxMarkup}" placeholder="(%)" />
+     <input type="hidden" name="fx_rate_used[]" class="fx-rate-used" value="${fxRateUsed}" />
+     <span class="fx-usd muted text-nowrap">→ USD amount: 0</span>
+     <span class="muted text-xs">
+      <input type="hidden" name="foreign_vat_base[]" value="${(it.item_type==='foreign' && isTaxable) ? '1':'0'}" class="fx-vat-hidden">
+      <label class="d-inline-flex align-center gap-4 cursor-pointer">
+       <input type="checkbox" name="foreign_vat_chk[]" value="1" class="fx-vat" ${(it.item_type==='foreign' && isTaxable) ? 'checked':''} onchange="updateForeignVatHidden(this)"> Apply sales tax
+      </label>
+     </span>
+    </div>
+   </div>
+  `);
+
+  styleRow(tr);
+  (function(){ const sel = tr.querySelector('select[name="item_type[]"]'); if(sel){ sel.addEventListener('change', function(){ onTypeChange(this); }); } })();
+  bindFxInputs(tr);
+  syncOutgoingPhaseFields(tr);
+
+  //  Confirm
+  if (phase !== 'app' || it.item_type === 'foreign' || isEstimated) {
+   hasOutgoingData = true;
+  }
+ });
+
+ // Enable automatically when applicable.
+ if (hasOutgoingData && !window.fxEnabled) {
+  toggleFx();
+ }
+
+ // Template  Immediate
+ recalc();
+}
+
+// Search/select template UI
+let allTemplateOptions = [];
+function initTemplateSearch() {
+ const searchInput = document.getElementById('template_search');
+ const dropdown = document.getElementById('template_dropdown');
+ const tplSelect = document.getElementById('template_select');
+ if (!searchInput || !dropdown || !tplSelect) return;
+
+ allTemplateOptions = Array.from(dropdown.querySelectorAll('.tpl-option'));
+
+ // /Input  Display Filters
+ searchInput.addEventListener('focus', function(){
+  setHidden(dropdown, false);
+  filterTemplates(searchInput.value);
+ });
+ searchInput.addEventListener('input', function(){
+  setHidden(dropdown, false);
+  filterTemplates(searchInput.value);
+ });
+
+ //  Apply selected
+ allTemplateOptions.forEach(option => {
+  option.addEventListener('click', function(){
+   const id = this.dataset.id || '';
+   const name = this.dataset.name || '';
+   tplSelect.value = id;
+   searchInput.value = name;
+   setHidden(dropdown, true);
+   loadTemplate();
+  });
+ });
+
+ //   Close
+ document.addEventListener('click', function(e){
+  if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+   setHidden(dropdown, true);
+  }
+ });
+}
+
+function filterTemplates(searchTerm) {
+ const raw = (searchTerm || '').toString();
+ const term = raw.toLowerCase();
+ const isCho = isCompactQuery(raw);
+ const qCho = isCho ? raw.replace(/\s+/g, '') : '';
+ allTemplateOptions.forEach(option => {
+  const nameRaw = (option.dataset.name || '').toString();
+  const descRaw = (option.dataset.desc || '').toString();
+  const name = nameRaw.toLowerCase();
+  const desc = descRaw.toLowerCase();
+  const textLower = `${name} ${desc}`;
+
+  let ok = false;
+  if (!raw.trim()) {
+   ok = true;
+  } else if (isCho) {
+   const textCho = toCompact(`${nameRaw} ${descRaw}`).replace(/\s+/g, '');
+   ok = textCho.includes(qCho);
+  } else {
+   ok = textLower.includes(term);
+  }
+
+  if (ok || option.dataset.id === '') {
+   setHidden(option, false);
+  } else {
+   setHidden(option, true);
+  }
+ });
+}
+
+window.addEventListener('load', function(){
+ initClientSearch();
+ initTemplateSearch();
+ initDuplicateCheck();
+ applyRowStyles();
+ try {
+  const sel = document.querySelector('select[name="business_profile_id"]');
+  syncBusinessProfileState(sel);
+  // value Save (page )
+  window._businessProfileInitialValue = sel ? sel.value : null;
+  window._businessProfileUserChanged = false;
+ } catch(e) {}
+ // Auto-enable Outgoing FX when editing invoices that already have FX metadata or foreign items
+ try{
+  window.fxOverrides = window.fxOverrides || {};
+  {% for it3 in items or [] %}
+   {% if it3.get('fx_currency') and it3.get('fx_rate_used') %}
+    window.fxOverrides['{{ (it3.get('fx_currency') or '')|upper }}'] = {{ it3.get('fx_rate_used') }};
+   {% endif %}
+  {% endfor %}
+  {% if outgoing_mode %}
+   window.fxEnabled = true;
+   const p = document.getElementById('fxPanel'); if(p) setHidden(p, false);
+   const ol = document.getElementById('fxOutgoingLayout'); if(ol) setHidden(ol, false);
+   const btn = document.getElementById('fxToggleBtn'); if(btn) btn.classList.add('btn-primary');
+   try{
+    const io = document.getElementById('is_outgoing');
+    if(io) io.value='1';
+    syncOutgoingPhaseFields();
+   }catch(e){}
+  {% else %}
+   window.fxEnabled = false;
+  {% endif %}
+  syncOutgoingPhaseFields();
+  console.log('[Outgoing Mode] Initialized:', window.fxEnabled);
+ }catch(e){}
+ if(window.fxEnabled && !window.fxFetched){ try{ fetchFxRatesOnce(); }catch(e){} }
+ document.querySelectorAll('#items-body tr').forEach(bindFxInputs);
+ try{ if(window.fxEnabled){ document.querySelectorAll('#items-body tr').forEach(showOrHideFxControls); } }catch(e){}
+ // Estimated cost Reset
+ document.querySelectorAll('.estimated-checkbox').forEach(function(cb){
+  updateEstimatedHidden(cb);
+ });
+ initSettlement();
+ recalc();
+});
+
+// LLM Client information
+function openLLMModal() {
+ setModalVisible(document.getElementById('llmModal'), true);
+ document.getElementById('llmEmailText').value = '';
+ setHidden(document.getElementById('llmResult'), true);
+ setHidden(document.getElementById('llmError'), true);
+ const list = document.getElementById('llmFieldList');
+ if (list) list.innerHTML = '';
+ llmCustomerData = null;
+}
+
+function closeLLMModal() {
+ setModalVisible(document.getElementById('llmModal'), false);
+}
+
+let llmCustomerData = null;
+
+const llmFieldDefs = [
+ {
+  key: "name",
+  label: "Client name",
+  getValue: (c) => c.name,
+  apply: (v) => setNewClientVal("new_client_name", v),
+ },
+ {
+  key: "name_en",
+  label: "Client name (English)",
+  getValue: (c) => c.name_en,
+  apply: (v) => setNewClientVal("new_client_name_en", v),
+ },
+ {
+  key: "phone",
+  label: "Phone",
+  getValue: (c) => c.phone,
+  apply: (v) => setNewClientVal("new_client_phone", v),
+ },
+ {
+  key: "email",
+  label: "Email",
+  getValue: (c) => c.email,
+  apply: (v) => setNewClientVal("new_client_email", v),
+ },
+ {
+  key: "address",
+  label: "Address",
+  getValue: (c) => c.address,
+  apply: (v) => setNewClientVal("new_client_address", v),
+ },
+ {
+  key: "manager",
+  label: "Contact",
+  getValue: (c) => c.manager,
+  apply: (v) => setNewClientVal("new_client_manager", v),
+ },
+ {
+  key: "notes",
+  label: "Notes",
+  getValue: (c) => c.notes,
+  apply: (v) => setNewClientVal("new_client_notes", v),
+ },
+];
+
+function setNewClientVal(id, value) {
+ const el = document.getElementById(id);
+ if (el) el.value = value || "";
+}
+
+function ensureNewClientMode() {
+ try {
+  const newClientFields = document.getElementById('new_client_fields');
+  const existingClientInfo = document.getElementById('existing_client_info');
+  if (newClientFields) setHidden(newClientFields, false);
+  if (existingClientInfo) setHidden(existingClientInfo, true);
+  const clientSelect = document.getElementById('client_select');
+  if (clientSelect) clientSelect.value = '';
+  const searchInput = document.getElementById('client_search');
+   if (searchInput) searchInput.value = 'New client';
+  const nameField = document.getElementById('new_client_name');
+  if (nameField) nameField.required = true;
+  if (typeof checkDuplicateCustomer === 'function') {
+   checkDuplicateCustomer();
+  }
+ } catch (e) {}
+}
+
+function renderLlmFields(customer) {
+ const list = document.getElementById('llmFieldList');
+ const resultJson = document.getElementById('llmResultJson');
+ if (!list) return;
+ llmCustomerData = customer || null;
+ list.innerHTML = '';
+
+ llmFieldDefs.forEach((def) => {
+  const value = (def.getValue ? def.getValue(customer) : customer?.[def.key]) || '';
+  const id = `llm-field-${def.key}`;
+
+  const row = document.createElement('div');
+  row.className = 'row align-center gap-8';
+
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.id = id;
+  checkbox.dataset.key = def.key;
+  checkbox.checked = Boolean(value);
+  checkbox.disabled = !value;
+
+  const label = document.createElement('label');
+  label.setAttribute('for', id);
+  label.className = 'text-sm';
+  label.textContent = def.label;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.className = 'muted text-xs';
+  valueSpan.textContent = value || '-';
+
+  row.appendChild(checkbox);
+  row.appendChild(label);
+  row.appendChild(valueSpan);
+  list.appendChild(row);
+ });
+
+ if (resultJson) {
+  resultJson.textContent = JSON.stringify(customer || {}, null, 2);
+ }
+}
+
+function getSelectedLlmKeys() {
+ const list = document.getElementById('llmFieldList');
+ if (!list) return [];
+ return Array.from(list.querySelectorAll('input[type="checkbox"][data-key]'))
+  .filter((cb) => cb.checked && !cb.disabled)
+  .map((cb) => cb.dataset.key);
+}
+
+function applyLlmSelection(keys) {
+ if (!llmCustomerData || !keys || !keys.length) return;
+ const selected = new Set(keys);
+ llmFieldDefs.forEach((def) => {
+  if (!selected.has(def.key)) return;
+  const value = def.getValue ? def.getValue(llmCustomerData) : llmCustomerData[def.key];
+  if (!value) return;
+  def.apply(value);
+ });
+ ensureNewClientMode();
+}
+
+async function parseLLM() {
+ const emailText = document.getElementById('llmEmailText').value.trim();
+ if (!emailText) {
+  try { await window.AppAlert('Enter email or inquiry text.', { title: "Confirm" }); } catch (e2) {}
+  return;
+ }
+
+ const parseBtn = document.getElementById('parseLLMBtn');
+ parseBtn.disabled = true;
+ parseBtn.textContent = 'Analyzing...';
+
+ setHidden(document.getElementById('llmError'), true);
+
+ try {
+  // CSRF
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+  const response = await fetch('{{ url_for("billing_invoices.invoices.parse_customer_llm") }}', {
+   method: 'POST',
+   headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrfToken
+   },
+   body: JSON.stringify({ email_text: emailText })
+  });
+
+  const data = await response.json();
+
+  if (data.success) {
+   const customer = data.customer || {};
+   renderLlmFields(customer);
+   setHidden(document.getElementById('llmResult'), false);
+  } else {
+   document.getElementById('llmError').textContent = 'Error: ' + data.error;
+   setHidden(document.getElementById('llmError'), false);
+  }
+ } catch (error) {
+  document.getElementById('llmError').textContent = 'Request failed: ' + error.message;
+  setHidden(document.getElementById('llmError'), false);
+ } finally {
+  parseBtn.disabled = false;
+  parseBtn.textContent = 'Analyze';
+ }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+ const applyBtn = document.getElementById('llmApplyBtn');
+ const selectAllBtn = document.getElementById('llmSelectAllBtn');
+ const list = document.getElementById('llmFieldList');
+
+ if (applyBtn) {
+  applyBtn.addEventListener('click', () => {
+   const keys = getSelectedLlmKeys();
+   if (!keys.length) {
+    const err = document.getElementById('llmError');
+    if (err) {
+     err.textContent = 'Select at least one field to apply.';
+     setHidden(err, false);
+    }
+    return;
+   }
+   applyLlmSelection(keys);
+   closeLLMModal();
+  });
+ }
+
+ if (selectAllBtn && list) {
+  selectAllBtn.addEventListener('click', () => {
+   list.querySelectorAll('input[type="checkbox"][data-key]').forEach((cb) => {
+    if (!cb.disabled) cb.checked = true;
+   });
+  });
+ }
+});
+</script>
+
+<!-- Client information parser -->
+<div id="llmModal" class="modal-overlay" hidden>
+ <div class="modal-card is-xl is-scroll">
+  <div class="row align-center justify-between mb-16">
+   <h3 class="m-0">Client information parser</h3>
+   <button type="button" class="btn btn-ghost btn-sm" onclick="closeLLMModal()">Close</button>
+  </div>
+
+  <p class="muted text-sm mb-12">
+   Paste email or inquiry text to extract client details.
+  </p>
+
+  <div class="mb-12">
+   <label>Email or inquiry text</label>
+   <textarea id="llmEmailText" rows="10" class="textarea-mono" placeholder="Example:
+
+Dear Example IP Law Office,
+
+We are interested in your patent services...
+
+Best regards,
+John Smith
+ABC Corporation
+Email: john@abc.com
+Phone: +1-555-1234"></textarea>
+  </div>
+
+  <div id="llmError" class="panel-danger mb-12 is-hidden"></div>
+
+  <div id="llmResult" class="panel-success mb-12 is-hidden">
+   <div class="text-strong mb-8 text-success-strong">Analysis complete. Select fields to apply.</div>
+   <div id="llmFieldList" class="d-grid gap-8 mb-8"></div>
+   <div class="row gap-8 mb-8">
+    <button type="button" id="llmApplyBtn" class="btn btn-primary btn-sm">Apply selected</button>
+    <button type="button" id="llmSelectAllBtn" class="btn btn-ghost btn-sm">Select all</button>
+   </div>
+   <pre id="llmResultJson" class="text-xs m-0 overflow-x-auto"></pre>
+  </div>
+
+  <div class="modal-actions">
+   <button type="button" id="parseLLMBtn" class="btn btn-primary" onclick="parseLLM()">Analyze</button>
+   <button type="button" class="btn btn-ghost" onclick="closeLLMModal()">Cancel</button>
+  </div>
+ </div>
+</div>
+
+{% endblock %}

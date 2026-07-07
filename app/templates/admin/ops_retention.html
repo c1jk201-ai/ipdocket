@@ -1,0 +1,177 @@
+{% extends "admin/base.html" %}
+{% block title %}Retention History{% endblock %}
+{% block admin_description %}Review recent cleanup runs, removed rows, errors, and table growth.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.disk_home') }}">Disk Usage</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.scheduler_home') }}">Scheduler Status</a>
+{% endblock %}
+
+{% block admin_page_content %}
+{% set growth = table_growth or {} %}
+{% set growth_tables = growth.tables or [] %}
+{% set growth_alerts = growth.alerts or [] %}
+{% if growth_tables %}
+  <div class="card mb-3">
+    <div class="card-header bg-white py-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <div class="fw-semibold">Table Growth</div>
+          <div class="small text-muted">Rows, size, 24-hour growth, and retention thresholds.</div>
+        </div>
+        <div class="small text-muted">generated_at {{ growth.generated_at or "-" }}</div>
+      </div>
+    </div>
+    {% if growth_alerts %}
+      <div class="card-body border-bottom py-2">
+        {% for alert in growth_alerts[:6] %}
+          <div class="alert alert-{{ 'danger' if alert.level == 'danger' else 'warning' if alert.level == 'warning' else 'info' }} py-2 mb-2">
+            <span class="fw-semibold">{{ alert.code }}</span>
+            <span class="ms-2">{{ alert.message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0 align-middle">
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th class="text-end">Rows</th>
+              <th class="text-end">Size</th>
+              <th class="text-end">24h rows</th>
+              <th class="text-end">Expired</th>
+              <th>Retention</th>
+              <th>Oldest / Latest</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for table in growth_tables %}
+            {% set retention = table.retention or {} %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ table.table }}</div>
+                {% if table.alerts %}
+                  <div class="small text-warning">{{ table.alerts|length }} alert{{ '' if table.alerts|length == 1 else 's' }}</div>
+                {% else %}
+                  <div class="small text-muted">within thresholds</div>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ "{:,}".format(table.row_count or 0) }}</td>
+              <td class="text-end">
+                {% if table.size_mb is not none %}
+                  {{ table.size_mb }} MB
+                {% else %}
+                  <span class="text-muted">n/a</span>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ "{:,}".format(table.rows_24h or 0) }}</td>
+              <td class="text-end">{{ "{:,}".format(table.expired_rows or 0) }}</td>
+              <td class="small">
+                {% for key, value in retention.items() %}
+                  {{ key }}={{ value }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </td>
+              <td class="small text-muted">
+                <div>{{ table.oldest_at or "-" }}</div>
+                <div>{{ table.latest_at or "-" }}</div>
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% if last_item %}
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Latest Run</div><div class="small">{{ last_item.run.started_at|local_dt if last_item.run.started_at else "-" }}</div></div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Recently Removed</div><div class="h4 mb-0">{{ last_item.stats.get('total_removed', 0) }}</div></div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Recent Errors</div><div class="h4 mb-0">{{ last_item.stats.get('total_errors', 0) }}</div></div></div>
+    </div>
+  </div>
+{% endif %}
+{% if not items %}
+  <div class="alert alert-light border">No recent retention runs.</div>
+{% else %}
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped mb-0">
+          <thead>
+            <tr>
+              <th>Run</th>
+              <th>Status</th>
+              <th>Removed</th>
+              <th>Errors</th>
+              <th>Samples</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for item in items %}
+            {% set run = item.run %}
+            {% set stats = item.stats or {} %}
+            {% set sections = stats.get('display_sections', []) %}
+            {% set samples = stats.get('sample_texts', []) %}
+            <tr>
+              <td>
+                <div><b>{{ run.started_at }}</b></div>
+                <div class="small text-muted">{{ run.run_id }}</div>
+                <div class="small text-muted">{{ stats.get('source_job_name', run.job_name) }}</div>
+              </td>
+              <td>{{ run.status }}</td>
+              <td>
+                <div>total={{ stats.get('total_removed', '-') }}</div>
+                {% if sections %}
+                  <div class="small text-muted">
+                    {% for section in sections[:6] %}
+                      {{ section.label }}={{ section.removed }}
+                      {% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="small text-muted">-</div>
+                {% endif %}
+              </td>
+              <td>
+                <div>total={{ stats.get('total_errors', '-') }}</div>
+                {% if sections %}
+                  <div class="small text-muted">
+                    {% set nonzero_error_sections = sections|selectattr('errors')|list %}
+                    {% if nonzero_error_sections %}
+                      {% for section in nonzero_error_sections[:3] %}
+                        {{ section.label }}={{ section.errors }}
+                        {% if not loop.last %}, {% endif %}
+                      {% endfor %}
+                    {% else %}
+                      none
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="small text-muted">-</div>
+                {% endif %}
+              </td>
+              <td style="max-width:520px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                {% if samples %}
+                  <small>{{ samples[:3] }}</small>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

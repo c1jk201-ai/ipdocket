@@ -1,0 +1,117 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set popup_param = popup_param if popup_param is defined else request.args.get('popup') %}
+{% set invoice_id_param = invoice_id_param if invoice_id_param is defined else request.args.get('invoice_id') %}
+{% set client_id_param = client_id_param if client_id_param is defined else request.args.get('client_id') %}
+{% set family_link_target_id_param = family_link_target_id_param if family_link_target_id_param is defined else request.args.get('family_link_target_id') %}
+{% set family_create_mode_param = family_create_mode if family_create_mode else none %}
+<div class="container-fluid mt-4" style="max-width: 1200px;">
+  <div class="text-center mb-5">
+    <h3 class="fw-bold text-dark mb-2">New Matter Wizard</h3>
+    <p class="text-muted">Choose the jurisdiction flow and IP type for the new docket.</p>
+  </div>
+
+{% if family_link_target_id_param and (family_create_options or []) %}
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
+        <div>
+          <h6 class="fw-bold mb-1">Related matter type</h6>
+          <div class="small text-muted">Create a continuation, divisional, or related filing from the source matter.</div>
+          {% if family_source_matter %}
+            <div class="small mt-1">
+              Source matter:
+              <b>{{ family_source_matter.our_ref or family_source_matter.matter_id }}</b>
+              {% if family_source_matter.right_name %}
+                · {{ family_source_matter.right_name }}
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+        <a
+          class="btn btn-sm btn-outline-secondary"
+          href="{{ url_for('case_work.case_detail', case_id=family_link_target_id_param, _anchor='sec-family') }}"
+        >
+          View source matter
+        </a>
+      </div>
+
+      <div class="row g-2">
+        {% for opt in (family_create_options or []) %}
+          <div class="col-12 col-md-6 col-lg-3">
+            <a
+              href="{{ opt.url }}"
+              class="btn w-100 text-start {{ 'btn-primary' if family_create_mode_param == opt.mode else 'btn-outline-primary' }}"
+            >
+              <div class="fw-semibold"><i class="bi {{ opt.icon }} me-1"></i>{{ opt.label }}</div>
+              <div class="small {{ 'text-white-50' if family_create_mode_param == opt.mode else 'text-muted' }}">{{ opt.description }}</div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% elif family_link_target_id_param %}
+  <div class="alert alert-warning small mb-4">
+    The source matter could not be found, so related matter shortcuts are not available.
+  </div>
+  {% endif %}
+
+  <div class="row g-4 mb-4">
+    {% for section in (case_menu_sections or []) %}
+      <div class="col-md-4">
+        <div class="card h-100 border-0 shadow-sm hover-shadow transition-all">
+          <div class="card-header bg-white border-bottom-0 pt-4 pb-0 text-center">
+            <div class="d-inline-flex align-items-center justify-content-center bg-{{ section.theme or 'secondary' }} bg-opacity-10 text-{{ section.theme or 'secondary' }} rounded-circle mb-3" style="width: 56px; height: 56px;">
+              <i class="bi {{ section.icon or 'bi-folder' }} fs-4"></i>
+            </div>
+            <h5 class="fw-bold mb-1">{{ section.label }}</h5>
+            {% if section.description %}
+              <p class="text-muted small">{{ section.description }}</p>
+            {% endif %}
+          </div>
+          <div class="card-body px-4 pb-4">
+            <div class="d-grid gap-2">
+              {% for item in (section['items'] or []) %}
+                {% set create_params = {
+                  'division': item['division'],
+                  'type': item['type'],
+                  'popup': popup_param,
+                  'invoice_id': invoice_id_param,
+                  'client_id': client_id_param,
+                  'family_link_target_id': family_link_target_id_param,
+                  'family_create_mode': family_create_mode_param
+                } %}
+                {% if item['forced_app_route'] %}
+                  {% set _ = create_params.update({'app_route': item['forced_app_route']}) %}
+                {% endif %}
+                <a href="{{ url_for('case_work.create_matter', **create_params) }}" class="btn btn-outline-light text-dark text-start py-2 d-flex align-items-center border-secondary-subtle">
+                  <span class="flex-grow-1 fw-medium">{{ item['label'] }}</span>
+                  <i class="bi bi-chevron-right text-muted small"></i>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="col-12">
+        <div class="alert alert-warning">No matter creation menu is configured.</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+.hover-shadow:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important;
+}
+.transition-all {
+    transition: all 0.25s ease;
+}
+.btn-white {
+    background: #fff;
+}
+</style>
+{% endblock %}

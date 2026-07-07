@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+    {% block head_meta %}{% endblock %}
+    <title>{% block title %}{{ branding.app_name }}{% endblock %}</title>
+    {% if branding.favicon_path %}
+    <link rel="icon" href="{{ brand_asset_url(branding.favicon_path) }}" sizes="any" />
+    {% else %}
+    <link rel="icon" href="{{ static_asset_url('favicon.svg') }}" type="image/svg+xml" />
+    <link rel="icon" href="{{ static_asset_url('favicon.ico') }}" sizes="any" />
+    {% endif %}
+    <link
+      href="{{ static_asset_url('vendor/bootstrap/css/bootstrap.min.css') }}"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ static_asset_url('vendor/bootstrap-icons/font/bootstrap-icons.css') }}"
+    />
+    <link rel="stylesheet" href="{{ static_asset_url('vendor/flatpickr/flatpickr.min.css') }}" />
+    <link rel="stylesheet" href="{{ static_asset_url('css/app.css') }}" />
+    <script src="{{ static_asset_url('vendor/htmx/htmx.min.js') }}"></script>
+    {% block styles %}{% endblock %}
+  </head>
+  <body hx-indicator="#global-htmx-indicator" class="app-body {% block body_class %}{% endblock %}{% if (request.blueprint or '').startswith('billing_invoices') or (request.blueprint or '') == 'costs' or (request.endpoint or '').startswith('billing_invoices.') or request.path.startswith('/accounting') or request.path.startswith('/mgmt/business-profiles') or request.path.startswith('/mgmt/tax-invoice-profiles') %} desktop-accounting{% endif %}"{% if branding.style %} style="{{ branding.style }}"{% endif %}>
+    <a class="app-skip-link" href="#main">Skip to content</a>
+    <div id="global-htmx-indicator" class="htmx-indicator"></div>
+    {% set is_popup = (request.args.get('popup') == '1') or (popup is defined and popup) %}
+    {% set is_public = not current_user.is_authenticated %}
+    {% set current_user_role = (current_user.role or '')|lower %}
+    {% set is_limited_user = current_user.is_authenticated and current_user_role == 'user' %}
+    {% set can_menu_cases = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_CASES) %}
+    {% set can_menu_notices = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_NOTICES) %}
+    {% set can_menu_statistics = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_STATISTICS) %}
+    {% set can_menu_deadlines = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_DEADLINES) %}
+    {% set can_menu_renewal = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_RENEWAL) %}
+    {% set can_menu_crm = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_CRM) %}
+    {% set can_menu_accounting = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_ACCOUNTING) %}
+    {% set can_menu_mgmt = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_MGMT) %}
+    {% set can_menu_admin = current_user.is_authenticated and current_user.has_permission(Permissions.MENU_ADMIN) %}
+    {% set ns = namespace(active_section='') %}
+    {% set bp = request.blueprint or '' %}
+    {% set endpoint = request.endpoint or '' %}
+    {% if current_user.is_authenticated %}
+      {% if request.path.startswith('/admin') %}
+        {% set ns.active_section = 'admin' %}
+      {% elif (endpoint.startswith('billing_invoices.reports.') or endpoint.startswith('billing_invoices.ledger.')) and can_menu_mgmt %}
+        {% set ns.active_section = 'business' %}
+      {% elif bp.startswith('billing_invoices') or bp == 'costs' or endpoint.startswith('billing_invoices.') %}
+        {% set ns.active_section = 'accounting' %}
+      {% elif request.path.startswith('/doc') or request.path.startswith('/case/all-notices') or request.path.startswith('/case/all-letters') or request.path.startswith('/case/all-responses') or request.path.startswith('/document') or bp == 'doc' or bp == 'docs' %}
+        {% set ns.active_section = 'document' %}
+      {% elif request.path.startswith('/business') %}
+        {% set ns.active_section = 'business' %}
+      {% elif request.path.startswith('/workflow/playbooks') and can_menu_admin %}
+        {% set ns.active_section = 'admin' %}
+      {% elif request.path.startswith('/workflow/tc') %}
+        {% set ns.active_section = 'statistics' %}
+      {% elif request.path.startswith('/workflow') %}
+        {% set ns.active_section = 'case' %}
+      {% elif request.path.startswith('/case') %}
+        {% set ns.active_section = 'case' %}
+      {% elif request.path.startswith('/statistics') %}
+        {% set ns.active_section = 'statistics' %}
+      {% elif request.path.startswith('/worklog') %}
+        {% set ns.active_section = 'deadline' %}
+      {% elif request.path.startswith('/deadline') %}
+        {% set ns.active_section = 'deadline' %}
+      {% elif request.path.startswith('/renewal') %}
+        {% set ns.active_section = 'renewal' %}
+      {% elif request.path.startswith('/crm') %}
+        {% set ns.active_section = 'crm' %}
+      {% elif request.path.startswith('/accounting') %}
+        {% set ns.active_section = 'accounting' %}
+      {% elif request.path.startswith('/mgmt') %}
+        {% set ns.active_section = 'mgmt' %}
+      {% endif %}
+    {% endif %}
+    {% set active_section = ns.active_section %}
+    {% set show_mobile_nav_toggle = current_user.is_authenticated and not is_popup and not is_public and not is_limited_user %}
+    {% set mobile_section_labels = {
+      'case': 'Matters',
+      'document': 'Documents',
+      'statistics': 'Analytics',
+      'deadline': 'Docketing',
+      'renewal': 'Annuities',
+      'crm': 'Contacts',
+      'accounting': 'Billing',
+      'business': 'Business',
+      'mgmt': 'Operations',
+      'admin': 'Admin',
+    } %}
+    {% set mobile_section_label = mobile_section_labels.get(active_section, 'Home') %}
+    {% set suppress_global_upload = false %}
+    {% set show_mobile_action_menu = current_user.is_authenticated and not is_popup and not is_public and not is_limited_user %}
+    <div class="app-shell d-flex">
+      {% if not is_popup and not is_public and not is_limited_user %}
+      <!-- Left Sidebar -->
+      <nav
+        id="primarySidebar"
+        class="sidebar-primary d-flex flex-column flex-shrink-0 position-fixed top-0 start-0 vh-100 overflow-auto px-2 py-3"
+        aria-label="Primary navigation"
+      >
+        <div class="sidebar-primary-brand text-center mb-3">
+          <a class="navbar-brand app-brand-lockup text-white fw-bold fs-6 text-decoration-none" href="{{ url_for('main.index') }}">
+            {% if branding.logo_path %}
+            <img class="app-brand-logo" src="{{ brand_asset_url(branding.logo_path) }}" alt="{{ branding.short_name }}">
+            {% endif %}
+            <span class="app-brand-text">{{ branding.short_name }}</span>
+          </a>
+          <button
+            type="button"
+            class="sidebar-mobile-close btn btn-light btn-sm"
+            data-mobile-nav-close
+            aria-controls="primarySidebar secondarySidebar"
+            aria-expanded="false"
+            aria-label="Close menu"
+            title="Close menu"
+          >
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        {% if current_user.is_authenticated %}
+        <ul class="nav nav-pills flex-column mb-auto text-center small gap-2" style="font-size: 0.78rem;">
+          {% if can_menu_cases %}
+          <li class="nav-item">
+            <a href="{{ url_for('case_work.case_list') }}" class="nav-link py-2 {% if active_section == 'case' %}active{% endif %}">
+              <i class="bi bi-briefcase"></i>
+              Matters
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_notices %}
+          <li class="nav-item">
+            <a href="{{ url_for('doc.all_notices') }}" class="nav-link py-2 {% if active_section == 'document' %}active{% endif %}">
+              <i class="bi bi-folder2-open"></i>
+              Documents
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_statistics %}
+          <li class="nav-item">
+            <a href="{{ url_for('stats.index') }}" class="nav-link py-2 {% if active_section == 'statistics' %}active{% endif %}">
+              <i class="bi bi-graph-up"></i>
+              Analytics
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_deadlines %}
+          <li class="nav-item">
+            <a href="{{ url_for('deadlines.index') }}" class="nav-link py-2 {% if active_section == 'deadline' %}active{% endif %}">
+              <i class="bi bi-calendar2-event"></i>
+              Docketing
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_renewal %}
+          <li class="nav-item">
+            <a href="{{ url_for('annuities.index') }}" class="nav-link py-2 {% if active_section == 'renewal' %}active{% endif %}">
+              <i class="bi bi-alarm"></i>
+              Annuities
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_crm %}
+          <li class="nav-item">
+            <a href="{{ url_for('customers.clients') }}" class="nav-link py-2 {% if active_section == 'crm' %}active{% endif %}">
+              <i class="bi bi-people"></i>
+              Contacts
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_accounting %}
+          <li class="nav-item">
+            <a href="{{ url_for('costs.invoices') }}" class="nav-link py-2 {% if active_section == 'accounting' %}active{% endif %}">
+              <i class="bi bi-receipt-cutoff"></i>
+              Billing
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_mgmt %}
+          <li class="nav-item">
+            <a href="{{ url_for('business.index') }}" class="nav-link py-2 {% if active_section == 'business' %}active{% endif %}">
+              <i class="bi bi-building"></i>
+              Business
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('mgmt_info.index') }}" class="nav-link py-2 {% if active_section == 'mgmt' %}active{% endif %}">
+              <i class="bi bi-sliders"></i>
+              Operations
+            </a>
+          </li>
+          {% endif %}
+          {% if can_menu_admin %}
+          <li class="nav-item">
+            <a href="{{ url_for('admin.index') }}" class="nav-link py-2 {% if active_section == 'admin' %}active{% endif %}">
+              <i class="bi bi-shield-lock"></i>
+              Admin
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+        {% endif %}
+        <div class="mt-auto p-2 small text-secondary">&nbsp;</div>
+      </nav>
+      {% endif %}
+       {% if not is_popup and not is_public and not is_limited_user %}
+       <nav
+         id="secondarySidebar"
+         class="sidebar-secondary d-flex flex-column flex-shrink-0 position-fixed top-0 vh-100 overflow-auto px-3 py-3"
+         aria-label="Section navigation"
+       >
+        <div class="sidebar-secondary-header pb-3 mb-2 border-bottom border-light d-flex align-items-center justify-content-between gap-2">
+          <div class="sidebar-secondary-title fw-semibold text-uppercase small text-muted">Menu</div>
+          <button
+            type="button"
+            id="secondarySidebarToggle"
+            class="sidebar-secondary-toggle btn btn-light btn-sm d-inline-flex align-items-center justify-content-center"
+            aria-controls="secondarySidebar"
+            aria-expanded="true"
+            aria-label="Collapse section menu"
+            title="Collapse section menu"
+          >
+            <i class="bi bi-chevron-left"></i>
+          </button>
+        </div>
+        <div class="sidebar-secondary-content d-flex flex-column flex-grow-1 min-h-0">
+        {% if current_user.is_authenticated %}
+        {# Favorites Section #}
+        {% set fav_ids = current_user.menu_favorites|default('[]')|tojson if current_user.menu_favorites is string else '[]' %}
+        {% set favorites_list = [] %}
+        {% set all_menus_map = {} %}
+        {% set _categories = [
+          {"category": "Cases", "menu_items": [
+            {"id": "case_dom_patent", "name": "US - Patent", "url": "case_work.list_dom_patent"},
+            {"id": "case_dom_tm", "name": "US - Trademark", "url": "case_work.list_dom_trademark"},
+            {"id": "case_dom_design", "name": "US - Design", "url": "case_work.list_dom_design"},
+            {"id": "case_dom_utility", "name": "US - Utility", "url": "case_work.list_dom_utility"},
+            {"id": "case_inc_patent", "name": "Inbound US - Patent", "url": "case_work.list_inc_patent"},
+            {"id": "case_inc_tm", "name": "Inbound US - Trademark", "url": "case_work.list_inc_trademark"},
+            {"id": "case_inc_design", "name": "Inbound US - Design", "url": "case_work.list_inc_design"},
+            {"id": "case_inc_utility", "name": "Inbound US - Utility", "url": "case_work.list_inc_utility"},
+            {"id": "case_out_patent", "name": "Foreign - Patent", "url": "case_work.list_out_patent"},
+            {"id": "case_out_tm", "name": "Foreign - Trademark", "url": "case_work.list_out_trademark"},
+            {"id": "case_out_design", "name": "Foreign - Design", "url": "case_work.list_out_design"},
+            {"id": "case_out_utility", "name": "Foreign - Utility", "url": "case_work.list_out_utility"},
+            {"id": "case_pct", "name": "PCT", "url": "case_work.list_pct"},
+            {"id": "case_madrid", "name": "Madrid", "url": "case_work.list_madrid"},
+            {"id": "case_hague", "name": "Hague", "url": "case_work.list_hague"},
+            {"id": "case_copyright", "name": "Copyright", "url": "case_work.list_copyright"},
+            {"id": "case_litigation", "name": "Proceedings / Litigation", "url": "case_work.list_litigation"},
+            {"id": "case_misc", "name": "Other", "url": "case_work.list_misc"},
+            {"id": "case_all", "name": "All matters", "url": "case_work.case_list"},
+            {"id": "case_notices", "name": "Office actions", "url": "doc.all_notices"},
+            {"id": "case_responses", "name": "Responses", "url": "doc.all_responses"},
+            {"id": "case_letters", "name": "Correspondence", "url": "doc.all_letters"},
+          ]},
+          {"category": "Statistics", "menu_items": [
+            {"id": "stats_clients", "name": "Client analytics", "url": "stats.by_clients"},
+            {"id": "stats_costs", "name": "Cost analytics", "url": "stats.by_costs"},
+            {"id": "stats_tc", "name": "TC analytics", "url": "stats.tc_stats"},
+            {"id": "tc_my", "name": "My TC", "url": "workflow.tc_my"},
+            {"id": "stats_performance", "name": "Performance", "url": "stats.performance"},
+          ]},
+          {"category": "Docketing", "menu_items": [
+            {"id": "worklog", "name": "Work queue", "url": "worklog.index"},
+            {"id": "deadline_month", "name": "Monthly docket", "url": "deadlines.calendar_month"},
+            {"id": "deadline_list", "name": "Docket list", "url": "deadlines.list_view"},
+          ]},
+          {"category": "Renewals", "menu_items": [
+            {"id": "renewal_month", "name": "Monthly annuities", "url": "annuities.calendar_month"},
+            {"id": "renewal_list", "name": "Annuity list", "url": "annuities.fees"},
+            {"id": "renewal_giveup", "name": "Abandoned", "url": "annuities.giveup"},
+          ]},
+          {"category": "CRM", "menu_items": [
+            {"id": "crm_dashboard", "name": "CRM dashboard", "url": "business.crm_dashboard"},
+            {"id": "crm_clients", "name": "Contacts", "url": "customers.clients"},
+            {"id": "crm_leads", "name": "Leads", "url": "customers.lead_list"},
+            {"id": "crm_opportunities", "name": "Opportunities", "url": "customers.opportunity_list"},
+          ]},
+          {"category": "Business", "menu_items": [
+            {"id": "biz_dashboard", "name": "Invoice dashboard", "url": "business.index"},
+            {"id": "biz_executive", "name": "Executive Analytics", "url": "business.executive"},
+            {"id": "biz_status", "name": "Business status", "url": "business.status"},
+            {"id": "biz_reports_home", "name": "Financial reports", "url": "business.accounting_reports_home"},
+            {"id": "biz_gl", "name": "General ledger", "url": "business.accounting_general_ledger"},
+            {"id": "biz_journal", "name": "Journal entries", "url": "business.accounting_journal"},
+            {"id": "biz_trial_balance", "name": "Trial balance", "url": "business.accounting_trial_balance_report"},
+            {"id": "biz_income_statement", "name": "Income statement", "url": "business.accounting_income_statement_report"},
+            {"id": "biz_balance_sheet", "name": "Balance sheet", "url": "business.accounting_balance_sheet_report"},
+            {"id": "biz_period_close", "name": "Period close", "url": "business.accounting_period_close"},
+            {"id": "biz_vat", "name": "Sales tax report", "url": "business.accounting_vat_report"},
+          ]},
+          {"category": "Accounting", "menu_items": [
+            {"id": "acc_invoices", "name": "Invoices", "url": "billing_invoices.invoices.list_invoices"},
+            {"id": "acc_clients", "name": "Billing contacts", "url": "billing_invoices.clients.list_clients"},
+            {"id": "acc_templates", "name": "Templates", "url": "billing_invoices.templates_bp.list_templates"},
+            {"id": "acc_deposit", "name": "Retainers", "url": "billing_invoices.clients.deposit_overview"},
+            {"id": "acc_bank", "name": "Bank accounts", "url": "billing_invoices.bank_activity.page"},
+            {"id": "acc_matching", "name": "Payment matching", "url": "billing_invoices.bank_activity.matching_page"},
+            {"id": "acc_case_matching", "name": "Matter matching", "url": "billing_invoices.case_matching.page"},
+            {"id": "acc_guardrail", "name": "Billing guardrail", "url": "billing_invoices.guardrail.index"},
+            {"id": "acc_business", "name": "Business profiles", "url": "mgmt_info.list_business_profiles"},
+            {"id": "acc_aging", "name": "Aging", "url": "billing_invoices.aging.aging_report"},
+          ]},
+        ] %}
+        {% set ns = namespace(menu_map={}) %}
+        {% for cat in _categories %}
+          {% for item in cat.menu_items %}
+            {% set _ = ns.menu_map.update({item.id: item}) %}
+          {% endfor %}
+        {% endfor %}
+        {% set user_favs = (current_user.menu_favorites or '[]')|tojson %}
+        {% if current_user.menu_favorites and current_user.menu_favorites != '[]' %}
+          {% set parsed_favs = current_user.menu_favorites|fromjson if current_user.menu_favorites else [] %}
+          {% if parsed_favs and parsed_favs|length > 0 %}
+        <div class="mb-3">
+          <div class="small text-uppercase text-muted px-2 mb-2"><i class="bi bi-star-fill text-warning me-1"></i>Favorites</div>
+          <ul class="nav nav-pills flex-column px-2 gap-1">
+            {% for fav_id in parsed_favs %}
+              {% if fav_id in ns.menu_map %}
+                {% set menu_item = ns.menu_map[fav_id] %}
+                {% if has_endpoint(menu_item.url) %}
+            <li><a href="{{ url_for(menu_item.url) }}" class="nav-link d-flex justify-content-between">{{ menu_item.name }}</a></li>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+        <hr class="border-light-subtle mb-2" />
+          {% endif %}
+        {% endif %}
+        <ul class="nav nav-pills flex-column mb-auto px-2 gap-1">
+          {% if active_section == 'case' and can_menu_cases %}
+            {% set case_nav_division = ((division|default('', true)) if request.path.startswith('/case/matter/create') else '')|upper %}
+            {% set case_nav_type = ((case_type|default('', true)) if request.path.startswith('/case/matter/create') else '')|upper %}
+            {% if not case_nav_division and request.path.startswith('/case/kind/') %}
+              {% set _parts = request.path.split('/') %}
+              {% if _parts|length >= 5 %}
+                {% set case_nav_division = _parts[3]|upper %}
+                {% set case_nav_type = _parts[4]|upper %}
+              {% endif %}
+            {% endif %}
+            {% set case_menu_state = namespace(active_section_id='') %}
+            {% for section in (case_menu_sections or []) %}
+              {% for item in (section['items'] or []) %}
+                {% set item_active_by_kind = (case_nav_division == (item['division'] or '')|upper and case_nav_type == (item['type'] or '')|upper) %}
+                {% set item_active_by_path = (item['list_url'] and request.path == item['list_url']) %}
+                {% if item_active_by_kind or item_active_by_path %}
+                  {% set case_menu_state.active_section_id = section.id %}
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Cases</li>
+            <li class="mb-2">
+              <a href="{{ url_for('case_work.select_matter_create') }}" class="btn btn-sm btn-primary btn-ui-text-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                 <i class="bi bi-magic"></i> New matter
+              </a>
+            </li>
+            <li class="case-sidebar-accordion-wrap">
+              <div class="accordion case-sidebar-accordion" id="caseCategoryAccordion">
+                {% for section in (case_menu_sections or []) %}
+                  {% set section_open = (case_menu_state.active_section_id == section.id) or (not case_menu_state.active_section_id and loop.first) %}
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="{{ section.heading_id }}">
+                      <button
+                        class="accordion-button case-sidebar-accordion-button {% if not section_open %}collapsed{% endif %}"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#{{ section.collapse_id }}"
+                        aria-expanded="{{ 'true' if section_open else 'false' }}"
+                        aria-controls="{{ section.collapse_id }}"
+                      >
+                        {{ section.label }}
+                      </button>
+                    </h2>
+                    <div
+                      id="{{ section.collapse_id }}"
+                      class="accordion-collapse collapse {% if section_open %}show{% endif %}"
+                      aria-labelledby="{{ section.heading_id }}"
+                      data-bs-parent="#caseCategoryAccordion"
+                    >
+                      <div class="accordion-body">
+                        <ul class="nav nav-pills flex-column gap-1">
+                          {% for item in (section['items'] or []) %}
+                            {% set item_active = (request.path == item['list_url']) or (case_nav_division == (item['division'] or '')|upper and case_nav_type == (item['type'] or '')|upper) %}
+                            <li>
+                              <a href="{{ item['list_url'] }}" class="nav-link {% if item_active %}active{% endif %}">{{ item['label'] }}</a>
+                            </li>
+                          {% endfor %}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </li>
+            <li class="mt-3"><a href="{{ url_for('case_work.case_list') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('case_work.case_list') %}active{% endif %}">All matters</a></li>
+          {% elif active_section == 'document' and can_menu_notices %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Documents</li>
+            <li><a href="{{ url_for('doc.all_notices') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/doc/all-notices') or request.path.startswith('/case/all-notices') %}active{% endif %}">Office actions</a></li>
+            <li><a href="{{ url_for('doc.all_responses') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/doc/all-responses') or request.path.startswith('/case/all-responses') %}active{% endif %}">Responses</a></li>
+            <li><a href="{{ url_for('doc.all_letters') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/doc/all-letters') or request.path.startswith('/case/all-letters') %}active{% endif %}">Correspondence</a></li>
+
+          {% elif active_section == 'statistics' and can_menu_statistics %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Statistics</li>
+            <li><a href="{{ url_for('stats.by_clients') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/statistics/clients') %}active{% endif %}">Client analytics</a></li>
+            <li><a href="{{ url_for('stats.by_costs') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/statistics/costs') %}active{% endif %}">Cost analytics</a></li>
+            <li><a href="{{ url_for('stats.tc_stats') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/statistics/tc') or (request.path.startswith('/workflow/tc/') and not request.path.startswith('/workflow/tc/my')) %}active{% endif %}">TC analytics</a></li>
+            <li><a href="{{ url_for('workflow.tc_my') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/workflow/tc/my') %}active{% endif %}">My TC</a></li>
+            <li><a href="{{ url_for('stats.performance') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/statistics/performance') %}active{% endif %}">Performance</a></li>
+          {% elif active_section == 'deadline' and can_menu_deadlines %}
+	            <li class="mt-2 small text-uppercase text-muted px-2">Docketing</li>
+	            <li><a href="{{ url_for('worklog.index') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/worklog') %}active{% endif %}">Work queue</a></li>
+	            <li><a href="{{ url_for('deadlines.calendar_month') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/deadline/calendar/month') %}active{% endif %}">Monthly docket</a></li>
+	            <li><a href="{{ url_for('deadlines.list_view') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/deadline/list') %}active{% endif %}">Docket list</a></li>
+          {% elif active_section == 'renewal' and can_menu_renewal %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Annuities</li>
+            <li><a href="{{ url_for('annuities.calendar_month') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/renewal/calendar/month') %}active{% endif %}">Monthly annuities</a></li>
+            <li><a href="{{ url_for('annuities.fees') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/renewal/fees') %}active{% endif %}">Annuity list</a></li>
+            <li><a href="{{ url_for('annuities.giveup') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/renewal/giveup') %}active{% endif %}">Abandoned</a></li>
+          {% elif active_section == 'crm' and can_menu_crm %}
+            <li class="mt-2 small text-uppercase text-muted px-2">CRM</li>
+            <li><a href="{{ url_for('customers.clients') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('customers.clients') %}active{% endif %}">Contacts</a></li>
+            <li><a href="{{ url_for('customers.lead_list') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/crm/leads') %}active{% endif %}">Leads</a></li>
+            <li><a href="{{ url_for('customers.opportunity_list') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/crm/opportunities') %}active{% endif %}">Opportunities</a></li>
+          {% elif active_section == 'accounting' and can_menu_accounting %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Sales</li>
+            <li class="mb-2">
+              <a href="{{ url_for('billing_invoices.invoices.new_invoice') }}" class="btn btn-sm btn-primary btn-ui-text-sm w-100 d-flex align-items-center justify-content-center gap-1">
+                <i class="bi bi-plus-lg"></i> New invoice
+              </a>
+            </li>
+
+	            <li class="mt-3 small text-uppercase text-muted px-2">List</li>
+	            <li><a href="{{ url_for('billing_invoices.invoices.list_invoices') }}" class="nav-link d-flex justify-content-between {% if '/accounting/invoice-system/invoices' in request.path and '/accounting/invoice-system/invoices/tax_issue' not in request.path %}active{% endif %}" onclick="try{sessionStorage.setItem('invoice_skip_beforeunload_once','1');localStorage.removeItem('invoice_desired_list_url');}catch(e){}">Invoices</a></li>
+	            <li><a href="{{ url_for('billing_invoices.invoices.tax_issue') }}" class="nav-link d-flex justify-content-between {% if '/accounting/invoice-system/invoices/tax_issue' in request.path %}active{% endif %}">Tax documentation queue</a></li>
+	            <li><a href="{{ url_for('costs.invoice_tax_ledger') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/accounting/invoice-tax-ledger') or request.path.startswith('/accounting/tax-ledger') %}active{% endif %}">Invoice tax ledger</a></li>
+	            <li><a href="{{ url_for('billing_invoices.aging.aging_report') }}" class="nav-link d-flex justify-content-between {% if 'aging' in request.path %}active{% endif %}">Aging</a></li>
+
+            <li class="mt-3 small text-uppercase text-muted px-2">Banking</li>
+            {% if has_endpoint('billing_invoices.bank_activity.page') %}
+            <li><a href="{{ url_for('billing_invoices.bank_activity.page') }}" class="nav-link d-flex justify-content-between {% if '/bank_activity' in request.path and 'matching' not in request.path %}active{% endif %}">Bank accounts</a></li>
+            {% endif %}
+            {% if has_endpoint('billing_invoices.bank_activity.matching_page') %}
+            <li><a href="{{ url_for('billing_invoices.bank_activity.matching_page') }}" class="nav-link d-flex justify-content-between {% if '/bank_activity' in request.path and 'matching' in request.path %}active{% endif %}">Payment matching</a></li>
+            <li><a href="{{ url_for('billing_invoices.case_matching.page') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/accounting/invoice-system/case-matching') %}active{% endif %}">Matter matching</a></li>
+            {% endif %}
+            <li><a href="{{ url_for('billing_invoices.guardrail.index') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/accounting/invoice-system/guardrail') %}active{% endif %}">Billing guardrail</a></li>
+            <li class="mt-3 small text-uppercase text-muted px-2">Settings</li>
+            <li><a href="{{ url_for('billing_invoices.templates_bp.list_templates') }}" class="nav-link d-flex justify-content-between {% if '/templates' in request.path %}active{% endif %}">Templates</a></li>
+            <li><a href="{{ url_for('billing_invoices.clients.list_clients') }}" class="nav-link d-flex justify-content-between {% if '/clients' in request.path and '/clients/deposit' not in request.path and 'deposit' not in (request.endpoint or '') %}active{% endif %}">Contacts</a></li>
+            <li><a href="{{ url_for('billing_invoices.clients.deposit_overview') }}" class="nav-link d-flex justify-content-between {% if '/clients/deposit' in request.path or (request.endpoint and 'deposit' in request.endpoint) %}active{% endif %}">Retainers</a></li>
+
+          {% elif active_section == 'business' and can_menu_mgmt %}
+	            <li class="mt-2 small text-uppercase text-muted px-2">Business</li>
+            <li><a href="{{ url_for('business.index') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.index') %}active{% endif %}">Invoice dashboard</a></li>
+            <li><a href="{{ url_for('business.executive') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.executive') %}active{% endif %}">Executive Analytics</a></li>
+            <li><a href="{{ url_for('business.status') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.status') %}active{% endif %}">Business status</a></li>
+            <li><a href="{{ url_for('business.crm_dashboard') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.crm_dashboard') %}active{% endif %}">CRM dashboard</a></li>
+            {% if can_menu_accounting and has_endpoint('business.accounting_reports_home') %}
+            <li class="mt-3 small text-uppercase text-muted px-2">Accounting</li>
+            <li><a href="{{ url_for('business.accounting_reports_home') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.accounting_reports_home') or request.path == '/business/accounting/reports/' %}active{% endif %}">Financial reports</a></li>
+            {% if has_endpoint('business.accounting_general_ledger') %}
+            <li><a href="{{ url_for('business.accounting_general_ledger') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('business.accounting_general_ledger') %}active{% endif %}">General ledger</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_journal') %}
+            <li><a href="{{ url_for('business.accounting_journal') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/ledger/journal') %}active{% endif %}">Journal entries</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_trial_balance_report') %}
+            <li><a href="{{ url_for('business.accounting_trial_balance_report') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/reports/trial-balance') %}active{% endif %}">Trial balance</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_income_statement_report') %}
+            <li><a href="{{ url_for('business.accounting_income_statement_report') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/reports/income-statement') %}active{% endif %}">Income statement</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_balance_sheet_report') %}
+            <li><a href="{{ url_for('business.accounting_balance_sheet_report') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/reports/balance-sheet') %}active{% endif %}">Balance sheet</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_period_close') %}
+            <li><a href="{{ url_for('business.accounting_period_close') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/reports/period-close') %}active{% endif %}">Period close</a></li>
+            {% endif %}
+            {% if has_endpoint('business.accounting_vat_report') %}
+            <li><a href="{{ url_for('business.accounting_vat_report') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/business/accounting/reports/vat') %}active{% endif %}">Sales tax report</a></li>
+            {% endif %}
+            {% endif %}
+          {% elif active_section == 'mgmt' and can_menu_mgmt %}
+	            <li class="mt-2 small text-uppercase text-muted px-2">Operations</li>
+            <li><a href="{{ url_for('mgmt_info.index') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('mgmt_info.index') %}active{% endif %}">Operations dashboard</a></li>
+            <li><a href="{{ url_for('mgmt_info.user_kpi') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/mgmt/kpi') %}active{% endif %}">User KPI board</a></li>
+            <li><a href="{{ url_for('mgmt_info.list_business_profiles') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/mgmt/business-profiles') %}active{% endif %}">Business profiles</a></li>
+            <li><a href="{{ url_for('mgmt_info.list_tax_invoice_profiles') }}" class="nav-link d-flex justify-content-between {% if request.path.startswith('/mgmt/tax-invoice-profiles') %}active{% endif %}">Tax documentation profiles</a></li>
+          {% elif active_section == 'admin' and can_menu_admin %}
+            {% include "admin/_secondary_menu.html" %}
+          {% else %}
+            <li class="mt-2 small text-uppercase text-muted px-2">Dashboard</li>
+            <li><a href="{{ url_for('main.index') }}" class="nav-link d-flex justify-content-between {% if request.path == url_for('main.index') %}active{% endif %}">Home</a></li>
+          {% endif %}
+        </ul>
+        {% if endpoint == 'main.index' %}
+          {% include "main/_active_users_sidebar.html" %}
+        {% endif %}
+        {% endif %}
+        </div>
+        <div class="sidebar-secondary-footer mt-auto p-3 small text-white-50">&nbsp;</div>
+      </nav>
+       {% endif %}
+       {% if show_mobile_nav_toggle %}
+       <button type="button" id="mobileNavBackdrop" class="mobile-nav-backdrop d-lg-none" aria-label="Close menu"></button>
+       {% endif %}
+       <!-- Main area -->
+       {% if is_popup or is_public or is_limited_user %}
+       <div class="main-pane main-pane--plain flex-grow-1">
+       {% else %}
+      <div class="main-pane main-pane--app flex-grow-1">
+      {% endif %}
+        {% set is_home = (request.endpoint or '') == 'main.index' %}
+        <!-- Header Bar with actions -->
+        {% if not is_public and not is_popup %}
+        <header class="border-bottom bg-white sticky-top">
+          <div
+            class="container-fluid py-2 d-flex justify-content-between align-items-center app-header-row"
+          >
+            <div class="d-flex align-items-center gap-3 app-header-left">
+              {% if show_mobile_nav_toggle %}
+              <button
+                class="btn btn-outline-secondary btn-sm d-lg-none d-inline-flex align-items-center justify-content-center"
+                type="button"
+                id="mobileNavToggle"
+                data-mobile-nav-toggle
+                aria-controls="primarySidebar secondarySidebar"
+                aria-expanded="false"
+                 aria-label="Open menu"
+              >
+                <i class="bi bi-list"></i>
+              </button>
+              {% endif %}
+              <span class="app-mobile-section-label d-lg-none" aria-current="page">{{ mobile_section_label }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 app-header-right">
+              {% if not is_limited_user %}
+                {% if is_home %}
+                <a class="btn btn-primary btn-sm desktop-preferred-action" href="{{ url_for('case_work.select_matter_create') }}" data-full-navigation="1" title="New matter" data-help-id="case.create.wizard">
+                  <i class="bi bi-magic"></i>
+                  <span>New matter</span>
+                </a>
+                <button
+                  type="button"
+                  class="btn btn-dark btn-sm desktop-preferred-action"
+                  data-cmdk-open
+                  data-shortcut="search"
+                  data-help-id="global.search.open"
+                  title="Search"
+                >
+                  <i class="bi bi-search"></i>
+                  <span>Search</span>
+                </button>
+                {% else %}
+                <!-- : Quick Add
+                <button
+                  class="btn btn-outline-primary btn-sm"
+                  type="button"
+                  id="ipmQuickAddBtn"
+                  title="Alt+N"
+                >
+                  Quick Add
+                </button>
+                -->
+                {% endif %}
+              {% endif %}
+              {% if show_mobile_action_menu %}
+              <div class="dropdown app-mobile-action-menu d-lg-none">
+                <button
+                  class="btn btn-outline-secondary btn-sm app-mobile-action-toggle"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Quick actions"
+                  title="Quick actions"
+                >
+                  <i class="bi bi-three-dots"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end app-mobile-action-dropdown">
+                  {% if not is_limited_user %}
+                  <li>
+                    <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-cmdk-open data-help-id="global.search.open.mobile">
+                      <i class="bi bi-search"></i>
+                      <span>Search</span>
+                    </button>
+                  </li>
+                  {% if can_menu_cases %}
+                  <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ url_for('case_work.select_matter_create') }}" data-full-navigation="1" data-help-id="case.create.wizard.mobile">
+                      <i class="bi bi-magic"></i>
+                      <span>New matter</span>
+                    </a>
+                  </li>
+                  {% endif %}
+                  {% endif %}
+                </ul>
+              </div>
+              {% endif %}
+              {% if current_user.is_authenticated %}
+              <div class="dropdown app-user-menu">
+                <button
+                  class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                  type="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i class="bi bi-person-circle"></i>
+                  <span class="app-user-menu-label">{{ current_user.display_name or current_user.username or 'Me' }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('settings.index') }}" data-help-id="global.settings.open">Profile / Settings</a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('help.index') }}" data-help-id="global.help.manual">Help</a>
+                  </li>
+                  {% if current_user.role == 'admin' %}
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('admin.index') }}" data-help-id="global.admin.open">Admin</a>
+                  </li>
+                  <li><hr class="dropdown-divider" /></li>
+                  {% endif %}
+                  <li>
+                    <form method="POST" action="{{ url_for('auth.logout') }}">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                      <button class="dropdown-item" type="submit">Logout</button>
+                    </form>
+                  </li>
+                </ul>
+              </div>
+              {% else %}
+              <a class="btn btn-link" href="{{ url_for('auth.login') }}"
+                >Login</a
+              >
+              {% endif %}
+            </div>
+          </div>
+        </header>
+        {% endif %}
+        <script>
+          window.AppPagination = window.AppPagination || {};
+          window.AppPagination._queue = window.AppPagination._queue || [];
+          if (typeof window.AppPagination.render !== "function") {
+            window.AppPagination.render = function (container, options) {
+              window.AppPagination._queue.push([container, options]);
+            };
+          }
+        </script>
+
+        <main id="main" class="container-fluid mt-3">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                {% set bs = {'message':'info','error':'danger','danger':'danger','warning':'warning','success':'success','info':'info'}.get(category, 'info') %}
+                <div class="alert alert-{{ bs }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %} {% block content %}{% endblock
+          %}
+        </main>
+        {% block footer %}{% endblock %}
+      </div>
+    </div>
+
+    <script src="{{ static_asset_url('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+
+    {% if is_limited_user %}
+    <script id="app-links-config" type="application/json">{}</script>
+    {% else %}
+    <script id="app-links-config" type="application/json">{{ {
+      'caseDetailBase': url_for('case_work.case_detail', case_id='__CASE__'),
+      'caseListBase': url_for('case_work.case_list'),
+      'workflowDetailBase': url_for('workflow.detail', workflow_id=0),
+      'worklogBase': url_for('worklog.index'),
+      'crmClientsBase': url_for('customers.clients'),
+      'invoiceClientBase': url_for('billing_invoices.clients.view_client', client_id=0),
+      'docketDetailBase': (url_for('deadlines.docket_detail', docket_id='__DOCKET__') if has_endpoint('deadlines.docket_detail') else ''),
+      'invoiceViewBase': (url_for('billing_invoices.invoices.view_invoice', invoice_id=0) if has_endpoint('billing_invoices.invoices.view_invoice') else ''),
+      'deadlineCalendarBase': url_for('deadlines.calendar_month'),
+      'renewalCalendarBase': url_for('annuities.calendar_month'),
+    }|tojson }}</script>
+    {% endif %}
+    <script id="app-locale-config" type="application/json">{{ {
+      'locale': app_locale|default('en-US'),
+      'timeZone': app_timezone|default('America/New_York'),
+      'dateFormat': 'MM/DD/YYYY',
+      'dateTimeFormat': 'MM/DD/YYYY h:mm A',
+    }|tojson }}</script>
+    {% if prefill %}
+    <script id="app-prefill-data" type="application/json">{{ prefill|tojson }}</script>
+    {% endif %}
+    <script>
+      (function () {
+        const isAuthPageUrl = (rawUrl) => {
+          try {
+            const url = new URL(rawUrl, window.location.href);
+            const path = (url.pathname || "").toLowerCase();
+            return (
+              path === "/login" ||
+              path === "/auth/login" ||
+              path === "/auth/test-login" ||
+              path.startsWith("/login/") ||
+              path.startsWith("/auth/login/") ||
+              path.startsWith("/auth/test-login/")
+            );
+          } catch (e) {
+            return false;
+          }
+        };
+        if (typeof window.fetch !== "function" || window.fetch._ipmAuthRedirectGuard) return;
+        const originalFetch = window.fetch;
+        const guardedFetch = function (...args) {
+          return originalFetch.apply(this, args).then((res) => {
+            if (res && res.status === 401) {
+              try {
+                window.location.reload();
+              } catch (e) {}
+            } else if (res.redirected && isAuthPageUrl(res.url)) {
+              try {
+                window.location.assign(res.url);
+              } catch (e) {}
+            }
+            return res;
+          });
+        };
+        guardedFetch._ipmAuthRedirectGuard = true;
+        guardedFetch._ipmAuthRedirectOriginal = originalFetch;
+        window.fetch = guardedFetch;
+      })();
+    </script>
+    <script src="{{ static_asset_url('vendor/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ static_asset_url('js/app_core.js') }}"></script>
+    <script src="{{ static_asset_url('js/app_forms.js') }}"></script>
+    {% block scripts %}{% endblock %}
+    <script src="{{ static_asset_url('js/app_layout.js') }}"></script>
+    <script src="{{ static_asset_url('js/loading_ux.js') }}"></script>
+    {% if not is_popup and not is_public %}
+    {# P1 Productivity UI (floating) #}
+    {% include "_productivity_panel.html" %}
+    <link rel="stylesheet" href="{{ static_asset_url('css/productivity.css') }}">
+    <script src="{{ static_asset_url('js/productivity.js') }}"></script>
+    <script src="{{ static_asset_url('js/views.js') }}"></script>
+    {% endif %}
+</body>
+</html>

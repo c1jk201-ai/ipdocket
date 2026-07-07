@@ -1,0 +1,214 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header" style="margin-bottom:16px; align-items:center; gap:8px;">
+ <div>
+  <h2 class="invoice-page-title">Invoice aging</h2>
+  <div class="invoice-page-subtitle">Outstanding balances at invoice level.</div>
+ </div>
+ <h2 style="margin:0;">📊 Invoice</h2>
+ <div class="muted">as of {{ as_of }}</div>
+ <div class="page-actions">
+  <div class="invoice-clean-actions">
+   <a class="btn btn-outline-primary" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}">Client view</a>
+   <a class="btn btn-primary" href="{{ url_for('billing_invoices.aging.aging_invoices', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}">Invoice view</a>
+   <a class="btn" href="{{ url_for('billing_invoices.invoices.list_invoices', business_profile_id=request.args.get('business_profile_id','')) }}">Invoice list</a>
+  </div>
+  <div class="filter-actions">
+   <a class="btn btn-outline-primary" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}">Client</a>
+   <a class="btn btn-primary" href="{{ url_for('billing_invoices.aging.aging_invoices', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}" title="Aging report (Invoice-level Aging)">📊 Aging (Invoices)</a>
+   <a class="btn" href="{{ url_for('billing_invoices.invoices.list_invoices', business_profile_id=request.args.get('business_profile_id','')) }}">← Invoice list</a>
+  </div>
+ </div>
+</div>
+
+<div class="invoice-filter-panel">
+ <h3 class="invoice-section-title">Search and filters</h3>
+ <form method="get" class="row g-2 align-items-end">
+  <div class="col-12 col-md-3 col-lg-3">
+   <label></label>
+   <select name="business_profile_id" onchange="this.form.submit()">
+    <option value="">All</option>
+    {% for p in all_profiles %}
+     <option value="{{ p['id'] }}" {% if bp and bp['id']==p['id'] %}selected{% endif %}>{{ p['business_name'] or p['name'] or ('BP ' ~ p['id']) }}</option>
+    {% endfor %}
+   </select>
+  </div>
+
+  <div class="col-12 col-md-3 col-lg-2">
+   <label>reference date</label>
+   <input type="date" name="as_of" value="{{ as_of }}" />
+  </div>
+
+  <div class="col-12 col-md-4 col-lg-3">
+   <label>Search</label>
+   <input type="text" name="q" value="{{ q }}" placeholder="Client/ Search" />
+  </div>
+
+  <div class="col-12 col-md-2 col-lg-2">
+   <label>Matter Link</label>
+   <select name="case_linked" onchange="this.form.submit()">
+    <option value="" {% if not case_linked %}selected{% endif %}>All</option>
+    <option value="linked" {% if case_linked == 'linked' %}selected{% endif %}>linked</option>
+    <option value="unlinked" {% if case_linked == 'unlinked' %}selected{% endif %}>Link</option>
+   </select>
+  </div>
+
+  <div class="col-12 col-md-2 col-lg-2">
+   <label>Sort</label>
+   <select name="sort" onchange="this.form.submit()">
+    <option value="issue_date" {% if sort_by == 'issue_date' %}selected{% endif %}>Issue date</option>
+    <option value="outstanding" {% if sort_by == 'outstanding' %}selected{% endif %}>Outstanding balance</option>
+    <option value="client_name" {% if sort_by == 'client_name' %}selected{% endif %}>Client name</option>
+    <option value="days_over" {% if sort_by == 'days_over' %}selected{% endif %}>overduedays</option>
+   </select>
+  </div>
+
+  <div class="col-12 col-md-6">
+   <label></label>
+   <div class="d-flex align-items-center gap-3 flex-wrap" style="min-height:38px;">
+    <label style="display:inline-flex; align-items:center; gap:6px; margin:0; white-space:nowrap;">
+     <input type="checkbox" name="overdue_only" value="1" {% if overdue_only %}checked{% endif %}>
+     overdue
+    </label>
+   </div>
+  </div>
+  <div class="col-12 col-md-6">
+   <div class="d-flex gap-2 justify-content-end flex-wrap">
+    <button class="btn btn-primary" type="submit">Apply</button>
+    <a class="btn btn-ghost" href="{{ url_for('billing_invoices.aging.aging_invoices') }}">Reset</a>
+    {% set export_args = {
+      'business_profile_id': request.args.get('business_profile_id', ''),
+      'as_of': as_of,
+      'q': request.args.get('q', ''),
+      'sort': request.args.get('sort', 'issue_date'),
+      'overdue_only': request.args.get('overdue_only', ''),
+      'case_linked': case_linked
+    } %}
+    {% set xlsx_args = export_args.copy() %}
+    {% set _ = xlsx_args.update({'format': 'xlsx'}) %}
+    <a class="btn btn-outline-secondary invoice-export-action" href="{{ url_for('billing_invoices.aging.aging_invoices', **xlsx_args) }}"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a>
+    <a class="btn btn-outline-secondary desktop-preferred-action" href="{{ url_for('billing_invoices.aging.aging_invoices', **xlsx_args) }}" title="Excel ">⬇️ Excel</a>
+    {% set json_args = export_args.copy() %}
+    {% set _ = json_args.update({'format': 'json'}) %}
+    <a class="btn btn-outline-secondary invoice-export-action" href="{{ url_for('billing_invoices.aging.aging_invoices', **json_args) }}"><i class="bi bi-filetype-json"></i> JSON</a>
+    <a class="btn btn-outline-secondary desktop-preferred-action" href="{{ url_for('billing_invoices.aging.aging_invoices', **json_args) }}" title="JSON ">⬇️ JSON</a>
+   </div>
+  </div>
+ </form>
+</div>
+
+<style>
+ .aging-warning { background-color: #FAF4E4 !important; }
+ .aging-danger { background-color: #fee2e2 !important; }
+ .aging-critical { background-color: #fecaca !important; color: #991b1b; }
+ .badge-days {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+ }
+ .badge-current { background: #d1fae5; color: #065f46; }
+ .badge-warning { background: #FAF4E4; color: #0B1F3A; }
+ .badge-danger { background: #fee2e2; color: #991b1b; }
+ .badge-critical { background: #dc2626; color: #fff; }
+
+ .compact-table { width: 100%; }
+ .compact-table th, .compact-table td { padding: 6px 8px; font-size: 13px; }
+ .compact-table .col-client { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ .compact-table .col-invoice { max-width: 130px; }
+ .compact-table .amount { text-align: right; white-space: nowrap; }
+ .compact-table a { color: #005EA8; }
+</style>
+
+<div class="invoice-data-panel">
+ <table class="striped compact-table">
+  <thead>
+   <tr>
+    <th class="col-client">Client</th>
+    <th class="col-invoice">Invoice</th>
+    <th class="amount">Total</th>
+    <th class="amount">Deposit</th>
+    <th class="amount">Outstanding balance</th>
+    <th style="text-align:center;">Overdue</th>
+    <th style="text-align:center;">Tax documentation</th>
+    <th style="text-align:center;">Actions</th>
+   </tr>
+  </thead>
+  <tbody>
+   {% if rows and rows|length> 0 %}
+    {% for r in rows %}
+     {% set days = r['days_over']|default(0)|int %}
+     {% set row_class = '' %}
+     {% if days>= 90 %}
+      {% set row_class = 'aging-critical' %}
+     {% elif days>= 60 %}
+      {% set row_class = 'aging-danger' %}
+     {% elif days>= 30 %}
+      {% set row_class = 'aging-warning' %}
+     {% endif %}
+     {% set cur = (r['currency'] or 'USD')|upper %}
+     <tr class="{{ row_class }}">
+      <td class="col-client" title="{{ r['client_name'] }}">
+       {% if r.get('client_id') %}
+        <a class="text-decoration-none" href="{{ url_for('billing_invoices.clients.view_client', client_id=r['client_id']) }}">{{ r['client_name'] }}</a>
+        <div class="text-xs text-muted">
+         <a class="text-decoration-none text-muted" href="{{ url_for('customers.clients', q=r['client_name']) }}">CRM</a>
+         <span class="mx-1">·</span>
+         <a class="text-decoration-none text-muted" href="{{ url_for('billing_invoices.invoices.list_invoices', q=r['client_name'], business_profile_id=request.args.get('business_profile_id','')) }}">Invoice</a>
+        </div>
+       {% else %}
+        {{ r['client_name'] }}
+       {% endif %}
+      </td>
+      <td class="col-invoice">
+       <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=r['id']) }}">{{ r['number'] }}</a>
+       <div class="text-xs text-muted">
+        <a class="text-decoration-none text-muted" href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=r['id']) }}"></a>
+       </div>
+      </td>
+      {% if cur in ('USD', 'JPY') %}
+       <td class="amount">{{ '{:,.0f}'.format(r['total'] or 0) }}</td>
+       <td class="amount">{{ '{:,.0f}'.format(r['deposit_amount'] or 0) }}</td>
+       <td class="amount"><strong>{{ '{:,.0f}'.format(r['outstanding'] or 0) }}</strong></td>
+      {% else %}
+       <td class="amount">{{ cur }} {{ '{:,.2f}'.format(r['total'] or 0) }}</td>
+       <td class="amount">{{ '{:,.2f}'.format(r['deposit_amount'] or 0) }}</td>
+       <td class="amount"><strong>{{ '{:,.2f}'.format(r['outstanding'] or 0) }}</strong></td>
+      {% endif %}
+      <td style="text-align:center;">
+       {% if days>= 90 %}
+        <span class="badge-days badge-critical">{{ days }}days</span>
+       {% elif days>= 60 %}
+        <span class="badge-days badge-danger">{{ days }}days</span>
+       {% elif days>= 30 %}
+        <span class="badge-days badge-warning">{{ days }}days</span>
+       {% elif days> 0 %}
+        <span class="badge-days badge-warning">{{ days }}days</span>
+       {% else %}
+        <span class="badge-days badge-current">Current</span>
+       {% endif %}
+      </td>
+      <td style="text-align:center;">
+       {% if r['tax_issued_at'] %}
+        <span title="{{ r['tax_issued_at'] }}">✅</span>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td style="text-align:center;">
+       <form method="post" action="{{ url_for('billing_invoices.invoices.force_paid', invoice_id=r['id']) }}" data-confirm=" Payment Process" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <button type="submit" class="btn btn-sm btn-ui-xs">Payment</button>
+       </form>
+      </td>
+     </tr>
+    {% endfor %}
+   {% else %}
+    <tr><td colspan="8" class="muted" style="text-align:center;">No data.</td></tr>
+   {% endif %}
+  </tbody>
+ </table>
+</div>
+
+{% endblock %}

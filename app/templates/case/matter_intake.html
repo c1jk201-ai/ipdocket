@@ -1,0 +1,404 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set client_label = 'Foreign associate' if ((division or '')|upper == 'INC') else 'Client' %}
+{% set same_client_checked = ((division or '')|upper != 'INC') %}
+{% if form_data and form_data.get('applicant_same_as_client') %}
+  {% set _same_raw = (form_data.get('applicant_same_as_client') or '')|lower %}
+  {% set same_client_checked = _same_raw in ['1','true','y','yes','on'] %}
+{% endif %}
+<style>
+  .intake-step {
+    background: #fff;
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 6px 18px rgba(15, 27, 52, 0.06);
+  }
+  .intake-step + .intake-step {
+    margin-top: 16px;
+  }
+  .intake-step h6 {
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .intake-help {
+    font-size: 0.85rem;
+    color: var(--app-muted);
+  }
+  .intake-inline {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .intake-inline .form-control,
+  .intake-inline .form-select {
+    min-width: 160px;
+  }
+  .intake-staff .list-group {
+    max-height: 220px;
+    overflow: auto;
+  }
+  .intake-footer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+</style>
+
+<div class="container-fluid mt-4" style="max-width: 1100px;">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Create Matter</h3>
+      <div class="text-muted small">Use the New matter wizard for intake. This screen remains for legacy save requests.</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('case_work.select_matter_create') }}">
+      Go to New matter wizard
+    </a>
+  </div>
+
+  <form
+    method="post"
+    data-prevent-double-submit="true"
+    data-disable-submit="1"
+    data-client-id-guard="1"
+    data-show-loading="true"
+    data-loading-text="Creating matter..."
+    data-loading-detail="Saving identifiers, staff assignments, and client links."
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+    <input type="hidden" name="division" id="divisionInput" value="{{ division }}">
+    <input type="hidden" name="case_type" id="caseTypeInput" value="{{ case_type }}">
+    <input type="hidden" name="type" id="typeInput" value="{{ case_type }}">
+    <input type="hidden" name="right_type" id="rightTypeInput" value="{{ case_type }}">
+    {% set _staff_form = form_data or {} %}
+    <input type="hidden" name="manager_id" value="{{ _staff_form.get('manager_id', '') }}">
+    <input type="hidden" name="attorney_id" value="{{ _staff_form.get('attorney_id', '') }}">
+    <input type="hidden" name="handler_id" value="{{ _staff_form.get('handler_id', '') }}">
+
+    <div class="intake-step">
+      <h6>1. Matter flow</h6>
+      <div class="intake-inline">
+        <div>
+          <label class="form-label mb-1">Flow</label>
+          <select id="divisionSelect" class="form-select form-select-sm">
+            <option value="DOM" {% if division == 'DOM' %}selected{% endif %}>US</option>
+            <option value="INC" {% if division == 'INC' %}selected{% endif %}>Inbound US</option>
+            <option value="OUT" {% if division == 'OUT' %}selected{% endif %}>Foreign</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1">IP type</label>
+          <select id="caseTypeSelect" class="form-select form-select-sm">
+            <option value="PATENT" {% if case_type == 'PATENT' %}selected{% endif %}>Patent</option>
+            <option value="TRADEMARK" {% if case_type == 'TRADEMARK' %}selected{% endif %}>Trademark</option>
+            <option value="DESIGN" {% if case_type == 'DESIGN' %}selected{% endif %}>Design</option>
+            <option value="UTILITY" {% if case_type == 'UTILITY' %}selected{% endif %}>Utility</option>
+          </select>
+        </div>
+        <div class="intake-help">
+          Our Ref auto-numbering updates when the intake flow changes.
+        </div>
+      </div>
+    </div>
+
+    <div class="intake-step">
+      <h6>2. Identifiers</h6>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <label class="form-label">Our Ref. *</label>
+          <div class="input-group">
+            <input
+              id="ourRefInput"
+              class="form-control"
+              name="our_ref"
+              required
+              value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+              placeholder="Click Auto"
+            />
+            <input
+              id="countryInput"
+              class="form-control"
+              name="application_country"
+              value="{{ (form_data.get('application_country') if form_data else '') or '' }}"
+              style="max-width: 90px;"
+              placeholder="Country (US)"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-division="{{ division }}"
+              data-type="{{ case_type }}"
+              data-country-id="countryInput"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              Auto
+            </button>
+          </div>
+          <div class="form-text">US matters default to US. For foreign matters, enter a country code before clicking Auto.</div>
+        </div>
+        <div class="col-lg-3">
+          <label class="form-label">Application no.</label>
+          <input class="form-control" name="application_no" value="{{ (form_data.get('application_no') if form_data else '') or '' }}" />
+        </div>
+        <div class="col-lg-3">
+          <label class="form-label">Client Ref.</label>
+          <input class="form-control" name="your_ref" value="{{ (form_data.get('your_ref') if form_data else '') or '' }}" />
+        </div>
+        <div class="col-lg-9">
+          <label class="form-label">Matter title</label>
+          <input class="form-control" name="right_name" value="{{ (form_data.get('right_name') if form_data else '') or '' }}" />
+        </div>
+        <div class="col-lg-3">
+          <label class="form-label">Intake date *</label>
+          <div class="input-group">
+            <input
+              class="form-control"
+              type="date"
+              name="retained_at"
+              required
+              value="{{ (form_data.get('retained_at') if form_data else '') or '' }}"
+            />
+            <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="intake-step">
+      <h6>3. Client / Applicant</h6>
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <label class="form-label mb-1">{{ client_label }} *</label>
+          <div class="position-relative">
+            <input
+              id="clientName"
+              class="form-control"
+              type="text"
+              name="client_name"
+              required
+              value="{{ (form_data.get('client_name') if form_data else '') or '' }}"
+              autocomplete="off"
+              data-client-search="1"
+              data-client-id="clientId"
+              data-client-menu="clientMenu"
+              placeholder="Search {{ client_label }} (2+ characters)"
+            />
+            <input id="clientId" type="hidden" name="client_id" value="{{ (form_data.get('client_id') if form_data else '') or '' }}" />
+            <div
+              id="clientMenu"
+              class="list-group position-absolute w-100 shadow"
+              style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+            ></div>
+            <div class="d-flex gap-2 mt-1">
+              <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">Create contact</a>
+              <span class="text-muted small">Search by name, email, or registration number</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="d-flex justify-content-between align-items-center">
+            <label class="form-label mb-1">Applicant</label>
+            <div class="form-check form-check-inline m-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="sameClientCheck"
+                data-same-client="1"
+                data-target-id="applicantName"
+                {% if same_client_checked %}checked{% endif %}
+              >
+              <label class="form-check-label small text-muted" for="sameClientCheck">Same as client</label>
+            </div>
+          </div>
+          <input type="hidden" name="applicant_same_as_client" value="{{ '1' if same_client_checked else '0' }}">
+          <div class="position-relative">
+            <input
+              class="form-control"
+              id="applicantName"
+              name="applicant_name"
+              type="text"
+              value="{{ (form_data.get('applicant_name') if form_data else '') or '' }}"
+              autocomplete="off"
+              data-client-search="1"
+              data-client-id="applicantId"
+              data-client-menu="applicantMenu"
+              placeholder="Search applicant (2+ characters)"
+            />
+            <input id="applicantId" type="hidden" value="{{ (form_data.get('applicant_id') if form_data else '') or '' }}" />
+            <div
+              id="applicantMenu"
+              class="list-group position-absolute w-100 shadow"
+              style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+            ></div>
+            <div class="d-flex gap-2 mt-1">
+              <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">Create contact</a>
+              <span class="text-muted small">Search by name, email, or registration number</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% set manager_pool = namespace(items=[], seen=[]) %}
+    {% for u in (staff_assignment.management_users if staff_assignment else []) %}
+      {% if u.value and u.value not in manager_pool.seen %}
+        {% set _ = manager_pool.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept}) %}
+        {% set _ = manager_pool.seen.append(u.value) %}
+      {% endif %}
+    {% endfor %}
+    {% set attorney_pool = namespace(items=[], seen=[]) %}
+    {% for u in ((staff_assignment.attorney_users if staff_assignment else []) or (staff_assignment.professional_users if staff_assignment else [])) %}
+      {% if u.value and u.value not in attorney_pool.seen %}
+        {% set _ = attorney_pool.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept}) %}
+        {% set _ = attorney_pool.seen.append(u.value) %}
+      {% endif %}
+    {% endfor %}
+    {% set handler_pool = namespace(items=[], seen=[]) %}
+    {% for u in ((staff_assignment.processing_users if staff_assignment else []) or (staff_assignment.all_users if staff_assignment else [])) %}
+      {% if u.value and u.value not in handler_pool.seen %}
+        {% set _ = handler_pool.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept}) %}
+        {% set _ = handler_pool.seen.append(u.value) %}
+      {% endif %}
+    {% endfor %}
+
+    <div class="intake-step intake-staff">
+      <h6>4. Staff</h6>
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <label class="form-label">Docketing owner *</label>
+          <div class="position-relative">
+            <input
+              id="managerInput"
+              class="form-control"
+              type="text"
+              name="manager"
+              required
+              value="{{ (form_data.get('manager') if form_data else '') or '' }}"
+              autocomplete="off"
+              data-staff-search="1"
+              data-staff-menu="managerMenu"
+              data-staff-items='{{ manager_pool.items | tojson }}'
+              placeholder="Search staff"
+            />
+            <div id="managerMenu" class="list-group position-absolute w-100 shadow-sm" style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px;"></div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label">Responsible attorney *</label>
+          <div class="position-relative">
+            <input
+              id="attorneyInput"
+              class="form-control"
+              type="text"
+              name="attorney"
+              required
+              value="{{ (form_data.get('attorney') if form_data else '') or '' }}"
+              autocomplete="off"
+              data-staff-search="1"
+              data-staff-menu="attorneyMenu"
+              data-staff-items='{{ attorney_pool.items | tojson }}'
+              placeholder="Search attorney"
+            />
+            <div id="attorneyMenu" class="list-group position-absolute w-100 shadow-sm" style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px;"></div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <label class="form-label">Paralegal / handler</label>
+          <div class="position-relative">
+            <input
+              id="handlerInput"
+              class="form-control"
+              type="text"
+              name="handler"
+              value="{{ (form_data.get('handler') if form_data else '') or '' }}"
+              autocomplete="off"
+              data-staff-search="1"
+              data-staff-menu="handlerMenu"
+              data-staff-items='{{ handler_pool.items | tojson }}'
+              placeholder="Search staff"
+            />
+            <div id="handlerMenu" class="list-group position-absolute w-100 shadow-sm" style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="intake-help mt-2">Staff assignments are pushed into the work queue when the matter is created.</div>
+    </div>
+
+    <div class="intake-step">
+      <h6>5. Memo</h6>
+      <textarea class="form-control" name="memo" rows="3" placeholder="Enter intake notes or special instructions.">{{ (form_data.get('memo') if form_data else '') or '' }}</textarea>
+    </div>
+
+    <div class="intake-footer">
+      <div class="intake-help">Identifiers can also be extracted through filing package or email upload.</div>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        data-show-loading="true"
+        data-loading-text="Completing quick intake..."
+        data-loading-detail="Checking duplicates and creating the matter."
+      >
+        Create matter
+      </button>
+    </div>
+  </form>
+</div>
+
+{% include "case/_client_search_modal.html" %}
+<script>
+  window.CASE_FORM_MISSING_FIELDS = {{ (missing_fields or []) | tojson }};
+  window.CASE_FORM_FIELD_META = {{ (field_meta or {}) | tojson }};
+</script>
+<script src="{{ static_asset_url('js/case_form.js') }}"></script>
+<script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const divisionSelect = document.getElementById("divisionSelect");
+    const typeSelect = document.getElementById("caseTypeSelect");
+    const divisionInput = document.getElementById("divisionInput");
+    const caseTypeInput = document.getElementById("caseTypeInput");
+    const typeInput = document.getElementById("typeInput");
+    const rightTypeInput = document.getElementById("rightTypeInput");
+    const countryInput = document.getElementById("countryInput");
+    const autoBtn = document.querySelector('[data-auto-our-ref="1"]');
+
+    function applySelection() {
+      const division = (divisionSelect?.value || "").trim();
+      const ctype = (typeSelect?.value || "").trim();
+      if (divisionInput) divisionInput.value = division;
+      if (caseTypeInput) caseTypeInput.value = ctype;
+      if (typeInput) typeInput.value = ctype;
+      if (rightTypeInput) rightTypeInput.value = ctype;
+
+      if (autoBtn) {
+        autoBtn.dataset.division = division;
+        autoBtn.dataset.type = ctype;
+      }
+
+      if (countryInput) {
+        if (division === "DOM") {
+          countryInput.value = "US";
+          countryInput.setAttribute("readonly", "readonly");
+          countryInput.classList.add("bg-light");
+        } else {
+          countryInput.removeAttribute("readonly");
+          countryInput.classList.remove("bg-light");
+          if (!countryInput.value) {
+            countryInput.value = division === "OUT" ? "" : "US";
+          }
+        }
+      }
+    }
+
+    divisionSelect?.addEventListener("change", applySelection);
+    typeSelect?.addEventListener("change", applySelection);
+    applySelection();
+  });
+</script>
+{% endblock %}

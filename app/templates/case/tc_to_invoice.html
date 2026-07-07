@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-1">TC  → Invoice  </h4>
+      <div class="text-muted small">
+        Matter:
+        <a class="text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">
+          <b>{{ matter.matter_id }}</b>
+        </a>
+        {% if matter.title %} · {{ matter.title }}{% endif %}
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}"></a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ invoice_create_url }}">Invoice  Open</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card p-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <b>Task Log Select</b>
+          <span class="text-muted small">Displaying up to 300 items</span>
+        </div>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>ID</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for w in worklogs %}
+                <tr>
+                  <td>
+                    <input type="checkbox" name="worklog_id" value="{{ w.id }}"
+                           {% if w.id in selected_ids %}checked{% endif %}>
+                  </td>
+                  <td class="text-muted">{{ w.id }}</td>
+                  <td>
+                    {{ w.title or w.memo or w.description or w.note or ('Task Log #' ~ w.id) }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit"> Create</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card p-3">
+        <b class="mb-2">Create Invoice (JSON)</b>
+        <textarea class="form-control font-monospace" rows="18" readonly>{{ lines_json }}</textarea>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-outline-secondary btn-sm" type="button"
+                  onclick="navigator.clipboard.writeText(document.querySelector('textarea').value)">
+            
+          </button>
+          <a class="btn btn-outline-secondary btn-sm"
+             href="{{ url_for('case_work.p2_tc_to_invoice_csv', matter_id=matter.matter_id, ids=(selected_ids|list|join(','))) }}">
+            CSV Download
+          </a>
+        </div>
+        <div class="form-text mt-2">
+          *  page P2(MVP) “Select TC Invoice   ” .
+          Invoice  Auto  , Invoice Create from JSON/CSV     Add .
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

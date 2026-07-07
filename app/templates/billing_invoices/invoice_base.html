@@ -1,0 +1,106 @@
+{% extends "layouts/base.html" %}
+{% set invoice_theme = invoice_theme if invoice_theme is defined else True %}
+{% set invoice_wrapper_class = invoice_wrapper_class if invoice_wrapper_class is defined else '' %}
+
+{% block title %}{{ app_title }}{% endblock %}
+
+{% block head_meta %}
+{% if invoice_theme %}
+ <link rel="stylesheet" href="{{ asset_url('billing_invoices.static', 'styles.css') }}" />
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+ {{ super() }}
+{% endblock %}
+
+{% block body_class %}
+{% if invoice_theme %}
+{% if request.args.get('cert') == '1' and (invoice is defined) and (invoice['currency'] == 'USD') %}print-with-cert {% endif %}
+{% if invoice is defined %}currency-{{ invoice['currency'] }} {% endif %}
+{% if (request.args.get('popup') == '1') or (request.args.get('cert') == '1') or (request.args.get('print') == '1') %} hide-sidebars{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="invoice-theme {{ invoice_wrapper_class }}">
+ <a class="skip-link" href="#main">Skip to invoice content</a>
+ {% if invoice is defined and invoice and invoice.get('id') %}
+ <div
+  id="app-page-meta"
+  data-type="invoice"
+  data-id="{{ invoice.get('id') }}"
+  data-title="{{ invoice.get('number') or ('Invoice #' ~ invoice.get('id')) }}"
+  data-url="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice.get('id')) }}"
+></div>
+ {% endif %}
+ {% block invoice_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block footer %}
+{% if invoice_theme %}
+<footer class="invoice-footer">
+ <div class="container">Invoice workspace</div>
+</footer>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if invoice_theme %}
+<script>
+ document.addEventListener("DOMContentLoaded", () => {
+  // Note: base.html handles CSRF injection and basic confirm dialogs.
+  // We only need to add invoice-specific logic here.
+
+  // User dropdown logic - might be handled by base.html or unique to this blueprint's header if we used a custom header.
+  // Since we are now using base.html's header and sidebar, we don't need to re-implement user dropdown toggles unless strictly necessary for a custom header.
+  // However, if we wanted to enforce the "AppConfirm" as the global confirm which base.html does, we are good.
+  // base.html exposes `window.AppConfirm`.
+
+  // Toasts - base.html uses Bootstrap Alerts for flashed messages.
+  // If this template generates custom '.toast' elements (not from flash messages), we need this script.
+  document.querySelectorAll(".toast").forEach((el) => {
+   const closeBtn = el.querySelector(".toast-close");
+   if (closeBtn) {
+    closeBtn.addEventListener("click", () => el.remove());
+   }
+   setTimeout(() => {
+    el.classList.add("toast-fade-out");
+    setTimeout(() => el.remove(), 320);
+   }, 6000);
+  });
+
+  // Tooltips (data-tooltip)
+  let tooltipEl = null;
+  function showTooltip(text, x, y) {
+   if (!tooltipEl) {
+    tooltipEl = document.createElement("div");
+    tooltipEl.className = "invoice-tooltip";
+    document.body.appendChild(tooltipEl);
+   }
+   tooltipEl.textContent = text;
+   tooltipEl.style.left = x + 12 + "px";
+   tooltipEl.style.top = y + 12 + "px";
+   tooltipEl.classList.add("is-visible");
+  }
+  function hideTooltip() {
+   if (tooltipEl) tooltipEl.classList.remove("is-visible");
+  }
+
+  document.addEventListener("mousemove", (e) => {
+   const el = e.target.closest("[data-tooltip]");
+   if (el) {
+    showTooltip(
+     el.getAttribute("data-tooltip") || "",
+     e.pageX,
+     e.pageY
+    );
+   } else {
+    hideTooltip();
+   }
+  });
+ });
+</script>
+{% endif %}
+{% endblock %}

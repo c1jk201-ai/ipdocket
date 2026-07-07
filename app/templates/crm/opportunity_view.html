@@ -1,0 +1,267 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div
+  id="app-page-meta"
+  class="d-none"
+  data-type="opportunity"
+  data-id="{{ opportunity.id }}"
+  data-title="{{ opportunity.name }}"
+  data-subtitle="{{ opportunity.client.name if opportunity.client else '' }}"
+  data-url="{{ request.path }}"
+></div>
+<div class="container mt-4 fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="{{ url_for('customers.clients') }}">CRM</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('customers.opportunity_list') }}"></a></li>
+          <li class="breadcrumb-item active">{{ opportunity.name }}</li>
+        </ol>
+      </nav>
+      <h3 class="fw-bold text-dark mb-0">{{ opportunity.name }}</h3>
+      <p class="text-muted mb-0">
+        <a href="{{ url_for('customers.client_view', client_id=opportunity.client.id) }}" class="text-decoration-none">
+          {{ opportunity.client.name }}
+        </a>
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('customers.opportunity_edit', opportunity_id=opportunity.id) }}" class="btn btn-outline-primary">
+        <i class="bi bi-pencil"></i> Edit
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Opportunity Details -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0 fw-semibold"> </h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted"></dt>
+            <dd class="col-sm-8">
+              <span class="badge
+                {% if opportunity.stage == 'prospecting' %}bg-secondary
+                {% elif opportunity.stage == 'proposal' %}bg-info
+                {% elif opportunity.stage == 'negotiation' %}bg-warning text-dark
+                {% elif opportunity.stage == 'closed_won' %}bg-success
+                {% else %}bg-danger{% endif %}">
+                {{ dict(opportunity.STAGE_CHOICES).get(opportunity.stage, opportunity.stage) }}
+              </span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">EstimatedAmount</dt>
+            <dd class="col-sm-8 fw-medium">
+              {% if opportunity.amount %}${{ "{:,.0f}".format(opportunity.amount) }}{% else %}-{% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted"></dt>
+            <dd class="col-sm-8">
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height: 8px;">
+                  <div class="progress-bar
+                    {% if opportunity.probability >= 80 %}bg-success
+                    {% elif opportunity.probability >= 50 %}bg-info
+                    {% elif opportunity.probability >= 30 %}bg-warning
+                    {% else %}bg-secondary{% endif %}"
+                    style="width: {{ opportunity.probability or 0 }}%"></div>
+                </div>
+                <span class="small">{{ opportunity.probability or 0 }}%</span>
+              </div>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">In Progress Amount</dt>
+            <dd class="col-sm-8 text-muted">
+              {% if opportunity.amount %}
+                ${{ "{:,.0f}".format((opportunity.amount|float) * (opportunity.probability or 0) / 100) }}
+              {% else %}-{% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted">EstimatedDeadline</dt>
+            <dd class="col-sm-8">
+              {{ opportunity.expected_close_date|local_date if opportunity.expected_close_date else '-' }}
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Registration date</dt>
+            <dd class="col-sm-8">
+              {{ opportunity.created_at|local_date if opportunity.created_at else '-' }}
+            </dd>
+
+            {% if opportunity.closed_at %}
+            <dt class="col-sm-4 text-muted">Due date</dt>
+            <dd class="col-sm-8">
+              {{ opportunity.closed_at|local_date }}
+            </dd>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+
+      <!-- Stage Quick Update -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0 fw-semibold"> Change</h5>
+        </div>
+        <div class="card-body">
+          <div class="d-flex flex-wrap gap-2">
+            {% for stage_value, stage_label in opportunity.STAGE_CHOICES %}
+            <form action="{{ url_for('customers.opportunity_update_stage', opportunity_id=opportunity.id) }}" method="post" class="d-inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="stage" value="{{ stage_value }}">
+              <button type="submit" class="btn btn-sm
+                {% if opportunity.stage == stage_value %}
+                  {% if stage_value == 'prospecting' %}btn-secondary
+                  {% elif stage_value == 'proposal' %}btn-info
+                  {% elif stage_value == 'negotiation' %}btn-warning
+                  {% elif stage_value == 'closed_won' %}btn-success
+                  {% else %}btn-danger{% endif %}
+                {% else %}btn-outline-secondary{% endif %}"
+                {% if opportunity.stage == stage_value %}disabled{% endif %}>
+                {{ stage_label }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      {% if opportunity.notes %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0 fw-semibold">Notes</h5>
+        </div>
+        <div class="card-body">
+          <div class="text-muted" style="white-space: pre-wrap;">{{ opportunity.notes }}</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Activities -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-semibold"> Log</h5>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+            <i class="bi bi-plus-lg"></i>  Add
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for activity in activities %}
+            <li class="list-group-item px-4 py-3">
+              <div class="d-flex align-items-start">
+                <div class="me-3 mt-1">
+                  {% if activity.type == 'call' %}
+                  <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+                    <i class="bi bi-telephone text-primary"></i>
+                  </div>
+                  {% elif activity.type == 'email' %}
+                  <div class="rounded-circle bg-info bg-opacity-10 p-2">
+                    <i class="bi bi-envelope text-info"></i>
+                  </div>
+                  {% elif activity.type == 'meeting' %}
+                  <div class="rounded-circle bg-success bg-opacity-10 p-2">
+                    <i class="bi bi-calendar-event text-success"></i>
+                  </div>
+                  {% else %}
+                  <div class="rounded-circle bg-warning bg-opacity-10 p-2">
+                    <i class="bi bi-sticky text-warning"></i>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div class="fw-semibold">{{ activity.summary }}</div>
+                      {% if activity.description %}
+                      <div class="text-muted small mt-1" style="white-space: pre-wrap;">{{ activity.description }}</div>
+                      {% endif %}
+                    </div>
+                    <div class="text-end">
+                      <div class="small text-muted">
+                        {{ activity.activity_date|local_dt_min if activity.activity_date else '-' }}
+                      </div>
+                      {% if activity.user %}
+                      <div class="small text-muted">{{ activity.user.display_name or activity.user.username }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="ms-2">
+                  <form action="{{ url_for('customers.activity_delete', activity_id=activity.id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger border-0"
+                            data-confirm="  Delete?">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </li>
+            {% else %}
+            <li class="list-group-item text-center py-5 text-muted">
+              <i class="bi bi-clock-history fs-1 d-block mb-3 opacity-50"></i>
+              Log  none.
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('customers.activity_create') }}" method="post">
+        {{ activity_form.hidden_tag() }}
+        <input type="hidden" name="opportunity_id" value="{{ opportunity.id }}">
+        <div class="modal-header">
+          <h5 class="modal-title"> Log</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Type</label>
+            {{ activity_form.type(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label"> <span class="text-danger">*</span></label>
+            {{ activity_form.summary(class="form-control", placeholder=" ") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Details Content</label>
+            {{ activity_form.description(class="form-control", rows="3", placeholder="Details Content Input...") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label"></label>
+            {{ activity_form.activity_date(class="form-control", type="datetime-local") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}

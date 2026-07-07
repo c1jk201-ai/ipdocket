@@ -1,0 +1,154 @@
+{% extends "layouts/base.html" %}
+{% from "_entity_links.html" import case_detail, file_asset_open %}
+{% block content %}
+<div class="container py-4" style="max-width: 980px;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <div class="small text-muted">Matter &gt; History &gt; Office Action</div>
+      <h4 class="fw-bold mb-1">{{ doc_name or "Office Action" }}</h4>
+      <div class="small text-muted">
+        {{ case_detail(case_id, label=(matter.our_ref or case_id), classes="text-decoration-none") }}
+        <span class="mx-1">&middot;</span>
+        <span>OA ID: {{ oa_id }}</span>
+      </div>
+      {% if matter and matter.right_name %}
+      <div class="small text-muted">{{ matter.right_name }}</div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-primary" href="{{ url_for('case_work.history_notice_edit', case_id=case_id, oa_id=oa_id, popup=popup) }}">Edit</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.history_notice_attachments', case_id=case_id, oa_id=oa_id) }}">All files</a>
+      {% if popup %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.close()">Close</button>
+      {% else %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=case_id) }}">Back to matter</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="text-muted small">Document</div>
+            <div class="fw-semibold">{{ doc_name or "-" }}</div>
+          </div>
+          <div>
+            <div class="text-muted small">Examiner / Notes</div>
+            <div>{{ examiner or "-" }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Uploaded</span>
+            <span>{{ (received_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Mailed</span>
+            <span>{{ (notified_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Due</span>
+            <span class="fw-semibold">{{ (due_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Extended Due</span>
+            <span>{{ (extended_due_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted small">Done</span>
+            <span>{{ (done_date or "")|us_date or "-" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Cited References</div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">{{ (citation_rows or [])|length }}</span>
+        {% if can_reparse_citations %}
+        <form method="post" action="{{ url_for('case_work.history_notice_reparse_citations', case_id=case_id, oa_id=oa_id, popup=popup) }}" class="m-0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-primary">Reparse with AI</button>
+        </form>
+        <form method="post" action="{{ url_for('case_work.history_notice_reparse_citations', case_id=case_id, oa_id=oa_id, popup=popup) }}" class="m-0" onsubmit="return confirm('Overwrite manually entered references ? ');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="overwrite_manual" value="1">
+          <button type="submit" class="btn btn-sm btn-outline-danger">Overwrite manual entries</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% if citation_rows %}
+        <div class="d-flex flex-column gap-2">
+          {% for ref in citation_rows %}
+            <div class="border rounded p-2">
+              <div class="small text-muted">
+                {{ ref.label or ('Reference ' ~ loop.index) }}
+                {% if ref.ref_type %}<span class="mx-1">&middot;</span>{{ ref.ref_type }}{% endif %}
+                {% if ref.country %}<span class="mx-1">&middot;</span>{{ ref.country }}{% endif %}
+                {% if ref.published_date %}<span class="mx-1">&middot;</span>{{ ref.published_date }}{% endif %}
+              </div>
+              <div class="text-break">{{ ref.raw_text }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-muted small">No cited references registered.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Files</div>
+      <span class="text-muted small">{{ (existing_files or [])|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>File</th>
+            <th style="width: 120px;">Size</th>
+            <th style="width: 240px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in (existing_files or []) %}
+          <tr>
+            <td class="text-break">
+              {{ file_asset_open(case_id, f.file_asset_id, label=(f.original_name or f.file_asset_id), inline=1, classes="text-decoration-none") }}
+              <div class="text-muted small">{{ f.mime_type or "" }}</div>
+            </td>
+            <td class="text-muted">{{ (f.byte_size or 0)|filesizeformat }}</td>
+            <td>
+              <a class="btn btn-sm btn-primary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}">Download</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}?inline=1" target="_blank">Open</a>
+              {% set name_lower = (f.original_name or "")|lower %}
+              {% if (f.mime_type or "") == "message/rfc822" or name_lower[-4:] == ".eml" %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_eml_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}" target="_blank">Preview</a>
+              {% elif (f.mime_type or "") == "application/vnd.ms-outlook" or name_lower[-4:] == ".msg" %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_msg_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}" target="_blank">Preview</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">No files attached.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

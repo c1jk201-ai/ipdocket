@@ -1,0 +1,93 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">Expense categories</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_expenses') }}">Expense list</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">Add category</h3>
+  <form method="post" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Code</label>
+    <input type="text" name="code" placeholder="OFFICE">
+   </div>
+   <div class="col-12 col-md-4 col-lg-4">
+    <label>Category name</label>
+    <input type="text" name="name" required>
+   </div>
+   <div class="col-12 col-md-4 col-lg-4">
+    <label>Account</label>
+    <select name="account_id">
+     <option value="">No account</option>
+     {% for acc in accounts %}
+      <option value="{{ acc.id }}">{{ acc.code }} · {{ acc.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Sales tax</label>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+     <input type="checkbox" name="vat_deductible" value="1" checked>
+      Taxable
+    </label>
+   </div>
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Default</label>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+     <input type="checkbox" name="is_default" value="1">
+     Default category
+    </label>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Add</button>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <div style="overflow:auto;">
+   <table class="table">
+    <thead>
+     <tr>
+      <th>Code</th>
+      <th>Category name</th>
+      <th>Account</th>
+      <th>Taxable</th>
+      <th>Default</th>
+      <th style="width:140px;"></th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for cat in categories %}
+     <tr>
+      <td>{{ cat.code or '-' }}</td>
+      <td>{{ cat.name }}</td>
+      <td>{{ cat.account_code and (cat.account_code ~ ' · ' ~ cat.account_name) or '-' }}</td>
+      <td>{% if cat.vat_deductible %}Yes{% else %}No{% endif %}</td>
+      <td>{% if cat.is_default %}Yes{% else %}No{% endif %}</td>
+      <td>
+       <div class="row" style="gap:6px;">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.expenses.edit_category', category_id=cat.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('billing_invoices.expenses.delete_category', category_id=cat.id) }}" data-confirm="Delete" style="margin:0;">
+         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+         <button class="btn btn-ghost btn-sm" type="submit">Delete</button>
+        </form>
+       </div>
+      </td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="6" class="muted">No categories registered.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

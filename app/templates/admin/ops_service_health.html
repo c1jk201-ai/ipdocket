@@ -1,0 +1,184 @@
+{% extends "admin/base.html" %}
+{% block title %}Service Health{% endblock %}
+{% block admin_description %}Review request latency, error reports, notification failures, queue health, and operational metrics.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.queue_home', status='failed') }}">Failed Actions</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.scheduler_home') }}">Scheduler Status</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.service_health_json') }}" target="_blank" rel="noopener">JSON View</a>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="card mb-3">
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="small text-muted">
+      Generated at: {{ health.generated_at }}
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ops_admin.queue_home', status='failed') }}">Failed Actions</a>
+    </div>
+  </div>
+</div>
+
+{% set latency = health.request_latency_24h or {} %}
+{% set queues = health.queue_backlog or {} %}
+{% set queue_health = health.queue_health or {} %}
+{% set alerts = health.alerts or [] %}
+{% set ops = health.operational_metrics or {} %}
+
+{% if alerts %}
+<div class="mb-3">
+  {% for alert in alerts %}
+    <div class="alert alert-{{ 'danger' if alert.level == 'danger' else 'warning' if alert.level == 'warning' else 'info' }} py-2 mb-2">
+      <span class="fw-semibold">{{ alert.code }}</span>
+      <span class="ms-2">{{ alert.message }}</span>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+      <div class="fw-semibold mb-2">Request Latency (24h)</div>
+      <div class="small">sample={{ latency.sample_count or 0 }}</div>
+      <div class="small">p50={{ latency.p50_ms if latency.p50_ms is not none else "-" }} ms</div>
+      <div class="small">p95={{ latency.p95_ms if latency.p95_ms is not none else "-" }} ms</div>
+      <div class="small">p99={{ latency.p99_ms if latency.p99_ms is not none else "-" }} ms</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+      <div class="fw-semibold mb-2">Error/Notice (24h)</div>
+      <div class="small">error_reports={{ health.error_reports_24h or 0 }}</div>
+      <div class="small">notification_failures={{ health.notification_failures_24h or 0 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set durable_totals = (ops.durable_queue or {}).totals or {} %}
+{% set db_runtime = ops.db_runtime or {} %}
+{% set upload = ops.upload or {} %}
+{% set virus_scan = upload.virus_scan or {} %}
+{% set automation = ops.automation or {} %}
+{% set matter_billing = ops.matter_billing or {} %}
+{% set security = ops.security or {} %}
+{% set table_growth = ops.table_growth or {} %}
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+      <div class="fw-semibold mb-2">Queue Runtime</div>
+      <div class="small">oldest_queued={{ durable_totals.oldest_queued_age_seconds or 0 }} sec</div>
+      <div class="small">retry_rate={{ durable_totals.retry_rate or 0 }}</div>
+      <div class="small">stale_recovered_24h={{ durable_totals.stale_lock_recovery_count_24h or 0 }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+      <div class="fw-semibold mb-2">DB / Upload</div>
+      <div class="small">statement_timeout={{ db_runtime.statement_timeout_count or 0 }}</div>
+      <div class="small">idle_in_tx_kill={{ db_runtime.idle_in_tx_kill_count or 0 }}</div>
+      <div class="small">upload_parse_failures={{ upload.parse_failure_count or 0 }}</div>
+      <div class="small">virus_scan_disabled={{ virus_scan.disabled if virus_scan.disabled is defined else "-" }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body p-3">
+      <div class="fw-semibold mb-2">Automation / Security</div>
+      <div class="small">missing_evidence={{ automation.missing_evidence_rate or 0 }}</div>
+      <div class="small">match_miss={{ automation.match_miss_rate or 0 }}</div>
+      <div class="small">auto_downgrade={{ automation.auto_downgrade or "-" }}</div>
+      <div class="small">orphan_links={{ matter_billing.orphan_link_count or 0 }}</div>
+      <div class="small">admin_cidr_reject={{ security.admin_cidr_reject_count or 0 }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if table_growth.tables %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="fw-semibold">Table Growth</div>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ops_admin.retention_home') }}">Retention Details</a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>Table</th>
+          <th class="text-end">Rows</th>
+          <th class="text-end">Size</th>
+          <th class="text-end">24h rows</th>
+          <th class="text-end">Expired</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for table in table_growth.tables %}
+        <tr>
+          <td>
+            <span class="fw-semibold">{{ table.table }}</span>
+            {% if table.alerts %}
+              <span class="badge bg-warning text-dark ms-2">{{ table.alerts|length }}</span>
+            {% endif %}
+          </td>
+          <td class="text-end">{{ "{:,}".format(table.row_count or 0) }}</td>
+          <td class="text-end">{{ (table.size_mb|string) + " MB" if table.size_mb is not none else "n/a" }}</td>
+          <td class="text-end">{{ "{:,}".format(table.rows_24h or 0) }}</td>
+          <td class="text-end">{{ "{:,}".format(table.expired_rows or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header bg-white py-3">
+    <div class="fw-semibold">Queue Backlog</div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead>
+        <tr>
+          <th>Queue</th>
+          <th>Backlog</th>
+          <th>Failed</th>
+          <th>Stale running</th>
+          <th>Oldest age</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set durable_health = queue_health.durable_jobs or {} %}
+        <tr>
+          <td>durable_jobs (queued/running)</td>
+          <td>{{ queues.durable_jobs or 0 }}</td>
+          <td>{{ durable_health.failed or 0 }}</td>
+          <td>{{ durable_health.stale_running or 0 }}</td>
+          <td>{{ durable_health.oldest_age_minutes if durable_health.oldest_age_minutes is not none else "-" }} min</td>
+        </tr>
+        <tr>
+          <td>annuity_workflow_sync_queue</td>
+          <td>{{ queues.annuity_workflow_sync_queue or 0 }}</td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

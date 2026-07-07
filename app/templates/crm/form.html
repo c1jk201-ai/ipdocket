@@ -1,0 +1,1128 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container mt-2">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-semibold mb-0">{% if edit_mode %}Client Edit{% else %}Client Registration{% endif %}</h3>
+      <div class="text-muted small">(＊) Item  Input .</div>
+    </div>
+    {% if edit_mode and client %}
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('customers.client_view', client_id=client.id) }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Clientto
+      </a>
+      {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+      {% set invoice_client_id = (client.id if unified_mode else client.external_invoice_client_id) %}
+      {% if invoice_client_id %}
+        <a href="/accounting/invoice-system/clients/{{ invoice_client_id }}" class="btn btn-outline-success">
+          <i class="bi bi-receipt"></i> Invoice View
+        </a>
+        <a href="/accounting/invoice-system/clients/{{ invoice_client_id }}/deposit" class="btn btn-outline-secondary" title="Retainer">
+          Retainer
+        </a>
+      {% else %}
+        <form action="{{ url_for('customers.client_sync_invoice', client_id=client.id) }}" method="post" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button class="btn btn-outline-success">
+            <i class="bi bi-link-45deg"></i> Invoice Link
+          </button>
+        </form>
+        <a href="{{ url_for('billing_invoices.clients.list_clients', ipm_client_id=client.id) }}" class="btn btn-outline-secondary">
+          Invoice ClientSearch
+        </a>
+      {% endif %}
+
+    </div>
+    {% endif %}
+  </div>
+
+  {% set form_action = url_for('customers.client_edit', client_id=client.id, popup=request.args.get('popup')) if edit_mode else url_for('customers.client_create', popup=request.args.get('popup')) %}
+
+  <form
+    method="POST"
+    action="{{ form_action }}"
+    class="needs-validation"
+    novalidate
+    enctype="multipart/form-data"
+    data-prevent-double-submit="true"
+  >
+    {{ form.hidden_tag() }}
+
+    {% if not edit_mode %}
+    <div class="card shadow-sm mb-4 border-0">
+      <div
+        class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center"
+      >
+        <span><i class="bi bi-magic"></i>  Input</span>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          onclick="openLLMModal()"
+        >
+          🤖 LLMto 
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="text-muted small">
+          Email and client information are filled automatically when available.
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- 1. Default  -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-primary"><i class="bi bi-info-circle me-1"></i> Default </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <!-- Row 1 -->
+          <div class="col-md-4">
+            <label class="form-label"
+              >{{ form.client_name.label }} <span class="text-danger">＊</span></label
+            >
+            {{ form.client_name(class="form-control", placeholder="Client name") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.name_en.label }}</label>
+            {{ form.name_en(class="form-control", placeholder="Client name") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.input_date.label }}</label>
+            {{ form.input_date(class="form-control", type="date") }}
+          </div>
+
+          <!-- Row 2 -->
+          <div class="col-md-4">
+            <label class="form-label">{{ form.category.label }}</label>
+            {{ form.category(class="form-select") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.nationality.label }}</label>
+            {{ form.nationality(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.business_type.label }}</label>
+            {{ form.business_type(class="form-select") }}
+          </div>
+
+          <!-- Row 3 -->
+          <div class="col-md-4">
+            <label class="form-label"
+              >{{ form.registration_number.label }}</label
+            >
+            {{ form.registration_number(class="form-control", placeholder="/ ") }}
+            <div class="form-text text-muted" style="font-size: 0.75rem">
+              Registration No./Entity registration number (6-7/13)
+            </div>
+          </div>
+          <div class="col-md-4">
+             <label class="form-label">{{ form.viewer_default.label }}</label>
+             {{ form.viewer_default(class="form-control", placeholder="Client(DefaultSettings)") }}
+          </div>
+          <div class="col-md-4">
+             <div class="form-check mt-4 pt-2">
+               {{ form.annuity_management_disabled(class="form-check-input") }}
+               <label class="form-check-label" for="{{ form.annuity_management_disabled.id }}">
+                 {{ form.annuity_management_disabled.label.text }}
+               </label>
+               <div class="form-text">
+                  Used for client renewal automation, tasks, notices, and renewal lists.
+               </div>
+             </div>
+          </div>
+
+          <!-- Row 4: Applicant Codes -->
+          <div class="col-12">
+             <label class="form-label fw-semibold text-secondary small">Applicant </label>
+          </div>
+          <div class="col-md-4">
+             {{ form.applicant_code1(class="form-control", placeholder="Patent office  1") }}
+          </div>
+          <div class="col-md-4">
+             {{ form.applicant_code2(class="form-control", placeholder=" 2") }}
+          </div>
+          <div class="col-md-4">
+             {{ form.applicant_code3(class="form-control", placeholder=" 3") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Invoice   -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-success"><i class="bi bi-receipt me-1"></i> Invoice  </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">{{ form.manager.label }}</label>
+            {{ form.manager(class="form-control", placeholder="Contact") }}
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">{{ form.address.label }}</label>
+            {{ form.address(class="form-control", placeholder="Default Address") }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">{{ form.notes.label }}</label>
+            {{ form.notes(class="form-control", rows="2", placeholder="Invoice Client Notes") }}
+          </div>
+        </div>
+        <div class="form-text text-muted mt-2 small">
+          <i class="bi bi-info-circle"></i> Accounting(Invoice)   DB  .
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Phone -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-secondary"><i class="bi bi-telephone me-1"></i> Phone</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">{{ form.email.label }}</label>
+            {{ form.email(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.mobile_phone.label }}</label>
+            {{ form.mobile_phone(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.main_phone.label }}</label>
+            {{ form.main_phone(class="form-control") }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">{{ form.main_fax.label }}</label>
+            {{ form.main_fax(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.homepage.label }}</label>
+            {{ form.homepage(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.other_contact.label }}</label>
+            {{ form.other_contact(class="form-control") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Filing  -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-secondary"><i class="bi bi-person-badge me-1"></i> Filing </div>
+      <div class="card-body">
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label">{{ form.applicant_address.label }}</label>
+                {{ form.applicant_address(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.applicant_email.label }}</label>
+                {{ form.applicant_email(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.applicant_phone.label }}</label>
+                {{ form.applicant_phone(class="form-control") }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">{{ form.applicant_fax.label }}</label>
+                {{ form.applicant_fax(class="form-control") }}
+            </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Business document -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-warning"><i class="bi bi-file-earmark-text me-1"></i> Business document upload (Select)</div>
+      <div class="card-body">
+        <style>
+          .bizreg-drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 30px 20px;
+            background: #f8fafc;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+          }
+          .bizreg-drop-zone:hover, .bizreg-drop-zone.dragover {
+            background: #eef2ff;
+            border-color: #6366f1;
+            transform: scale(1.005);
+          }
+          .bizreg-drop-zone .icon {
+            font-size: 36px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+          }
+          .bizreg-drop-zone .text-main {
+            font-size: 1.05em;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 4px;
+          }
+          .bizreg-drop-zone .text-sub {
+            font-size: 0.85em;
+            color: #64748b;
+          }
+          .bizreg-existing {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            margin-bottom: 16px;
+          }
+           .bizreg-existing .file-icon { font-size: 20px; }
+           .bizreg-existing .file-name { font-weight: 500; color: #166534; font-size: 0.95em; }
+        </style>
+
+        {% if edit_mode and biz_reg_attachment %}
+        <div class="bizreg-existing" id="existing-biz-reg">
+          <span class="file-icon">📎</span>
+          <span class="file-name">{{ biz_reg_attachment['original_name'] }}</span>
+          <a href="{{ url_for('customers.biz_reg_download_shared', client_id=client.id) }}"
+             class="btn btn-sm btn-success download-btn ms-auto">
+            <i class="bi bi-download"></i> Download
+          </a>
+        </div>
+        <div class="text-muted small mb-2 text-center"> File Upload  File Apply.</div>
+        {% endif %}
+
+        <div id="biz-reg-drop-zone" class="bizreg-drop-zone">
+            <div class="icon">📄</div>
+            <div class="text-main">Business document    Upload</div>
+            <div class="text-sub">PDF  Image File (Auto analysis Input )</div>
+            <input type="file" name="biz_reg_file" accept=".pdf,image/*" style="display: none;" id="biz-reg-file-input" />
+        </div>
+
+        <div id="biz-reg-status" class="mt-3 text-center" style="display: none;"></div>
+        <div id="biz-reg-preview" class="mt-3" style="display: none;">
+          <div class="small text-muted mb-2 text-center"> Item In Progress Apply value Select.</div>
+          <div id="biz-reg-preview-fields" class="d-grid gap-2"></div>
+          <div class="d-flex justify-content-center gap-2 mt-2">
+            <button type="button" id="biz-reg-apply-btn" class="btn btn-sm btn-primary">Apply selected</button>
+            <button type="button" id="biz-reg-apply-all-btn" class="btn btn-sm btn-outline-secondary">All Apply</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Business tax profile -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-secondary"><i class="bi bi-calculator me-1"></i> Business tax profile</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <!-- Row 1 -->
+          <div class="col-md-3">
+            <label class="form-label">{{ form.business_reg_no.label }}</label>
+            {{ form.business_reg_no(class="form-control", placeholder="12-3456789") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_company_name.label }}</label>
+            {{ form.tax_company_name(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_ceo.label }}</label>
+            {{ form.tax_ceo(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_business_type.label }}</label>
+            {{ form.tax_business_type(class="form-control") }}
+          </div>
+
+          <!-- Row 2 -->
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_business_item.label }}</label>
+            {{ form.tax_business_item(class="form-control") }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.tax_address.label }}</label>
+            {{ form.tax_address(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+             <label class="form-label">{{ form.tax_manager.label }}</label>
+             {{ form.tax_manager(class="form-control") }}
+          </div>
+
+          <!-- Row 3 -->
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_manager_email.label }}</label>
+            {{ form.tax_manager_email(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.tax_manager_mobile.label }}</label>
+            {{ form.tax_manager_mobile(class="form-control") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Mailing, personal contact, and other details -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-light fw-bold text-secondary"><i class="bi bi-archive me-1"></i> Mailing / Personal / Other</div>
+      <div class="card-body">
+        <h6 class="text-muted fw-bold small mb-2 text-uppercase">Mailing</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-8">
+            <label class="form-label">{{ form.mail_recv_address.label }}</label>
+            {{ form.mail_recv_address(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.mail_receiver.label }}</label>
+            {{ form.mail_receiver(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.client_code.label }}</label>
+            {{ form.client_code(class="form-control") }}
+          </div>
+        </div>
+        <hr class="text-muted opacity-25">
+
+        <h6 class="text-muted fw-bold small mb-2 text-uppercase">Personal contact</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label">{{ form.personal_email.label }}</label>
+            {{ form.personal_email(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.personal_phone.label }}</label>
+            {{ form.personal_phone(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.personal_fax.label }}</label>
+            {{ form.personal_fax(class="form-control") }}
+          </div>
+        </div>
+        <hr class="text-muted opacity-25">
+
+        <h6 class="text-muted fw-bold small mb-2 text-uppercase">Other contact</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.other_address.label }}</label>
+            {{ form.other_address(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.other_email.label }}</label>
+            {{ form.other_email(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.other_phone.label }}</label>
+            {{ form.other_phone(class="form-control") }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.other_fax.label }}</label>
+            {{ form.other_fax(class="form-control") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Notes -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+              <div class="card-header bg-light fw-bold text-secondary">Internal notes</div>
+              <div class="card-body">
+                {{ form.note(class="form-control", rows="5", placeholder="Internal note") }}
+              </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 border-0">
+              <div class="card-header bg-light fw-bold text-secondary">Special notes</div>
+              <div class="card-body">
+                {{ form.special_note(class="form-control", rows="5", placeholder="Special note") }}
+              </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="alert alert-light border small text-muted">
+      <i class="bi bi-exclamation-circle"></i> Upload business documents only when the firm has permission to store and process them.
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 my-4">
+      <a href="{{ url_for('customers.clients', popup=request.args.get('popup')) }}" class="btn btn-secondary px-4">Cancel</a>
+      {{ form.submit(class="btn btn-primary px-4 fw-bold") }}
+    </div>
+  </form>
+</div>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const dropZone = document.getElementById("biz-reg-drop-zone");
+    const fileInput = document.getElementById("biz-reg-file-input");
+    const statusEl = document.getElementById("biz-reg-status");
+    const csrfInput = document.querySelector('input[name="csrf_token"]');
+    const existingBizReg = document.getElementById("existing-biz-reg");
+    const previewEl = document.getElementById("biz-reg-preview");
+    const previewFieldsEl = document.getElementById("biz-reg-preview-fields");
+    const applyBtn = document.getElementById("biz-reg-apply-btn");
+    const applyAllBtn = document.getElementById("biz-reg-apply-all-btn");
+    let bizregParsedFields = null;
+
+    // Get client_id if in edit mode
+    const clientId = {% if edit_mode and client %}{{ client.id }}{% else %}null{% endif %};
+
+    if (!dropZone || !fileInput || !statusEl) return;
+
+    // Helper to show status
+    function setStatus(text, type) {
+        statusEl.style.display = text ? "block" : "none";
+        statusEl.textContent = (text || "").toString();
+        if (type === 'error') {
+            statusEl.className = "mt-3 text-center text-danger fw-bold";
+        } else if (type === 'success') {
+            statusEl.className = "mt-3 text-center text-success fw-bold";
+        } else {
+            statusEl.className = "mt-3 text-center text-muted";
+        }
+    }
+
+    const setVal = (name, val) => {
+        if (!val) return;
+        const el = document.querySelector(`[name="${name}"]`);
+        if (el) el.value = val;
+    };
+
+    const bizregFieldDefs = [
+        {
+            key: "client_name",
+            label: "(Client name)",
+            getValue: (f) => f.client_name,
+            apply: (v) => setVal("client_name", v),
+        },
+        {
+            key: "business_reg_no",
+            label: "Tax ID / EIN",
+            getValue: (f) => f.business_reg_no,
+            apply: (v) => setVal("business_reg_no", v),
+        },
+        {
+            key: "registration_number",
+            label: "Entity registration number",
+            getValue: (f) => f.registration_number,
+            apply: (v) => setVal("registration_number", v),
+        },
+        {
+            key: "email",
+            label: "Email",
+            getValue: (f) => f.email,
+            apply: (v) => {
+                setVal("email", v);
+                setVal("applicant_email", v);
+            },
+        },
+        {
+            key: "tax_company_name",
+            label: "Legal business name",
+            getValue: (f) => f.tax_company_name,
+            apply: (v) => setVal("tax_company_name", v),
+        },
+        {
+            key: "tax_ceo",
+            label: "Representative/Contact",
+            getValue: (f) => f.tax_ceo,
+            apply: (v) => {
+                setVal("tax_ceo", v);
+                setVal("manager", v);
+                setVal("tax_manager", v);
+            },
+        },
+        {
+            key: "tax_business_type",
+            label: "Entity type",
+            getValue: (f) => f.tax_business_type,
+            apply: (v) => setVal("tax_business_type", v),
+        },
+        {
+            key: "tax_address",
+            label: "Business address",
+            getValue: (f) => f.tax_address,
+            apply: (v) => setVal("tax_address", v),
+        },
+        {
+            key: "tax_manager_email",
+            label: "Billing tax email",
+            getValue: (f) => f.tax_manager_email,
+            apply: (v) => setVal("tax_manager_email", v),
+        },
+        {
+            key: "address",
+            label: "Address(Default/Filing)",
+            getValue: (f) => f.tax_address || f.applicant_address || f.address,
+            apply: (v) => {
+                setVal("address", v);
+                setVal("applicant_address", v);
+                setVal("mail_recv_address", v);
+            },
+        },
+    ];
+
+    function renderBizregPreview(fields) {
+        if (!previewEl || !previewFieldsEl) return;
+        bizregParsedFields = fields || null;
+        if (!fields || !Object.keys(fields).length) {
+            previewEl.style.display = "none";
+            previewFieldsEl.innerHTML = "";
+            return;
+        }
+
+        previewFieldsEl.innerHTML = "";
+        bizregFieldDefs.forEach((def) => {
+            const value = (def.getValue ? def.getValue(fields) : fields[def.key]) || "";
+            const id = `bizreg-field-${def.key}`;
+
+            const row = document.createElement("div");
+            row.className = "form-check d-flex align-items-center gap-2";
+
+            const checkbox = document.createElement("input");
+            checkbox.className = "form-check-input";
+            checkbox.type = "checkbox";
+            checkbox.id = id;
+            checkbox.dataset.key = def.key;
+            checkbox.checked = Boolean(value);
+            checkbox.disabled = !value;
+
+            const label = document.createElement("label");
+            label.className = "form-check-label";
+            label.setAttribute("for", id);
+            label.textContent = def.label;
+
+            const valueSpan = document.createElement("span");
+            valueSpan.className = "ms-auto text-muted small";
+            valueSpan.textContent = value || "-";
+
+            row.appendChild(checkbox);
+            row.appendChild(label);
+            row.appendChild(valueSpan);
+            previewFieldsEl.appendChild(row);
+        });
+
+        previewEl.style.display = "block";
+    }
+
+    function getSelectedBizregKeys() {
+        if (!previewFieldsEl) return [];
+        return Array.from(
+            previewFieldsEl.querySelectorAll('input[type="checkbox"][data-key]')
+        )
+            .filter((cb) => cb.checked && !cb.disabled)
+            .map((cb) => cb.dataset.key);
+    }
+
+    function applyBizregSelection(keys) {
+        if (!bizregParsedFields || !keys || !keys.length) return;
+        const selected = new Set(keys);
+        bizregFieldDefs.forEach((def) => {
+            if (!selected.has(def.key)) return;
+            const value = def.getValue ? def.getValue(bizregParsedFields) : bizregParsedFields[def.key];
+            if (!value) return;
+            def.apply(value);
+        });
+    }
+
+    // Click to upload
+    dropZone.addEventListener("click", () => fileInput.click());
+
+    // Drag & Drop events
+    dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+    });
+    dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+    });
+    dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        if (e.dataTransfer.files.length) {
+            handleFiles(e.dataTransfer.files);
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener("change", () => {
+        if (fileInput.files.length) {
+            handleFiles(fileInput.files);
+        }
+    });
+
+    if (applyBtn) {
+        applyBtn.addEventListener("click", () => {
+            const keys = getSelectedBizregKeys();
+            if (!keys.length) {
+                setStatus("Select item none.", "error");
+                return;
+            }
+            applyBizregSelection(keys);
+            setStatus("selected item Apply.", "success");
+        });
+    }
+
+    if (applyAllBtn) {
+        applyAllBtn.addEventListener("click", () => {
+            if (!previewFieldsEl) return;
+            previewFieldsEl
+                .querySelectorAll('input[type="checkbox"][data-key]')
+                .forEach((cb) => {
+                    if (!cb.disabled) cb.checked = true;
+                });
+            const keys = getSelectedBizregKeys();
+            if (!keys.length) {
+                setStatus("Select item none.", "error");
+                return;
+            }
+            applyBizregSelection(keys);
+            setStatus("All item Apply.", "success");
+        });
+    }
+
+    function handleFiles(files) {
+        const file = files[0];
+        setStatus("Business document Analyzing...", "info");
+        renderBizregPreview(null);
+
+        const fd = new FormData();
+        fd.append("biz_reg_file", file);
+        if (csrfInput) {
+            fd.append("csrf_token", csrfInput.value);
+        }
+        // In edit mode, pass client_id to save the file
+        if (clientId) {
+            fd.append("client_id", clientId);
+        }
+
+        fetch("{{ url_for('customers.parse_biz_reg') }}", {
+            method: "POST",
+            body: fd,
+            credentials: "same-origin",
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                setStatus(data.message || "analysis Failed", "error");
+                renderBizregPreview(null);
+                return;
+            }
+            const f = data.fields || {};
+            renderBizregPreview(f);
+
+            const warnings = [];
+            if (!f.business_reg_no) warnings.push("Tax ID / EIN ");
+            if (!f.registration_number) warnings.push("Entity registration number(Registration No.) ");
+            const warnText = warnings.length ? ` (${warnings.join(", ")})` : "";
+
+            // Build status message
+            let statusHtml = `Analysis complete: ${f.client_name || 'No company name'}${warnText}`;
+
+            // ✅ create from Registration   File  Saved(from Save Process)
+            if (!clientId) {
+                statusHtml += `<br><span class="text-muted small">※ Client Registration(Save)  Business document File DB Link Save.</span>`;
+            }
+
+            // If file was saved (edit mode), show download link
+            if (data.file_info && clientId) {
+                statusHtml += `<br><a href="/crm/clients/${clientId}/biz-reg/download" class="btn btn-sm btn-success mt-2"><i class="bi bi-download"></i> ${data.file_info.original_name} Download</a>`;
+                // Hide the existing file display if present
+                if (existingBizReg) {
+                    existingBizReg.style.display = 'none';
+                }
+            }
+
+            setStatus(statusHtml, "success");
+        })
+        .catch(err => {
+            console.error(err);
+            setStatus(" Communication Error .", "error");
+            renderBizregPreview(null);
+        });
+    }
+  });
+
+  function openLLMModal() {
+    const modal = document.getElementById("llmModal");
+    if (!modal) return;
+    modal.style.display = "flex";
+    const text = document.getElementById("llmEmailText");
+    if (text) text.value = "";
+    const result = document.getElementById("llmResult");
+    if (result) result.style.display = "none";
+    const list = document.getElementById("llmFieldList");
+    if (list) list.innerHTML = "";
+    const error = document.getElementById("llmError");
+    if (error) error.style.display = "none";
+    llmParsedCustomer = null;
+  }
+
+  function closeLLMModal() {
+    const modal = document.getElementById("llmModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  let llmParsedCustomer = null;
+
+  const llmFieldDefs = [
+    {
+      key: "client_name",
+      label: "Client name()",
+      getValue: (c) => c.client_name || c.name,
+      apply: (v) => setFormVal("client_name", v),
+    },
+    {
+      key: "name_en",
+      label: "Client name (English)",
+      getValue: (c) => c.name_en,
+      apply: (v) => setFormVal("name_en", v),
+    },
+    {
+      key: "email",
+      label: "Email",
+      getValue: (c) => c.email,
+      apply: (v) => {
+        setFormVal("email", v);
+        setFormVal("applicant_email", v);
+        setFormVal("tax_manager_email", v);
+      },
+    },
+    {
+      key: "phone",
+      label: "Phone",
+      getValue: (c) => c.phone,
+      apply: (v) => setFormVal("main_phone", v),
+    },
+    {
+      key: "address",
+      label: "Address",
+      getValue: (c) => c.address,
+      apply: (v) => {
+        setFormVal("applicant_address", v);
+        setFormVal("tax_address", v);
+        setFormVal("address", v);
+        setFormVal("mail_recv_address", v);
+      },
+    },
+    {
+      key: "manager",
+      label: "Contact",
+      getValue: (c) => c.manager,
+      apply: (v) => {
+        setFormVal("manager", v);
+        setFormVal("tax_manager", v);
+      },
+    },
+    {
+      key: "notes",
+      label: "Notes",
+      getValue: (c) => c.notes,
+      apply: (v) => {
+        setFormVal("notes", v);
+        setFormVal("note", v);
+      },
+    },
+  ];
+
+  function setFormVal(name, value) {
+    const el = document.querySelector(`[name="${name}"]`);
+    if (el) el.value = value || "";
+  }
+
+  function renderLlmFields(customer) {
+    const list = document.getElementById("llmFieldList");
+    const resultJson = document.getElementById("llmResultJson");
+    if (!list) return;
+    llmParsedCustomer = customer || null;
+    list.innerHTML = "";
+    llmFieldDefs.forEach((def) => {
+      const value = (def.getValue ? def.getValue(customer) : customer?.[def.key]) || "";
+      const id = `llm-field-${def.key}`;
+
+      const row = document.createElement("div");
+      row.className = "form-check d-flex align-items-center gap-2";
+
+      const checkbox = document.createElement("input");
+      checkbox.className = "form-check-input";
+      checkbox.type = "checkbox";
+      checkbox.id = id;
+      checkbox.dataset.key = def.key;
+      checkbox.checked = Boolean(value);
+      checkbox.disabled = !value;
+
+      const label = document.createElement("label");
+      label.className = "form-check-label";
+      label.setAttribute("for", id);
+      label.textContent = def.label;
+
+      const valueSpan = document.createElement("span");
+      valueSpan.className = "ms-auto text-muted small";
+      valueSpan.textContent = value || "-";
+
+      row.appendChild(checkbox);
+      row.appendChild(label);
+      row.appendChild(valueSpan);
+      list.appendChild(row);
+    });
+    if (resultJson) {
+      resultJson.textContent = JSON.stringify(customer || {}, null, 2);
+    }
+  }
+
+  function getSelectedLlmKeys() {
+    const list = document.getElementById("llmFieldList");
+    if (!list) return [];
+    return Array.from(list.querySelectorAll('input[type="checkbox"][data-key]'))
+      .filter((cb) => cb.checked && !cb.disabled)
+      .map((cb) => cb.dataset.key);
+  }
+
+  function applyLlmSelection(keys) {
+    if (!llmParsedCustomer || !keys || !keys.length) return;
+    const selected = new Set(keys);
+    llmFieldDefs.forEach((def) => {
+      if (!selected.has(def.key)) return;
+      const value = def.getValue ? def.getValue(llmParsedCustomer) : llmParsedCustomer[def.key];
+      if (!value) return;
+      def.apply(value);
+    });
+  }
+
+  async function parseLLM() {
+    const emailText = document.getElementById("llmEmailText")?.value.trim();
+    if (!emailText) {
+      try { await window.AppAlert("Email  Input.", { title: "Confirm" }); } catch (e2) {}
+      return;
+    }
+    const btn = document.getElementById("parseLLMBtn");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Analyzing...";
+    }
+    const err = document.getElementById("llmError");
+    if (err) err.style.display = "none";
+
+    try {
+      const csrfToken =
+        document
+          .querySelector('meta[name="csrf-token"]')
+          ?.getAttribute("content") ||
+        document.querySelector('input[name="csrf_token"]')?.value;
+      const headers = { "Content-Type": "application/json" };
+      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+
+      const resp = await fetch(
+        '{{ url_for("customers.parse_customer_llm") }}',
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ email_text: emailText }),
+        }
+      );
+      const data = await resp.json();
+      if (data.success && data.queued && data.status_url) {
+        if (btn) btn.textContent = "Actions ...";
+        const result = document.getElementById("llmResult");
+        if (result) {
+          result.className = "alert alert-info py-2";
+          result.style.display = "block";
+          result.innerHTML = '<div class="fw-semibold mb-1">Actions .</div><div class="small">LLM analysis  Apply item Display.</div>';
+        }
+        await pollLlmResult(data.status_url);
+      } else if (data.success) {
+        showLlmCustomer(data.customer || {});
+      } else if (err) {
+        err.textContent = "Error: " + (data.error || "   Error");
+        err.style.display = "block";
+      }
+    } catch (e) {
+      if (err) {
+        err.textContent = "Request failed: " + e.message;
+        err.style.display = "block";
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Start analysis";
+      }
+    }
+  }
+
+  function showLlmCustomer(customer) {
+    renderLlmFields(customer || {});
+    const result = document.getElementById("llmResult");
+    if (result) {
+      result.className = "alert alert-success py-2";
+      result.style.display = "block";
+      result.innerHTML = `
+        <div class="fw-semibold mb-2">✓ Analysis complete. Select fields to apply.</div>
+        <div id="llmFieldList" class="d-grid gap-2 mb-2"></div>
+        <div class="d-flex gap-2 mb-2">
+          <button type="button" id="llmApplyBtn" class="btn btn-sm btn-primary">Apply selected</button>
+          <button type="button" id="llmSelectAllBtn" class="btn btn-sm btn-outline-secondary">Select all</button>
+        </div>
+        <pre id="llmResultJson" style="font-size: 12px; margin: 0; overflow-x: auto"></pre>
+      `;
+      renderLlmFields(customer || {});
+      bindLlmResultButtons();
+    }
+  }
+
+  async function pollLlmResult(statusUrl) {
+    const started = Date.now();
+    const timeoutMs = 120000;
+    while (Date.now() - started < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const resp = await fetch(statusUrl, {
+        method: "GET",
+        headers: { "Accept": "application/json" },
+        credentials: "same-origin",
+      });
+      const data = await resp.json();
+      if (data.status === "succeeded") {
+        showLlmCustomer(data.customer || {});
+        return;
+      }
+      if (data.status === "failed" || data.success === false) {
+        const err = document.getElementById("llmError");
+        if (err) {
+          err.textContent = "Error: " + (data.error || "LLM analysis Failed");
+          err.style.display = "block";
+        }
+        return;
+      }
+    }
+    const err = document.getElementById("llmError");
+    if (err) {
+      err.textContent = "analysis  In progress.   Retry.";
+      err.style.display = "block";
+    }
+  }
+
+  function bindLlmResultButtons() {
+    const llmApplyBtn = document.getElementById("llmApplyBtn");
+    const llmSelectAllBtn = document.getElementById("llmSelectAllBtn");
+    const llmFieldList = document.getElementById("llmFieldList");
+
+    if (llmApplyBtn) {
+      llmApplyBtn.addEventListener("click", () => {
+        const keys = getSelectedLlmKeys();
+        if (!keys.length) {
+          const err = document.getElementById("llmError");
+          if (err) {
+            err.textContent = "Select item none.";
+            err.style.display = "block";
+          }
+          return;
+        }
+        applyLlmSelection(keys);
+        closeLLMModal();
+      });
+    }
+
+    if (llmSelectAllBtn && llmFieldList) {
+      llmSelectAllBtn.addEventListener("click", () => {
+        llmFieldList
+          .querySelectorAll('input[type="checkbox"][data-key]')
+          .forEach((cb) => {
+            if (!cb.disabled) cb.checked = true;
+          });
+      });
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    bindLlmResultButtons();
+  });
+</script>
+{% if not edit_mode %}
+<div
+  id="llmModal"
+  style="
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    align-items: center;
+    justify-content: center;
+  "
+>
+  <div
+    class="card"
+    style="max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto"
+  >
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      "
+    >
+      <h5 class="mb-0">🤖 LLM Client information </h5>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary"
+        onclick="closeLLMModal()"
+      >
+        ✕
+      </button>
+    </div>
+    <p class="text-muted small" style="margin: 0 0 12px 0">
+      Email / Input Auto  Client information .
+    </p>
+    <div style="margin-bottom: 12px">
+      <label class="form-label">Email/ Content</label>
+      <textarea
+        id="llmEmailText"
+        rows="10"
+        class="form-control"
+        style="font-family: monospace; font-size: 13px"
+      ></textarea>
+    </div>
+    <div
+      id="llmError"
+      class="alert alert-danger py-2"
+      style="display: none"
+    ></div>
+    <div
+      id="llmResult"
+      class="alert alert-success py-2"
+      style="display: none"
+    >
+      <div class="fw-semibold mb-2">✓ Analysis complete. Select fields to apply.</div>
+      <div id="llmFieldList" class="d-grid gap-2 mb-2"></div>
+      <div class="d-flex gap-2 mb-2">
+        <button type="button" id="llmApplyBtn" class="btn btn-sm btn-primary">Apply selected</button>
+        <button type="button" id="llmSelectAllBtn" class="btn btn-sm btn-outline-secondary">Select all</button>
+      </div>
+      <pre
+        id="llmResultJson"
+        style="font-size: 12px; margin: 0; overflow-x: auto"
+      ></pre>
+    </div>
+    <div class="d-flex gap-2">
+      <button
+        type="button"
+        id="parseLLMBtn"
+        class="btn btn-primary"
+        onclick="parseLLM()"
+      >
+        Start analysis
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        onclick="closeLLMModal()"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

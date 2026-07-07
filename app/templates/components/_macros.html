@@ -1,0 +1,149 @@
+{# app/templates/components/_macros.html #}
+
+{% macro icon_badge(class_name, label, id_name="") %}
+<span class="{{ class_name }}" {% if id_name %}id="{{ id_name }}"{% endif %}>
+  {{ label }}
+</span>
+{% endmacro %}
+
+{% macro tag_badge(label, id_name="", class_name="badge bg-light text-dark border") %}
+<span class="{{ class_name }}" {% if id_name %}id="{{ id_name }}"{% endif %}>
+  {{ label }}
+</span>
+{% endmacro %}
+
+{% macro metric_item(icon_class, label_text, id_name="") %}
+<div class="case-summary-metric" {% if id_name %}id="{{ id_name }}"{% endif %}>
+  <div class="label"><i class="{{ icon_class }}"></i> {{ label_text }}</div>
+  <div class="value">
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro summary_card(icon_class, title, value_text, extra_class="") %}
+<div class="case-summary-card {{ extra_class }}">
+  <h6><i class="{{ icon_class }}"></i> {{ title }}</h6>
+  <div class="value">{{ value_text }}</div>
+  <div class="meta">
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro nav_legacy_btn(href, data_top, label, is_active=False) %}
+<a class="legacy-nav-btn legacy-top{% if is_active %} legacy-tab active{% endif %}" href="{{ href }}" data-top="{{ data_top }}">
+  {{ label }}
+</a>
+{% endmacro %}
+
+{% macro empty_state(icon_class, title, description="") %}
+<div class="empty-state text-center text-muted p-4">
+  <i class="{{ icon_class }} display-4 text-secondary mb-3"></i>
+  <h5 class="fw-semibold">{{ title }}</h5>
+  {% if description %}
+  <p>{{ description }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% macro pagination(endpoint, page, total_pages, base_args=None, aria_label="Pagination", form_action=None, hidden_exclude=None) %}
+{% set page_count = total_pages|int %}
+{% if page_count < 1 %}
+  {% set page_count = 1 %}
+{% endif %}
+{% set current_page = page|int %}
+{% if current_page < 1 %}
+  {% set current_page = 1 %}
+{% elif current_page > page_count %}
+  {% set current_page = page_count %}
+{% endif %}
+{% set args_base = {} %}
+{% for name, value in (base_args or {}).items() %}
+  {% if value is not none %}
+    {% set _ = args_base.update({name: value}) %}
+  {% endif %}
+{% endfor %}
+{% set exclude_hidden = hidden_exclude or [] %}
+{% set page_items = [] %}
+{% if page_count <= 10 %}
+  {% for p in range(1, page_count + 1) %}
+    {% set _ = page_items.append(p) %}
+  {% endfor %}
+{% elif current_page <= 6 %}
+  {% for p in range(1, 9) %}
+    {% set _ = page_items.append(p) %}
+  {% endfor %}
+  {% set _ = page_items.append("ellipsis-right") %}
+  {% set _ = page_items.append(page_count) %}
+{% elif current_page >= page_count - 5 %}
+  {% set _ = page_items.append(1) %}
+  {% set _ = page_items.append("ellipsis-left") %}
+  {% for p in range(page_count - 7, page_count + 1) %}
+    {% set _ = page_items.append(p) %}
+  {% endfor %}
+{% else %}
+  {% set _ = page_items.append(1) %}
+  {% set _ = page_items.append("ellipsis-left") %}
+  {% for p in range(current_page - 3, current_page + 4) %}
+    {% set _ = page_items.append(p) %}
+  {% endfor %}
+  {% set _ = page_items.append("ellipsis-right") %}
+  {% set _ = page_items.append(page_count) %}
+{% endif %}
+<nav class="app-pagination" aria-label="{{ aria_label }}">
+  <div class="app-pagination__main">
+    {% if current_page > 1 %}
+      {% set prev_args = args_base.copy() %}
+      {% set _ = prev_args.update({"page": current_page - 1}) %}
+      <a class="app-pagination__button app-pagination__button--edge" href="{{ url_for(endpoint, **prev_args) }}" aria-label="Go to previous page">‹ Previous</a>
+    {% else %}
+      <span class="app-pagination__button app-pagination__button--edge is-disabled" aria-label="Go to previous page" aria-disabled="true">‹ Previous</span>
+    {% endif %}
+
+    <div class="app-pagination__numbers" aria-label="Page number">
+      {% for item in page_items %}
+        {% if item is string %}
+          <span class="app-pagination__ellipsis" aria-hidden="true">…</span>
+        {% elif item == current_page %}
+          <span class="app-pagination__button app-pagination__button--page is-current" aria-label="Current {{ item }}page" aria-current="page">{{ item }}</span>
+        {% else %}
+          {% set item_args = args_base.copy() %}
+          {% set _ = item_args.update({"page": item}) %}
+          <a class="app-pagination__button app-pagination__button--page" href="{{ url_for(endpoint, **item_args) }}" aria-label="{{ item }}page Go">{{ item }}</a>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if current_page < page_count %}
+      {% set next_args = args_base.copy() %}
+      {% set _ = next_args.update({"page": current_page + 1}) %}
+      <a class="app-pagination__button app-pagination__button--edge" href="{{ url_for(endpoint, **next_args) }}" aria-label="Go to next page">Next ›</a>
+    {% else %}
+      <span class="app-pagination__button app-pagination__button--edge is-disabled" aria-label="Go to next page" aria-disabled="true">Next ›</span>
+    {% endif %}
+  </div>
+
+  <form class="app-pagination__jump" method="get"{% if form_action %} action="{{ form_action }}"{% endif %} data-pagination-jump-form>
+    {% for name, value in args_base.items() %}
+      {% if name != "page" and name not in exclude_hidden and value is not none %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+      {% endif %}
+    {% endfor %}
+    <input
+      class="app-pagination__input"
+      type="text"
+      name="page"
+      value="{{ current_page }}"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      autocomplete="off"
+      data-pagination-jump-input
+      data-total-pages="{{ page_count }}"
+      aria-label="Page number to go to"
+    >
+    <span class="app-pagination__total" aria-label="Total {{ page_count }}page">/ {{ page_count }}</span>
+    <button class="app-pagination__go" type="submit">Go</button>
+  </form>
+</nav>
+{% endmacro %}

@@ -1,0 +1,469 @@
+{% extends 'layouts/base.html' %}
+
+{% block content %}
+{% set dashboard_endpoint = dashboard_endpoint or request.endpoint or 'billing_invoices.core.dashboard' %}
+{% set selected_bp = (request.args.get('business_profile_id') or '') %}
+
+<div class="container-fluid py-3">
+ <!-- Header & Actions -->
+ <div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold mb-0">Invoice dashboard</h3>
+  <div class="btn-group">
+    <a href="{{ url_for(dashboard_endpoint, period=period, business_profile_id=request.args.get('business_profile_id',''), metric=metric, basis='settlement', start_date=start_date, end_date=end_date) }}"
+      class="btn btn-sm btn-outline-secondary {% if basis=='settlement' %}active{% endif %}">Cash basis</a>
+    <a href="{{ url_for(dashboard_endpoint, period=period, business_profile_id=request.args.get('business_profile_id',''), metric=metric, basis='issued', start_date=start_date, end_date=end_date) }}"
+      class="btn btn-sm btn-outline-secondary {% if basis=='issued' %}active{% endif %}">Issued invoices</a>
+  </div>
+ </div>
+
+ <!-- Filters -->
+ <div class="card shadow-sm mb-4">
+  <div class="card-body py-3">
+   <form method="get" class="row g-3 align-items-end">
+    <!-- Business Profile -->
+    <div class="col-md-3">
+     <label for="business_profile_id" class="form-label small text-muted fw-bold">Business profile</label>
+     <select id="business_profile_id" name="business_profile_id" class="form-select" onchange="this.form.submit()">
+      <option value="">All businesses</option>
+      {% if currencies %}
+       <optgroup label="Currency">
+        {% for cur in currencies %}
+         <option value="C:{{ cur }}" {% if request.args.get('business_profile_id') == ('C:' ~ cur) %}selected{% endif %}>
+          {{ cur }} businesses
+         </option>
+        {% endfor %}
+       </optgroup>
+      {% endif %}
+      <optgroup label="Business profiles">
+       {% for profile in all_profiles %}
+        <option value="{{ profile['id'] }}" {% if request.args.get('business_profile_id')|string == profile['id']|string %}selected{% endif %}>
+         {{ profile['name'] }}
+        </option>
+       {% endfor %}
+      </optgroup>
+     </select>
+    </div>
+
+    <!-- Date Range -->
+    <div class="col-md-4">
+     <label class="form-label small text-muted fw-bold">Date range</label>
+     <div class="input-group">
+      <input type="date" class="form-control" name="start_date" value="{{ start_date }}">
+      <span class="input-group-text">to</span>
+      <input type="date" class="form-control" name="end_date" value="{{ end_date }}">
+      <button class="btn btn-secondary" type="submit">Apply</button>
+     </div>
+     <input type="hidden" name="metric" id="metricInput" value="{{ metric }}">
+     <input type="hidden" name="basis" id="basisInput" value="{{ basis }}">
+    </div>
+
+    <!-- Quick Filters -->
+    <div class="col-md-5">
+      <label class="form-label small text-muted fw-bold d-block">Presets</label>
+      <div class="d-flex flex-wrap gap-1">
+        {% set filter_base_url = url_for(dashboard_endpoint, business_profile_id=request.args.get('business_profile_id',''), metric=metric, basis=basis) %}
+        <a href="{{ filter_base_url }}&period=1month" class="btn btn-sm {% if period=='1month' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">This month</a>
+        <a href="{{ filter_base_url }}&period=3months" class="btn btn-sm {% if period=='3months' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Last 3 months</a>
+        <a href="{{ filter_base_url }}&period=6months" class="btn btn-sm {% if period=='6months' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Last 6 months</a>
+        <a href="{{ filter_base_url }}&period=1year" class="btn btn-sm {% if period=='1year' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">This year</a>
+        <span class="vr mx-1"></span>
+        <a href="{{ filter_base_url }}&period=Q1" class="btn btn-sm {% if period=='Q1' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Q1</a>
+        <a href="{{ filter_base_url }}&period=Q2" class="btn btn-sm {% if period=='Q2' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Q2</a>
+        <a href="{{ filter_base_url }}&period=Q3" class="btn btn-sm {% if period=='Q3' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Q3</a>
+        <a href="{{ filter_base_url }}&period=Q4" class="btn btn-sm {% if period=='Q4' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">Q4</a>
+        <span class="vr mx-1"></span>
+         <a href="{{ filter_base_url }}&period=H1" class="btn btn-sm {% if period=='H1' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">H1</a>
+        <a href="{{ filter_base_url }}&period=H2" class="btn btn-sm {% if period=='H2' %}btn-primary{% else %}btn-outline-light text-dark border-secondary-subtle{% endif %}">H2</a>
+      </div>
+    </div>
+   </form>
+  </div>
+  <div class="card-footer bg-light py-2">
+    <small class="text-muted d-flex align-items-center gap-2">
+      <strong>Current view:</strong>
+      <span>
+        {% if selected_bp and selected_bp.startswith('C:') %}
+         {{ selected_bp[2:] }} businesses
+        {% elif selected_bp and bp %}
+         {{ bp.name }}
+        {% else %}
+         All businesses
+        {% endif %}
+      </span>
+      <span class="vr"></span>
+      <span>{{ period_label }}</span>
+      <span class="vr"></span>
+      <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill">
+        {% if basis == 'settlement' %}Cash basis{% else %}Issued basis{% endif %} /
+        {% if metric == 'estimated' %}Projected receipts{% else %}Issued total{% endif %}
+      </span>
+    </small>
+  </div>
+ </div>
+
+ <!-- KPI Cards -->
+ <div class="row g-4 mb-4">
+  <!-- Published -->
+  <div class="col-md-4">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+      <h6 class="card-subtitle mb-3 text-muted">Issued this period</h6>
+      {% if total_by_currency|length> 0 %}
+        {% for curr, amount in total_by_currency.items() %}
+          <h3 class="card-title fw-bold mb-1">{{ currency(amount, curr) }}</h3>
+        {% endfor %}
+      {% else %}
+        <h3 class="card-title fw-bold mb-1">{{ currency(0, bp.currency if bp else 'USD') }}</h3>
+      {% endif %}
+    </div>
+   </div>
+  </div>
+  <!-- Outstanding -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+     <div class="card-body">
+       <h6 class="card-subtitle mb-3 text-muted">Outstanding balance</h6>
+       {% if outstanding_by_currency|length> 0 %}
+         {% for curr, amount in outstanding_by_currency.items() %}
+           <h3 class="card-title fw-bold mb-1 text-danger">{{ currency(amount, curr) }}</h3>
+         {% endfor %}
+       {% else %}
+         <h3 class="card-title fw-bold mb-1 text-danger">{{ currency(0, bp.currency if bp else 'USD') }}</h3>
+       {% endif %}
+     </div>
+    </div>
+   </div>
+  <!-- Revenue -->
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100 border-primary-subtle" style="background-color: #f8fbff;">
+     <div class="card-body">
+       <h6 class="card-subtitle mb-3 text-primary">Projected revenue</h6>
+       {% if estimated_by_currency|length> 0 %}
+         {% for curr, amount in estimated_by_currency.items() %}
+           <h3 class="card-title fw-bold mb-1 text-primary">{{ currency(amount, curr) }}</h3>
+         {% endfor %}
+       {% else %}
+         <h3 class="card-title fw-bold mb-1 text-primary">{{ currency(0, bp.currency if bp else 'USD') }}</h3>
+       {% endif %}
+     </div>
+    </div>
+   </div>
+ </div>
+
+ <div class="mb-4">
+  <p class="text-muted small mb-0">
+   Service revenue excludes pass-through official fees and foreign expenses. Invoice totals include all billable amounts and sales tax.
+  </p>
+ </div>
+
+ <div class="row g-4 mb-4">
+   <div class="col-md-4">
+     <div class="card shadow-sm">
+       <div class="card-body d-flex justify-content-between align-items-center">
+         <span class="text-muted">Total clients</span>
+         <span class="fs-4 fw-bold">{{ clients_count }}</span>
+       </div>
+     </div>
+   </div>
+   <div class="col-md-4">
+     <div class="card shadow-sm">
+       <div class="card-body d-flex justify-content-between align-items-center">
+         <span class="text-muted">Invoices in period</span>
+         <span class="fs-4 fw-bold">{{ invoice_count_period }}</span>
+       </div>
+     </div>
+   </div>
+   <div class="col-md-4">
+     <div class="card shadow-sm">
+       <div class="card-body d-flex justify-content-between align-items-center">
+         <span class="text-muted">Paid in period</span>
+         <span class="fs-4 fw-bold text-success">{{ paid_count_period }}</span>
+       </div>
+     </div>
+   </div>
+ </div>
+
+ <!-- Charts -->
+ <div class="row g-4 mb-4">
+  <div class="col-xl-6">
+   <div class="card shadow-sm h-100">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0 fw-bold">Revenue trend</h5>
+      <div class="btn-group" id="metricToggle">
+        <a href="#" class="btn btn-sm btn-outline-primary {% if metric=='estimated' %}active{% endif %}" data-metric="estimated">Projected receipts</a>
+        <a href="#" class="btn btn-sm btn-outline-primary {% if metric=='issued' %}active{% endif %}" data-metric="issued">Issued total</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">Service revenue by period, excluding pass-through fees.</p>
+      <div style="height: 350px;">
+        <canvas id="revenueTrendChart"></canvas>
+      </div>
+    </div>
+   </div>
+  </div>
+  <div class="col-xl-6">
+   <div class="card shadow-sm h-100">
+    <div class="card-header bg-white py-3">
+      <h5 class="mb-0 fw-bold">{{ trend_bucket_label }} revenue</h5>
+    </div>
+    <div class="card-body">
+      <p class="text-muted small mb-3">Values are grouped by {{ trend_bucket_label }}.</p>
+      <div style="height: 350px;">
+        <canvas id="revenueTrendBarChart"></canvas>
+      </div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- Recent Invoices -->
+ <div class="card shadow-sm">
+  <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="mb-0 fw-bold">Recent invoices</h5>
+    <div class="d-flex gap-2">
+      <form method="get" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="business_profile_id" value="{{ request.args.get('business_profile_id', '') }}">
+        <input type="hidden" name="period" value="{{ period }}">
+        <input type="hidden" name="metric" value="{{ metric }}">
+        <input type="hidden" name="basis" value="{{ basis }}">
+        <select name="per_page" class="form-select form-select-sm" onchange="this.form.submit()" style="width: auto;">
+          <option value="20" {% if per_page==20 %}selected{% endif %}>20 rows</option>
+          <option value="50" {% if per_page==50 %}selected{% endif %}>50 rows</option>
+          <option value="100" {% if per_page==100 %}selected{% endif %}>100 rows</option>
+        </select>
+      </form>
+      <a href="{{ url_for('billing_invoices.invoices.list_invoices') }}" class="btn btn-sm btn-outline-secondary">
+        Show all
+      </a>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th></th>
+          <th>Internal</th>
+          <th>Client</th>
+          <th>Issue date</th>
+          <th>Due date</th>
+          <th class="text-end">Total</th>
+          <th class="text-center">Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+        <tr>
+          <td class="fw-bold">{{ inv['number'] }}</td>
+          <td class="text-muted small">{{ inv['internal_reference'] or '-' }}</td>
+          <td>
+            <a href="{{ url_for('billing_invoices.clients.view_client', client_id=inv['client_id']) }}" class="text-decoration-none fw-semibold">
+              {{ inv['client_name'] }}
+            </a>
+          </td>
+          <td>{{ inv['issue_date'] }}</td>
+          <td>{{ inv['due_date'] }}</td>
+          <td class="text-end">
+            <div class="fw-bold {{ 'text-primary' if (inv['currency'] or 'USD')|upper == 'USD' else '' }}">
+              {{ currency(inv['total'], inv['currency']) }}
+            </div>
+            <div class="text-muted small">
+              {% set cur = (inv['currency'] or 'USD')|upper %}
+              {% if cur in ['USD', 'JPY'] %}
+                (Service {{ "{:,.0f}".format(inv['service_total']) }}, Sales tax {{ "{:,.0f}".format(inv['tax']) }}, Official fee {{ "{:,.0f}".format(inv['admin_total']) }}{% if inv['foreign_total']> 0 %}, Foreign {{ "{:,.0f}".format(inv['foreign_total']) }}{% endif %})
+              {% else %}
+                (Service {{ "{:,.2f}".format(inv['service_total']) }}, Sales tax {{ "{:,.2f}".format(inv['tax']) }}, Official fee {{ "{:,.2f}".format(inv['admin_total']) }}{% if inv['foreign_total']> 0 %}, Foreign {{ "{:,.2f}".format(inv['foreign_total']) }}{% endif %})
+              {% endif %}
+            </div>
+          </td>
+          <td class="text-center">
+            {% set status_class = 'bg-secondary' %}
+            {% if inv['status'] == 'draft' %}{% set status_class = 'bg-light text-dark border' %}{% endif %}
+            {% if inv['status'] == 'open' %}{% set status_class = 'bg-info text-dark' %}{% endif %}
+            {% if inv['status'] == 'paid' %}{% set status_class = 'bg-success' %}{% endif %}
+            {% if inv['status'] == 'overdue' %}{% set status_class = 'bg-danger' %}{% endif %}
+            {% if inv['status'] == 'cancelled' %}{% set status_class = 'bg-secondary' %}{% endif %}
+            <span class="badge rounded-pill {{ status_class }}">{{ status_label(inv['status']) }}</span>
+          </td>
+          <td class="text-end">
+             <a class="btn btn-sm btn-outline-secondary"
+              href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv['id'], outgoing=('1' if ('is_outgoing' in inv.keys() and inv['is_outgoing']) else '0')) }}">
+             Open
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-center py-4 text-muted">
+            No invoices to display.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+ </div>
+</div>
+
+<script src="{{ static_asset_url('vendor/chart/chart.umd.min.js') }}"></script>
+<script>
+ (function(){
+  try {
+   const labels = {{ trend_labels|tojson }};
+   const cumulativeSeriesEstimated = {{ trend_series_estimated|tojson }};
+   const cumulativeSeriesIssued = {{ trend_series_issued|tojson }};
+   const periodSeriesEstimated = {{ trend_period_series_estimated|tojson }};
+   const periodSeriesIssued = {{ trend_period_series_issued|tojson }};
+   let currentMetric = '{{ metric }}';
+   const lineEl = document.getElementById('revenueTrendChart');
+   const barEl = document.getElementById('revenueTrendBarChart');
+   if ((!lineEl && !barEl) || !labels || labels.length === 0) return;
+
+   const colors = ['#0d6efd','#198754','#ffc107','#dc3545','#6610f2','#0dcaf0','#fd7e14','#20c997'];
+
+   function makeLineDatasets(series){
+    const currencies = Object.keys(series || {}).sort();
+    return currencies.map((c, i) => {
+     const color = colors[i % colors.length];
+     return {
+      label: c,
+      data: (series[c] || []),
+      borderColor: color,
+      backgroundColor: color + '33',
+      tension: 0.3,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      fill: false
+     };
+    });
+   }
+
+   function makeBarDatasets(series){
+    const currencies = Object.keys(series || {}).sort();
+    return currencies.map((c, i) => {
+     const color = colors[i % colors.length];
+     return {
+      type: 'bar',
+      label: c,
+      data: (series[c] || []),
+      backgroundColor: color + '99',
+      borderColor: color,
+      borderWidth: 1
+     };
+    });
+   }
+
+   const initialLineSeries = currentMetric === 'issued' ? cumulativeSeriesIssued : cumulativeSeriesEstimated;
+   const initialBarSeries = currentMetric === 'issued' ? periodSeriesIssued : periodSeriesEstimated;
+
+   if (typeof window.Chart !== 'function') return;
+
+   const lineChart = lineEl ? new Chart(lineEl.getContext('2d'), {
+    type: 'line',
+    data: { labels, datasets: makeLineDatasets(initialLineSeries) },
+    options: {
+     responsive: true,
+     maintainAspectRatio: false,
+     interaction: { mode: 'index', intersect: false },
+     plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } },
+      tooltip: {
+       backgroundColor: 'rgba(255, 255, 255, 0.95)',
+       titleColor: '#212529',
+       bodyColor: '#212529',
+       borderColor: '#e9ecef',
+       borderWidth: 1,
+       padding: 10,
+       displayColors: true,
+       callbacks: {
+        label: (ctx) => {
+         const v = ctx.parsed.y || 0;
+         return ' ' + ctx.dataset.label + ': ' + (typeof v === 'number' ? v.toLocaleString() : v);
+        }
+       }
+      }
+     },
+     scales: {
+      x: {
+        grid: { display: false }
+      },
+      y: {
+       beginAtZero: true,
+       border: { dash: [4, 4] },
+       grid: { color: '#f8f9fa' },
+       ticks: {
+        callback: (v) => Number(v).toLocaleString()
+       }
+      }
+     }
+    }
+   }) : null;
+
+   const barChart = barEl ? new Chart(barEl.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: makeBarDatasets(initialBarSeries) },
+    options: {
+     responsive: true,
+     maintainAspectRatio: false,
+     interaction: { mode: 'index', intersect: false },
+     plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 6 } },
+      tooltip: {
+       callbacks: {
+        label: (ctx) => {
+         const v = ctx.parsed.y || 0;
+         return ' ' + ctx.dataset.label + ': ' + (typeof v === 'number' ? v.toLocaleString() : v);
+        }
+       }
+      }
+     },
+     scales: {
+      x: {
+       stacked: false,
+       grid: { display: false }
+      },
+      y: {
+       beginAtZero: true,
+       ticks: {
+        callback: (v) => Number(v).toLocaleString()
+       }
+      }
+     }
+    }
+   }) : null;
+
+   function setMetric(m){
+    currentMetric = (m === 'issued') ? 'issued' : 'estimated';
+    const nextLine = currentMetric === 'issued' ? cumulativeSeriesIssued : cumulativeSeriesEstimated;
+    const nextBar = currentMetric === 'issued' ? periodSeriesIssued : periodSeriesEstimated;
+    if (lineChart) {
+     lineChart.data.datasets = makeLineDatasets(nextLine);
+     lineChart.update();
+    }
+    if (barChart) {
+     barChart.data.datasets = makeBarDatasets(nextBar);
+     barChart.update();
+    }
+
+    document.querySelectorAll('#metricToggle .btn').forEach(btn => btn.classList.remove('active'));
+    const sel = document.querySelector('#metricToggle a[data-metric="'+ currentMetric +'"]');
+    if (sel) sel.classList.add('active');
+
+    const hid = document.getElementById('metricInput');
+    if (hid) hid.value = currentMetric;
+   }
+
+   document.querySelectorAll('#metricToggle a').forEach(a => {
+    a.addEventListener('click', (ev) => {
+     ev.preventDefault();
+     const m = a.getAttribute('data-metric');
+     setMetric(m);
+    });
+   });
+  } catch (e) {
+   console.warn('Chart init failed', e);
+  }
+ })();
+</script>
+{% endblock %}

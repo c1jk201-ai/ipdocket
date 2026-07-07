@@ -1,0 +1,80 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">{{ 'Edit provider' if profile else 'New provider' }}</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('mgmt_info.list_tax_invoice_profiles') }}">List</a>
+   {% if profile %}
+    <a class="btn" href="{{ url_for('mgmt_info.view_tax_invoice_profile', profile_id=profile['id']) }}">View</a>
+   {% endif %}
+  </div>
+ </div>
+
+ <form method="post" class="card"
+    style="margin-top:12px; max-width:1100px; margin-left:auto; margin-right:auto;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid grid-2">
+   <div>
+    <label class="req">Business name</label>
+    <input name="name" value="{{ profile['name'] if profile else '' }}" required />
+   </div>
+   <div>
+    <label class="req">Representative</label>
+    <input name="ceo_name" value="{{ profile['ceo_name'] if profile else '' }}" required />
+   </div>
+   <div>
+    <label>Tax ID / EIN</label>
+    <input name="tax_id" value="{{ profile['tax_id'] if profile else '' }}" />
+   </div>
+   <div>
+    <label>Email</label>
+    <input name="email" value="{{ profile['email'] if profile else '' }}" />
+   </div>
+   <div>
+    <label>Phone</label>
+    <input name="phone" value="{{ profile['phone'] if profile else '' }}" />
+   </div>
+   <div>
+    <label>Business category</label>
+    <input name="biz_type" value="{{ profile['biz_type'] if profile else '' }}" />
+   </div>
+   <div>
+    <label>Business activity</label>
+    <input name="biz_class" value="{{ profile['biz_class'] if profile else '' }}" />
+   </div>
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <label>Address</label>
+    <input name="address" value="{{ profile['address'] if profile else '' }}" />
+   </div>
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <label>Set as default provider</label>
+    <div style="padding-top:6px;">
+     <label style="cursor:pointer; display:inline-flex; gap:8px; align-items:center;">
+      <input type="checkbox" name="is_default" value="1" {% if profile and profile.get('is_default') %}checked{% endif %} />
+      <span>Use as default provider</span>
+     </label>
+    </div>
+   </div>
+  </div>
+  <div class="actionbar row">
+   <button class="btn btn-primary" type="submit">Save</button>
+   <a class="btn" href="{{ url_for('mgmt_info.list_tax_invoice_profiles') }}">Cancel</a>
+   <div class="spacer"></div>
+   {% if profile and is_admin() %}
+    <button class="btn btn-danger" type="submit"
+        form="deleteTaxInvoiceProfileForm"
+        data-tooltip="The last provider cannot be deleted.">Delete</button>
+   {% endif %}
+  </div>
+ </form>
+
+ {% if profile and is_admin() %}
+ <form id="deleteTaxInvoiceProfileForm"
+    method="post"
+    action="{{ url_for('mgmt_info.delete_tax_invoice_profile', profile_id=profile['id']) }}"
+    data-confirm="Delete this provider ? "
+    style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ </form>
+ {% endif %}
+{% endblock %}

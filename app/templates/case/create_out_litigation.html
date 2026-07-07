@@ -1,0 +1,226 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<h3 class="mb-4 fw-semibold">Foreign /Litigation (OUT/LITIGATION)</h3>
+
+<form method="POST" action="{{ form_action or url_for('case_work.create_matter') }}">
+    {{ form.hidden_tag() }}
+    <!-- Force hidden fields -->
+    <input type="hidden" name="category" value="LITIGATION">
+    <input type="hidden" name="in_out_type" value="OUT">
+
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="table-layout: fixed; border-collapse: collapse;">
+        <!-- Row 1 -->
+        <tr>
+            <td width="17%" align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Our Ref. <span class="text-danger">*</span>
+            </td>
+            <td width="33%" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {{ form.our_ref(class="form-control", id="our_ref") }}
+                    <button class="btn btn-outline-secondary" type="button" onclick="generateRef()">Auto</button>
+                </div>
+            </td>
+            <td width="17%" align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Your Ref / Client Ref
+            </td>
+            <td width="33%" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 {{ form.client_ref(class="form-control form-control-sm") }}
+            </td>
+        </tr>
+
+        <!-- Row 2 -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Country (Country) <span class="text-danger">*</span>
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.country(class="form-control form-control-sm", placeholder="Example: US, JP, CN", id="country") }}
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 /Litigation Type
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <select name="trial_type" class="form-select form-select-sm">
+                    <option value="">:::Select:::</option>
+                    <option value="" {% if case and case.trial_type == '' %}selected{% endif %}>/Appeal</option>
+                    <option value="Void" {% if case and case.trial_type == 'Void' %}selected{% endif %}>Void/Invalidation</option>
+                    <option value="Cancel" {% if case and case.trial_type == 'Cancel' %}selected{% endif %}>Cancel/Cancellation</option>
+                    <option value="Confirm" {% if case and case.trial_type == 'Confirm' %}selected{% endif %}>Confirm</option>
+                    <option value="Litigation" {% if case and case.trial_type == 'Litigation' %}selected{% endif %}>Litigation/Infringement</option>
+                    <option value="Other" {% if case and case.trial_type == 'Other' %}selected{% endif %}>Other/Other</option>
+                </select>
+            </td>
+        </tr>
+
+        <!-- Row 3 -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Engagement date (Commission Date)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="custom_field_commission_date" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('commission_date') if case else '' }}">
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 (Court/Board)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="text" name="court" class="form-control form-control-sm" value="{{ case.court if case and case.court else '' }}">
+            </td>
+        </tr>
+
+        <!-- Row 4 -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                ForeignRepresentative (Foreign Agent)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {% set f_info = case.foreign_info if case else None %}
+                    <input type="text" id="agentName" class="form-control" readonly placeholder="ForeignRepresentative Search" value="{{ f_info.foreign_agent.name if f_info and f_info.foreign_agent else '' }}">
+                    <input type="hidden" name="foreign_agent_id" id="agentId" value="{{ f_info.foreign_agent_id if f_info else '' }}">
+                    <button class="btn btn-outline-secondary" type="button" onclick="openClientSearch('agentName', 'agentId')">Search</button>
+                    <button class="btn btn-outline-danger" type="button" onclick="document.getElementById('agentName').value='';document.getElementById('agentId').value='';">Delete</button>
+                </div>
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Responsible attorney (Internal Attorney)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.attorney_id(class="form-select form-select-sm") }}
+            </td>
+        </tr>
+
+        <!-- Spacing -->
+        <tr><td colspan="4" height="10"></td></tr>
+
+        <!-- Row 5: Request/Filing -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                /Billing (Filing Date)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.filing_date(class="form-control form-control-sm", type="date") }}
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Matter reference (Case No)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.filing_no(class="form-control form-control-sm") }}
+            </td>
+        </tr>
+
+        <!-- Row 6: Parties -->
+         <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Client (Client) <span class="text-danger">*</span>
+            </td>
+             <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {{ form.client_name(class="form-control", readonly=True, id="clientName") }}
+                    {{ form.client_id(type="hidden", id="clientId") }}
+                    <button class="btn btn-outline-secondary" type="button" onclick="openClientSearch('clientName', 'clientId')">Search</button>
+                    <button class="btn btn-outline-success" type="button" onclick="openClientCreateModal('clientName', 'clientId')">ClientRegistration</button>
+                </div>
+            </td>
+        </tr>
+
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Billing (Plaintiff)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="text" name="plaintiff" class="form-control form-control-sm" value="{{ case.plaintiff if case and case.plaintiff else '' }}">
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Billing (Defendant)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="text" name="defendant" class="form-control form-control-sm" value="{{ case.defendant if case and case.defendant else '' }}">
+            </td>
+        </tr>
+
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.title.label }} (Title) <span class="text-danger">*</span>
+            </td>
+            <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.title(class="form-control form-control-sm") }}
+            </td>
+        </tr>
+
+        <!-- Related Case -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 Matter ID (Related Case ID)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="number" name="related_case_id" class="form-control form-control-sm" placeholder="Case ID" value="{{ case.related_case_id if case and case.related_case_id else '' }}">
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 Registration No. (Related Reg No)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="text" name="custom_field_target_reg_no" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('target_reg_no') if case else '' }}">
+            </td>
+        </tr>
+
+        <!-- Result -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 (Judgment Date)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="judgment_date" class="form-control form-control-sm" value="{{ case.judgment_date if case and case.judgment_date else '' }}">
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 (Result)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                  <select name="result" class="form-select form-select-sm">
+                    <option value="" {% if not case or not case.result %}selected{% endif %}>Pending</option>
+                    <option value="" {% if case and case.result == '' %}selected{% endif %}>Won</option>
+                    <option value="" {% if case and case.result == '' %}selected{% endif %}>Lost</option>
+                    <option value="" {% if case and case.result == '' %}selected{% endif %}>Partial Win</option>
+                    <option value="Withdrawn" {% if case and case.result == 'Withdrawn' %}selected{% endif %}>Withdrawn</option>
+                 </select>
+            </td>
+        </tr>
+
+         <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                / (Remark)
+            </td>
+            <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.summary(class="form-control form-control-sm", rows=2) }}
+            </td>
+        </tr>
+
+    </table>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{{ url_for('case_work.case_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</form>
+
+<!-- Scripts -->
+{% set client_modal_title = "Search Client/Agent" %}
+{% include "case/_client_search_modal.html" %}
+<script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+<script>
+  async function generateRef() {
+    const country = document.getElementById("country").value || "US";
+    try {
+      const url = `/api/cases/next_ref?type=LITIGATION&division=OUT&country=${country}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.next_ref) {
+        document.getElementById("our_ref").value = data.next_ref;
+      } else {
+        try { await window.AppAlert("Auto-generation failed: " + (data.error || "Unknown"), { title: "Error" }); } catch (e2) {}
+      }
+    } catch (e) { try { await window.AppAlert("Error occurred", { title: "Error" }); } catch (e2) {} }
+  }
+</script>
+{% endblock %}

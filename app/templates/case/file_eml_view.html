@@ -1,0 +1,42 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <div class="small text-muted">Email Preview</div>
+      <h5 class="mb-0 fw-bold">{{ original_name or 'email.eml' }}</h5>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('case_work.case_detail', case_id=case_id) }}">Matterto</a>
+      <a class="btn btn-primary btn-sm" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=file_asset_id) }}">Download</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2 small">
+        <div class="col-md-6"><span class="text-muted">Subject:</span> {{ subject }}</div>
+        <div class="col-md-6"><span class="text-muted">Date:</span> {{ date_raw }}</div>
+        <div class="col-md-6"><span class="text-muted">From:</span> {{ from_text }}</div>
+        <div class="col-md-6"><span class="text-muted">To:</span> {{ to_text }}</div>
+        {% if cc_text %}
+        <div class="col-12"><span class="text-muted">Cc:</span> {{ cc_text }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header bg-light">
+      <h6 class="mb-0"> Content</h6>
+    </div>
+    <div class="card-body">
+      {% if body_text %}
+        <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-family: inherit; font-size: 0.9rem;">{{ body_text }}</pre>
+      {% else %}
+        <p class="text-muted mb-0"> Content   none.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,262 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<style>
+ .mgmt-kpi .card-body { min-height: 92px; }
+ .mgmt-alert-critical { border-left: 4px solid #dc3545; }
+ .mgmt-alert-warning { border-left: 4px solid #fd7e14; }
+ .mgmt-alert-ok { border-left: 4px solid #198754; }
+ .mgmt-table td, .mgmt-table th { vertical-align: middle; }
+</style>
+
+<div class="container-fluid py-3">
+ <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+  <div>
+   <h3 class="fw-semibold mb-1">Management Dashboard</h3>
+   <div class="small text-muted">Monitor staffing, task volume, overdue work, and automation backlog in one view.</div>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+   <a class="btn btn-sm btn-outline-primary" href="{{ url_for('mgmt_info.user_kpi') }}">User KPI Board</a>
+   <div class="small text-muted">Snapshot time: {{ snapshot_at|local_dt_min if snapshot_at else "-" }}</div>
+  </div>
+ </div>
+
+ <div class="row g-3 mb-3 mgmt-kpi">
+  <div class="col-6 col-md-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="small text-muted">Contact(active)</div>
+     <div class="h4 mb-0">{{ summary.staff_count or 0 }}</div>
+    </div>
+   </div>
+  </div>
+  <div class="col-6 col-md-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="small text-muted">Processed in the last 7 days</div>
+     <div class="h4 mb-0">{{ summary.processed_7d_total or 0 }}</div>
+     <div class="small {% if summary.processed_trend_pct is not none and summary.processed_trend_pct < 0 %}text-danger{% elif summary.processed_trend_pct is not none and summary.processed_trend_pct> 0 %}text-success{% else %}text-muted{% endif %}">
+      {% if summary.processed_trend_pct is not none %}
+       Compared with previous 7 days {{ "%+.1f"|format(summary.processed_trend_pct) }}%
+      {% else %}
+       Not enough data to compare with previous 7 days
+      {% endif %}
+     </div>
+    </div>
+   </div>
+  </div>
+  <div class="col-6 col-md-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="small text-muted">Delayed tasks</div>
+     <div class="h4 mb-0">{{ summary.overdue_total or 0 }}</div>
+     <div class="small text-muted">Task {{ summary.workflow_overdue_total or 0 }} / Deadline {{ summary.docket_overdue_total or 0 }}</div>
+    </div>
+   </div>
+  </div>
+  <div class="col-6 col-md-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="small text-muted">Automation backlog</div>
+     <div class="h4 mb-0">{{ summary.automation_backlog or 0 }}</div>
+     <div class="small text-muted">Review+Ready {{ queue_metrics.automation_review_ready or 0 }}</div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="row g-3">
+  <div class="col-12 col-xl-8">
+   <div class="card shadow-sm">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+     <strong>Processing volume by contact</strong>
+     <div class="small text-muted">Last 7/30 days plus current backlog/overdue</div>
+    </div>
+    <div class="table-responsive">
+     <table class="table table-sm mb-0 mgmt-table">
+      <thead class="table-light">
+       <tr>
+        <th>Contact</th>
+        <th>Role</th>
+        <th class="text-end">Process 7days</th>
+        <th class="text-end">Process 30days</th>
+        <th class="text-end">Open</th>
+        <th class="text-end">Delayed</th>
+        <th class="text-end">Trend</th>
+       </tr>
+      </thead>
+      <tbody>
+       {% if not staff_rows %}
+       <tr><td colspan="7" class="text-center text-muted py-4">No contact data to display.</td></tr>
+       {% endif %}
+       {% for row in staff_rows %}
+       <tr>
+        <td>
+         <div class="fw-semibold">{{ row.assignee }}</div>
+         {% if row.staff_party_id %}<div class="small text-muted">{{ row.staff_party_id }}</div>{% endif %}
+        </td>
+        <td class="small text-muted">{{ row.role or '-' }}</td>
+        <td class="text-end">{{ row.processed_7d or 0 }}</td>
+        <td class="text-end">{{ row.processed_30d or 0 }}</td>
+        <td class="text-end">
+         {{ row.pending_total or 0 }}
+         <div class="small text-muted">Task {{ row.open_workflow or 0 }} / Deadline {{ row.open_docket or 0 }}</div>
+        </td>
+        <td class="text-end">
+         <span class="{% if (row.overdue_total or 0)> 0 %}text-danger{% else %}text-muted{% endif %}">
+          {{ row.overdue_total or 0 }}
+         </span>
+         <div class="small text-muted">Task {{ row.overdue_workflow or 0 }} / Deadline {{ row.overdue_docket or 0 }}</div>
+        </td>
+        <td class="text-end">
+         {% if row.trend_pct is not none %}
+          <span class="{% if row.trend_pct> 0 %}text-success{% elif row.trend_pct < 0 %}text-danger{% else %}text-muted{% endif %}">
+           {{ "%+.1f"|format(row.trend_pct) }}%
+          </span>
+         {% else %}
+          <span class="text-muted">-</span>
+         {% endif %}
+        </td>
+       </tr>
+       {% endfor %}
+      </tbody>
+     </table>
+    </div>
+   </div>
+  </div>
+
+  <div class="col-12 col-xl-4">
+   <div class="card shadow-sm mb-3">
+    <div class="card-header bg-light"><strong>Bottleneck Queue</strong></div>
+    <div class="list-group list-group-flush">
+     {% for item in bottlenecks %}
+     <div class="list-group-item d-flex justify-content-between align-items-start">
+      <div>
+       <div class="fw-semibold">{{ item.label }}</div>
+       <div class="small text-muted">{{ item.meta }}</div>
+      </div>
+      <span class="badge {% if (item.count or 0)> 0 %}bg-danger{% else %}bg-secondary{% endif %}">{{ item.count or 0 }}</span>
+     </div>
+     {% endfor %}
+    </div>
+   </div>
+
+   <div class="card shadow-sm">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+     <strong>Predictive Alerts</strong>
+     <span class="small text-muted">{{ predictive_alerts|length }}items</span>
+    </div>
+    <div class="card-body">
+     {% for alert in predictive_alerts %}
+     <div class="p-2 mb-2 rounded bg-light {% if alert.level == 'critical' %}mgmt-alert-critical{% elif alert.level == 'warning' %}mgmt-alert-warning{% else %}mgmt-alert-ok{% endif %}">
+      <div class="fw-semibold small">{{ alert.title }}</div>
+      <div class="small text-muted">{{ alert.detail }}</div>
+     </div>
+     {% endfor %}
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="row g-3 mt-1">
+  <div class="col-12 col-lg-3">
+   <div class="card shadow-sm h-100 border-info-subtle">
+    <div class="card-body">
+     <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">User KPI Board</div>
+      <a class="small text-decoration-none" href="{{ url_for('mgmt_info.user_kpi') }}">Open</a>
+     </div>
+     <div class="text-muted small">User Done Task, backlog, Attributed service revenue, Collection Open  .</div>
+    </div>
+   </div>
+  </div>
+  <div class="col-12 col-lg-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">Business profile information </div>
+      <a class="small text-decoration-none" href="{{ url_for('mgmt_info.list_business_profiles') }}"></a>
+     </div>
+     <div class="text-muted small">Invoice Issued Business profile//Bank account .</div>
+    </div>
+   </div>
+  </div>
+  <div class="col-12 col-lg-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">Tax documentation profile</div>
+      <a class="small text-decoration-none" href="{{ url_for('mgmt_info.list_tax_invoice_profiles') }}"></a>
+     </div>
+     <div class="text-muted small">Default tax documentation and provider settings.</div>
+    </div>
+   </div>
+  </div>
+  <div class="col-12 col-lg-3">
+   <div class="card shadow-sm h-100">
+    <div class="card-body">
+     <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">Outstanding and Overdue Buckets</div>
+      <a id="agingLink" class="small text-decoration-none" href="/accounting/invoice-system/aging/aging">View aging</a>
+     </div>
+     <div id="agingBuckets" class="text-muted small">Loading...</div>
+     <div id="agingError" class="text-danger small d-none mt-2">You do not have invoice-summary permission or the data could not be loaded.</div>
+    </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<script>
+ (() => {
+  const agingBuckets = document.getElementById("agingBuckets");
+  const agingError = document.getElementById("agingError");
+  const agingLink = document.getElementById("agingLink");
+  const summaryUrl = {{ url_for('billing_invoices.core.api_summary')|tojson }};
+
+  function formatNumber(value, currency) {
+   const decimals = (currency === "USD" || currency === "JPY") ? 0 : 2;
+   return new Intl.NumberFormat("en-US", { maximumFractionDigits: decimals }).format(Number(value || 0));
+  }
+
+  function renderBuckets(data) {
+   const entries = Object.entries(data || {});
+   if (!entries.length) return "No data.";
+   const escapeHtml = (value) => String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+   return entries.map(([currency, buckets]) => {
+    return `
+     <div class="mb-2">
+      <div class="fw-semibold">${escapeHtml(currency)}</div>
+      <div>Current ${formatNumber(buckets.current, currency)} / 1-30 ${formatNumber(buckets.d1_30, currency)} / 31-60 ${formatNumber(buckets.d31_60, currency)} / 61-90 ${formatNumber(buckets.d61_90, currency)} / 91+ ${formatNumber(buckets.d91_plus, currency)}</div>
+     </div>
+    `;
+   }).join("");
+  }
+
+  async function loadAgingSummary() {
+   try {
+    const response = await fetch(summaryUrl, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`summary ${response.status}`);
+    const payload = await response.json();
+    if (!payload || !payload.ok || !payload.value) throw new Error("invalid_summary");
+
+    const buckets = payload.value.ar?.buckets_by_currency || {};
+    agingBuckets.innerHTML = renderBuckets(buckets);
+    if (payload.value.links?.aging) {
+     agingLink.href = payload.value.links.aging;
+    }
+    agingError.classList.add("d-none");
+   } catch (err) {
+    agingBuckets.textContent = "-";
+    agingError.classList.remove("d-none");
+   }
+  }
+
+  loadAgingSummary();
+ })();
+</script>
+{% endblock %}

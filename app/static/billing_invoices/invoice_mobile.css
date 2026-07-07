@@ -1,0 +1,118 @@
+/* Mobile overrides for invoice detail/print preview screens.
+   Keep printable desktop/A4 styling intact while making values readable on phones. */
+@media screen and (max-width: 767.98px) {
+  body.invoice-print #invoice-print-container {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  /* Fit-to-A4 preview is useful on desktop, but makes mobile invoice values tiny
+     or clipped. On phones, show the real mobile layout instead. */
+  body.invoice-print #invoice-print-container[data-fitted="true"] {
+    zoom: 1 !important;
+    transform: none !important;
+  }
+
+  #invoice-print-container .sheet {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  #invoice-print-container .sheet + .sheet {
+    margin-top: 10px;
+  }
+
+  #invoice-print-container .hdr,
+  #invoice-print-container.is-outgoing .hdr,
+  #invoice-print-container .meta {
+    grid-template-columns: 1fr;
+  }
+
+  #invoice-print-container .inv-head,
+  #invoice-print-container.is-outgoing .inv-head {
+    justify-items: start;
+    text-align: left;
+  }
+
+  #invoice-print-container.is-outgoing .inv-meta-row,
+  #invoice-print-container.is-outgoing .fx-status-row {
+    justify-content: flex-start;
+  }
+
+  #invoice-print-container .pair {
+    grid-template-columns: minmax(72px, 34%) minmax(0, 1fr);
+  }
+
+  #invoice-print-container .pair .v,
+  #invoice-print-container .firm-sub,
+  #invoice-print-container .inv-no {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  #invoice-print-container .dates {
+    grid-template-columns: 1fr;
+  }
+
+  #invoice-print-container .section-title {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* invoice_print.css sets overflow:hidden for rounded desktop cards; that hides
+     amount columns on narrow screens. Restore horizontal scroll only on mobile. */
+  #invoice-print-container .sheet .table-card,
+  #invoice-print-container.is-outgoing .table-card {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #invoice-print-container .invoice-print-table {
+    min-width: 620px;
+    max-width: none;
+  }
+
+  #invoice-print-container .invoice-print-table .cell-description {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  #invoice-print-container .invoice-print-table .num,
+  #invoice-print-container .summary .row .num {
+    white-space: nowrap;
+  }
+
+  #invoice-print-container .summary .row {
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  #invoice-print-container .summary .row > span:first-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  #invoice-print-container .summary .row.total {
+    font-size: 0.98rem;
+  }
+
+  /* Estimated outgoing phases are rendered with an inline two-column grid. Use
+     one column on phones so each table has enough width before horizontal scroll. */
+  #invoice-print-container .sheet [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media screen and (max-width: 420px) {
+  #invoice-print-container .sheet {
+    padding: 10px;
+  }
+
+  #invoice-print-container .invoice-print-table {
+    min-width: 580px;
+  }
+}

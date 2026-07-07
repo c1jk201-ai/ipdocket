@@ -1,0 +1,130 @@
+ <!-- Header -->
+ {% set biz_profile = biz_profile or {} %}
+ {% set invoice_billing_status = invoice.get('billing_status_display') or invoice.get('billing_status') or invoice.get('status') or 'draft' %}
+ <div class="sheet">
+  <div class="hdr">
+   <div class="firm">
+    {% if biz_profile.logo_path %}
+    <img src="{{ biz_profile.logo_path|invoice_logo_url }}" alt="" class="logo-img" />
+    {% endif %}
+    <div class="firm-name">{{ biz_profile.name or 'Text(Text)' }}</div>
+    <div class="firm-sub">
+     <div>{{ biz_profile.address }}</div>
+     <div>{{ biz_profile.email }}{% if biz_profile.phone %} · {{ biz_profile.phone }}{% endif %}</div>
+    </div>
+   </div>
+   {% if not outgoing_mode %}
+   <div class="inv-head">
+    <div class="inv-label">INVOICE</div>
+    <div class="inv-no">{{ invoice['number'] }}</div>
+    <div
+     style="
+      display: flex;
+      gap: 12px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 6px 0;
+     "
+   >
+     <div>
+      <strong>{{ t_lang('issue_date', invoice_lang) }}:</strong> {{
+      invoice['issue_date'] }}
+     </div>
+     <div>
+      <strong>{{ t_lang('due_date', invoice_lang) }}:</strong> {{
+      invoice['due_date'] }}
+     </div>
+    </div>
+    <span class="status-badge {{ invoice_billing_status }}"
+    >{{ t_lang('status_' + invoice_billing_status, invoice_lang)
+     }}</span
+   >
+    {% if invoice.get('is_tax_issue_done') and invoice.get('tax_issue_type_label') %}
+    <div class="muted text-xs no-print" style="margin-top: 4px">{{ invoice.get('tax_issue_type_label') }}</div>
+    {% endif %}
+    {% if invoice.get('ipm_case_id') %}
+    <div class="no-print" style="margin-top: 6px">
+     <a
+      href="{{ url_for('case_work.case_detail', case_id=invoice['ipm_case_id'], invoice_id=invoice['id'], _anchor='sec-cost') }}"
+      style="
+       font-size: 0.8rem;
+       text-decoration: none;
+       color: var(--accent);
+       font-weight: 600;
+      "
+    >
+      🔗 View matter{% if invoice.get('ipm_case_ref') %} ({{
+      invoice.get('ipm_case_ref') }}){% endif %}
+     </a>
+    </div>
+    {% endif %}
+   </div>
+   {% endif %} {% if outgoing_mode %}
+   <div class="client-box">
+    <div class="box-title">{{ t_lang('client_info', invoice_lang) }}</div>
+    <div
+     style="
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: center;
+     "
+   >
+     <div class="pair">
+      <div class="k">{{ t_lang('client_name', invoice_lang) }}:</div>
+      <div class="v">{{ invoice['client_name'] }}</div>
+     </div>
+     {% if invoice['client_phone'] %}
+     <div class="pair">
+      <div class="k">{{ t_lang('contact', invoice_lang) }}:</div>
+      <div class="v">{{ invoice['client_phone'] }}</div>
+     </div>
+     {% endif %} {% if invoice['client_manager'] %}
+     <div class="pair">
+      <div class="k">{{ t_lang('manager', invoice_lang) }}:</div>
+      <div class="v">{{ invoice['client_manager'] }}</div>
+     </div>
+     {% endif %}
+    </div>
+   </div>
+   <div class="inv-head">
+    <div class="inv-label">ForeignFiling Invoice</div>
+    <div class="inv-no">{{ invoice['number'] }}</div>
+    <div class="inv-meta-row">
+     <div>
+      <strong>{{ t_lang('issue_date', invoice_lang) }}:</strong> {{
+      invoice['issue_date'] }}
+     </div>
+     <div>
+      <strong>{{ t_lang('due_date', invoice_lang) }}:</strong> {{
+      invoice['due_date'] }}
+     </div>
+    </div>
+    <div class="fx-status-row">
+     <div style="display: flex; gap: 8px; align-items: center">
+      <strong style="color: var(--ink)">Exchange rate:</strong>
+      {% set seen_currencies = namespace(ccys={}) %} {% set fx_items =
+      items|selectattr('item_type', 'defined')|selectattr('item_type',
+      'equalto', 'foreign')|list %} {% for it in fx_items %} {% set c =
+      (it['fx_currency'] or '')|upper %} {% set r = it['fx_rate_used'] %}
+      {% if c and r and c not in seen_currencies.ccys %} {% set _ =
+      seen_currencies.ccys.update({c: r}) %} {% endif %} {% endfor %} {%
+      if seen_currencies.ccys %} {% for curr, rate in
+      seen_currencies.ccys.items() %}
+      <span>1 {{ curr }} = {{ '{:,.2f}'.format(rate) }} {{ invoice['currency'] or 'USD' }}</span>
+      {% endfor %} {% else %}
+      <span>Exchange rate </span>
+      {% endif %}
+     </div>
+     <span class="status-badge {{ invoice_billing_status }}"
+     >{{ t_lang('status_' + invoice_billing_status, invoice_lang)
+      }}</span
+    >
+     {% if invoice.get('is_tax_issue_done') and invoice.get('tax_issue_type_label') %}
+     <span class="muted text-xs no-print">{{ invoice.get('tax_issue_type_label') }}</span>
+     {% endif %}
+    </div>
+   </div>
+   {% endif %}
+  </div>
+ </div>

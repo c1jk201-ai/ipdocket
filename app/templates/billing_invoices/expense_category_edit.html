@@ -1,0 +1,52 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">Edit category</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_categories') }}">List</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <form method="post" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Code</label>
+    <input type="text" name="code" value="{{ category.code or '' }}">
+   </div>
+   <div class="col-12 col-md-4 col-lg-4">
+    <label>Category name</label>
+    <input type="text" name="name" value="{{ category.name }}" required>
+   </div>
+   <div class="col-12 col-md-4 col-lg-4">
+    <label>Account</label>
+    <select name="account_id">
+     <option value="">No account</option>
+     {% for acc in accounts %}
+      <option value="{{ acc.id }}" {% if category.account_id == acc.id %}selected{% endif %}>{{ acc.code }} · {{ acc.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Sales tax</label>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+     <input type="checkbox" name="vat_deductible" value="1" {% if category.vat_deductible %}checked{% endif %}>
+      Taxable
+    </label>
+   </div>
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Default</label>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+     <input type="checkbox" name="is_default" value="1" {% if category.is_default %}checked{% endif %}>
+     Default category
+    </label>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Save</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_categories') }}">Cancel</a>
+    </div>
+   </div>
+  </form>
+ </div>
+{% endblock %}

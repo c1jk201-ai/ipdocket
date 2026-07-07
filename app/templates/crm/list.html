@@ -1,0 +1,1163 @@
+{% extends "layouts/base.html" %}
+{% from "_entity_links.html" import case_list_search %}
+{% import "components/_macros.html" as ui with context %}
+{% block content %}
+<div class="container-fluid crm-clients-page py-3 py-lg-4 fade-in">
+  <section class="card border-0 shadow-sm crm-page-head mb-3 mb-lg-4">
+    <div class="card-body p-3 p-lg-4">
+      <div class="d-flex flex-column flex-xl-row gap-3 gap-xl-4 justify-content-between align-items-xl-center">
+        <div>
+          <div class="crm-page-kicker">CRM</div>
+          <h1 class="h3 fw-bold mb-1">Client </h1>
+          <p class="text-muted mb-0">Client information  , /Link Status  from .</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 crm-top-actions">
+          <a
+            class="btn btn-primary d-inline-flex align-items-center gap-2 px-4"
+            href="{{ url_for('customers.client_create', popup=request.args.get('popup')) }}"
+          >
+            <i class="bi bi-plus-lg"></i> Client Registration
+          </a>
+          {% if can_merge_admin %}
+            <a
+              class="btn btn-outline-warning d-inline-flex align-items-center gap-2 px-4 desktop-preferred-action"
+              href="{{ url_for('customers.client_merge') }}"
+            >
+              <i class="bi bi-person-fill-up"></i> Client 
+            </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="crm-metric-strip mt-3">
+        <div class="crm-metric-item">
+          <span class="crm-metric-label">Total Client</span>
+          <strong class="crm-metric-value">{{ "{:,}".format(total or 0) }}</strong>
+        </div>
+        <div class="crm-metric-item">
+          <span class="crm-metric-label">Duplicate </span>
+          <strong class="crm-metric-value">{{ "{:,}".format((duplicate_groups|length) if duplicate_groups else 0) }}</strong>
+        </div>
+        <div class="crm-metric-item">
+          <span class="crm-metric-label">Recent </span>
+          <strong class="crm-metric-value">{{ "{:,}".format((recent_merge_logs|length) if recent_merge_logs else 0) }}</strong>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% if not request.args.get('popup') %}
+    {% set view_module = "crm_client_list" %}
+    {% include "_saved_views_bar.html" %}
+  {% endif %}
+
+  <div class="card border-0 shadow-sm rounded-3 crm-filter-card mb-3 mb-lg-4">
+    <div class="card-body p-3 p-lg-4">
+      <form class="row g-2 g-lg-3 align-items-end" role="search" aria-label="Client Search Filter">
+        {% if request.args.get('popup') %}
+        <input type="hidden" name="popup" value="{{ request.args.get('popup') }}" />
+        {% endif %}
+        {% if invoice_link %}
+        <input type="hidden" name="invoice_link" value="{{ invoice_link }}" />
+        {% endif %}
+        {% set export_args = {
+          'q': q or '',
+          'sort': sort,
+          'direction': direction,
+          'per_page': per_page,
+          'page': page,
+          'invoice_link': invoice_link,
+          'popup': request.args.get('popup')
+        } %}
+        {% set xlsx_page_args = export_args.copy() %}
+        {% set _ = xlsx_page_args.update({'export': '1', 'export_scope': 'page'}) %}
+        {% set xlsx_all_args = export_args.copy() %}
+        {% set _ = xlsx_all_args.update({'export': '1', 'export_scope': 'all', 'page': 1}) %}
+        <div class="col-12 col-xl-5">
+          <label class="form-label small text-muted mb-1">Search</label>
+          <div class="input-group crm-search-input">
+            <span class="input-group-text bg-white border-end-0 text-muted">
+              <i class="bi bi-search"></i>
+            </span>
+            <input
+              id="crm-client-search"
+              class="form-control border-start-0"
+              type="text"
+              name="q"
+              value="{{ q or '' }}"
+              placeholder="Name, Email, Registration No. "
+              autocomplete="off"
+            />
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+          <label class="form-label small text-muted mb-1"> </label>
+          <select class="form-select" name="sort" onchange="this.form.submit()" aria-label=" ">
+            <option value="name" {% if sort == 'name' %}selected{% endif %}>Name</option>
+            <option value="id" {% if sort == 'id' %}selected{% endif %}>Registration</option>
+            <option value="registration_number" {% if sort == 'registration_number' %}selected{% endif %}>Registration No.</option>
+            <option value="email" {% if sort == 'email' %}selected{% endif %}>Email</option>
+            <option value="phone" {% if sort == 'phone' %}selected{% endif %}>Phone</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2">
+          <label class="form-label small text-muted mb-1"> </label>
+          <select class="form-select" name="direction" onchange="this.form.submit()" aria-label=" ">
+            <option value="asc" {% if direction == 'asc' %}selected{% endif %}></option>
+            <option value="desc" {% if direction == 'desc' %}selected{% endif %}></option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3 col-xl-1">
+          <label class="form-label small text-muted mb-1">page</label>
+          <select class="form-select" name="per_page" onchange="this.form.submit()">
+            <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+            <option value="20" {% if per_page == 20 %}selected{% endif %}>20</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+            <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+            <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3 col-xl-2 d-flex gap-2">
+          <button class="btn btn-dark flex-fill">Search</button>
+          {% if q %}
+          <a
+            href="{{ url_for('customers.clients', per_page=per_page, sort=sort, direction=direction, popup=request.args.get('popup')) }}"
+            class="btn btn-outline-secondary"
+            >Reset</a
+          >
+          {% endif %}
+        </div>
+        <div class="col-12 col-xl-auto">
+          <div class="btn-group w-100 desktop-preferred-action" role="group" aria-label=" ">
+            <a
+              class="btn btn-outline-success"
+              href="{{ url_for('customers.clients', **xlsx_page_args) }}"
+              title="Current page Excel "
+            >
+              <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+            <button
+              type="button"
+              class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <span class="visually-hidden">  </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item" href="{{ url_for('customers.clients', **xlsx_page_args) }}">
+                  Current page 
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="{{ url_for('customers.clients', **xlsx_all_args) }}">
+                  All  
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        {% if can_merge_admin %}
+        <div class="col-12 col-xl-auto">
+          <div class="btn-group w-100 desktop-preferred-action" role="group" aria-label="Matter ">
+            <button
+              type="button"
+              id="crm-case-status-selected-btn"
+              class="btn btn-outline-primary"
+              disabled
+              title="selected Client Matter xlsx ZIPto Download"
+            >
+              <i class="bi bi-folder-symlink"></i>
+              Matter <span id="crm-case-status-selected-count"></span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <span class="visually-hidden">Matter  </span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button type="button" class="dropdown-item" id="crm-case-status-selected-menu-btn">
+                  Select Client 
+                </button>
+              </li>
+              <li>
+                <button type="button" class="dropdown-item" id="crm-case-status-all-btn">
+                  All  
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+        {% endif %}
+      </form>
+      {% if can_merge_admin %}
+      <form
+        id="crmCaseStatusExportForm"
+        class="d-none"
+        method="post"
+        action="{{ url_for('customers.client_case_status_export') }}"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="export_scope" id="crmCaseStatusExportScope" value="selected" />
+        <input type="hidden" name="q" value="{{ q or '' }}" />
+        <input type="hidden" name="sort" value="{{ sort }}" />
+        <input type="hidden" name="direction" value="{{ direction }}" />
+        <input type="hidden" name="invoice_link" value="{{ invoice_link }}" />
+        <div id="crmCaseStatusSelectedInputs"></div>
+      </form>
+      {% endif %}
+      <div class="crm-filter-hint small text-muted mt-2">
+        <i class="bi bi-lightning-charge me-1"></i>
+         <kbd>/</kbd>   Searchto  Go.
+      </div>
+    </div>
+  </div>
+
+  {% if duplicate_groups or recent_merge_logs %}
+  <div class="row g-3 mb-3 mb-lg-4">
+    {% if duplicate_groups %}
+    <div class="col-lg-7">
+      <div class="card border-warning-subtle shadow-sm h-100 crm-subpanel-card">
+        <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-exclamation-triangle me-1 text-warning"></i>Duplicate  Client</span>
+          <span class="small text-muted">Recent {{ duplicate_groups|length }}items</span>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for g in duplicate_groups %}
+            <li class="list-group-item py-3">
+              <div class="small text-muted mb-2 d-flex flex-wrap gap-1">
+                <span class="badge text-warning-emphasis border border-warning-subtle bg-warning-subtle">Duplicate {{ g.clients|length }}</span>
+                {% if g.reasons %}
+                  {% for reason in g.reasons[:3] %}
+                  <span class="badge bg-light text-secondary border">{{ reason.kind_label }} · {{ reason.value }}</span>
+                  {% endfor %}
+                  {% if g.reasons|length > 3 %}
+                  <span class="badge bg-light text-secondary border">+{{ g.reasons|length - 3 }}</span>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-light text-secondary border">{{ g.kind_label }} · {{ g.value }}</span>
+                {% endif %}
+              </div>
+              <div class="d-flex flex-wrap gap-2">
+                {% for c in g.clients %}
+                <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('customers.client_view', client_id=c.id) }}">#{{ c.id }} {{ c.name }}</a>
+                {% endfor %}
+              </div>
+              {% if can_merge_admin and g.client_ids %}
+              <div class="mt-2 d-flex flex-wrap gap-2">
+                <a class="btn btn-sm btn-outline-warning desktop-preferred-action" href="{{ url_for('customers.client_merge', source=g.client_ids) }}">  Open</a>
+                {% if g.signature %}
+                <form
+                  method="post"
+                  action="{{ url_for('customers.client_duplicate_reject') }}"
+                  class="d-inline"
+                  onsubmit="return confirm('Remove this client from the merge list?');"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <input type="hidden" name="group_signature" value="{{ g.signature }}" />
+                  <button class="btn btn-sm btn-outline-secondary"> </button>
+                </form>
+                {% endif %}
+              </div>
+              {% endif %}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if recent_merge_logs %}
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100 crm-subpanel-card">
+        <div class="card-header bg-white fw-semibold">Recent  </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for log in recent_merge_logs %}
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+              <div>
+                <div class="fw-semibold">#{{ log.target_id }} </div>
+                <div class="small text-muted">
+                  source {{ log.source_count }}
+                  {% if log.source_ids_display %}
+                  · {{ log.source_ids_display }}
+                  {% endif %}
+                  {% if log.created_at %}· {{ log.created_at|local_dt }}{% endif %}
+                </div>
+              </div>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('customers.client_view', client_id=log.target_id) }}">View</a>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="card border-0 shadow-sm crm-table-card">
+    <div class="card-header bg-white d-flex flex-column flex-md-row gap-1 justify-content-between align-items-md-center">
+      <div class="fw-semibold">Client List</div>
+      <div class="small text-muted">
+        Total {{ total }}
+        {% if pages %}( {{ page }} / {{ pages }} page ){% endif %}
+      </div>
+    </div>
+
+    <div class="table-responsive crm-table-wrap">
+      <table class="table table-hover align-middle mb-0 crm-client-table">
+        <thead>
+          <tr>
+            {% if can_merge_admin %}
+            <th class="py-3 ps-3 text-center" style="width: 44px">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="crm-client-select-all-page"
+                aria-label="Current page Client Select all"
+              />
+            </th>
+            {% endif %}
+            <th class="py-3 ps-3" style="width: 28%">Client</th>
+            <th class="py-3" style="width: 17%">Registration No.</th>
+            <th class="py-3" style="width: 24%">Phone</th>
+            <th class="py-3" style="width: 16%">Billing</th>
+            <th class="py-3 text-end pe-3" style="width: 15%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clients %}
+          <tr>
+            {% if can_merge_admin %}
+            <td class="ps-3 py-3 text-center" data-label="Select">
+              <input
+                class="form-check-input crm-client-row-check"
+                type="checkbox"
+                value="{{ c.id }}"
+                aria-label="{{ c.name }} Select"
+              />
+            </td>
+            {% endif %}
+            <td class="ps-3 py-3" data-label="Client">
+              <a href="{{ url_for('customers.client_view', client_id=c.id) }}" class="fw-bold text-dark text-decoration-none">{{ c.name }}</a>
+              <div class="small mt-1">
+                {{ case_list_search(c.name, label="Matter", classes="text-decoration-none text-muted") }}
+              </div>
+              <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                <span class="badge bg-light text-secondary border">#{{ c.id }}</span>
+                {% if c.type %}
+                <span class="badge bg-light text-secondary border">{{ c.type|upper }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Registration No.">
+              <span class="text-secondary font-monospace">{{ c.registration_number or '-' }}</span>
+            </td>
+            <td data-label="Phone">
+              <div class="d-flex flex-column gap-1">
+                {% if c.email %}
+                <a class="small text-decoration-none" href="mailto:{{ c.email }}">
+                  <i class="bi bi-envelope me-1 text-muted"></i>{{ c.email }}
+                </a>
+                {% endif %}
+                {% if c.phone %}
+                <a class="small text-decoration-none" href="tel:{{ c.phone }}">
+                  <i class="bi bi-telephone me-1 text-muted"></i>{{ c.phone }}
+                </a>
+                {% endif %}
+                {% if not c.email and not c.phone %}
+                <span class="text-muted small">-</span>
+                {% endif %}
+              </div>
+            </td>
+            <td data-label="Billing">
+              {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+              {% if unified_mode %}
+              <div class="d-flex flex-column gap-1">
+                <a
+                  class="btn btn-sm btn-outline-success"
+                  href="/accounting/invoice-system/clients/{{ c.id }}"
+                  ><i class="bi bi-receipt me-1"></i> Billing profile (#{{ c.id }})</a
+                >
+              </div>
+              {% elif c.external_invoice_client_id %}
+              <div class="d-flex flex-column gap-1">
+                <a
+                  class="btn btn-sm btn-outline-info"
+                  href="/accounting/invoice-system/clients/{{ c.external_invoice_client_id }}"
+                  >Billing profile (#{{ c.external_invoice_client_id }})</a
+                >
+                <a
+                  class="btn btn-sm btn-outline-secondary"
+                  href="{{ url_for('billing_invoices.clients.list_clients', ipm_client_id=c.id) }}"
+                  >Find billing contact</a
+                >
+                <a
+                  class="btn btn-sm btn-outline-secondary"
+                  href="{{ url_for('billing_invoices.clients.list_clients', q=(c.name or '')) }}"
+                  >Search by name</a
+                >
+              </div>
+              {% else %}
+              <div class="d-flex flex-column gap-1">
+                <span class="badge text-bg-warning">Billing link needed</span>
+                <form
+                  action="{{ url_for('customers.client_sync_invoice', client_id=c.id) }}"
+                  method="post"
+                  class="d-inline"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button class="btn btn-sm btn-outline-primary">Create billing link</button>
+                </form>
+              </div>
+              {% endif %}
+            </td>
+            <td class="text-end pe-3" data-label="">
+              {% set bizreg_info = bizreg_map.get(c.id) if bizreg_map is defined else None %}
+              <div class="d-inline-flex flex-wrap justify-content-end gap-1 crm-actions">
+                <button
+                  class="btn btn-sm btn-bizreg-upload desktop-preferred-action"
+                  type="button"
+                  title="{{ 'Business document  Upload' if bizreg_info else 'Business document upload' }}"
+                  aria-label="{{ 'Business document  Upload' if bizreg_info else 'Business document upload' }}"
+                  data-bs-toggle="modal"
+                  data-bs-target="#bizregQuickModal"
+                  data-client-id="{{ c.id }}"
+                  data-client-name="{{ c.name|e }}"
+                  data-upload-url="{{ url_for('customers.biz_reg_upload', client_id=c.id) }}"
+                  data-download-url="{{ url_for('customers.biz_reg_download_shared', client_id=c.id) }}"
+                  data-has-bizreg="{{ 1 if bizreg_info else 0 }}"
+                  {% if bizreg_info %}disabled aria-disabled="true"{% endif %}
+                >
+                  <i class="bi bi-file-earmark-arrow-up"></i>
+                </button>
+                <a
+                  class="btn btn-sm btn-outline-primary"
+                  href="{{ url_for('customers.client_edit', client_id=c.id) }}"
+                >
+                  Edit
+                </a>
+                <form
+                  id="delete-form-{{ c.id }}"
+                  action="{{ url_for('customers.client_delete', client_id=c.id) }}"
+                  method="post"
+                  class="d-inline"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-danger"
+                    data-confirm="Delete this client link and any related connection data?"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
+              <div id="bizreg-status-{{ c.id }}" class="small text-muted mt-1"></div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="{{ 6 if can_merge_admin else 5 }}" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+              Registration Client information none.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-body py-3">
+      <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-md-center">
+        <div class="text-muted small">
+          Total {{ total }}
+          {% if pages %}
+          ({{ page }} / {{ pages }} page)
+          {% endif %}
+        </div>
+
+        {% set crm_client_pagination_args = request.args.to_dict(flat=True) %}
+        {% set _ = crm_client_pagination_args.update({'q': q or '', 'per_page': per_page, 'sort': sort, 'direction': direction, 'invoice_link': invoice_link, 'popup': request.args.get('popup')}) %}
+        {{ ui.pagination('customers.clients', page, pages or 1, crm_client_pagination_args, 'CRM Client Pagination') }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="bizregQuickModal" tabindex="-1" aria-labelledby="bizregQuickModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <div>
+          <div class="small text-uppercase text-muted fw-semibold">CRM Client</div>
+          <h5 class="modal-title" id="bizregQuickModalLabel">Business document upload</h5>
+          <div class="small text-muted"><span id="bizregQuickClientName"></span> Client File Upload LLM  Item Auto .</div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <div
+          id="bizregQuickDropzone"
+          class="bizreg-modal-dropzone"
+          role="button"
+          tabindex="0"
+          aria-label="Business document File Upload"
+        >
+          <input id="bizregQuickInput" type="file" accept=".pdf,image/*" hidden />
+          <div class="bizreg-modal-icon">
+            <i class="bi bi-cloud-arrow-up"></i>
+          </div>
+          <div class="fw-semibold mb-1">Drop a file here or click to select one</div>
+          <div class="small text-muted">Supported formats: PDF, PNG, JPG, JPEG, GIF</div>
+          <div class="small text-muted">Automatically extracts Tax ID / EIN, entity details, representative, address, and billing tax email.</div>
+        </div>
+        <div id="bizregQuickAlert" class="alert d-none mt-3 mb-0" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <a
+          id="bizregQuickDownload"
+          class="btn btn-outline-success d-none"
+          href="#"
+          target="_blank"
+          rel="noopener"
+        >
+          <i class="bi bi-download"></i> Download
+        </a>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("crm-client-search");
+    const bizregModalEl = document.getElementById("bizregQuickModal");
+    const bizregModalDropzone = document.getElementById("bizregQuickDropzone");
+    const bizregModalInput = document.getElementById("bizregQuickInput");
+    const bizregModalAlert = document.getElementById("bizregQuickAlert");
+    const bizregModalDownload = document.getElementById("bizregQuickDownload");
+    const bizregQuickClientName = document.getElementById("bizregQuickClientName");
+    const bizregModalApi =
+      bizregModalEl && window.bootstrap
+        ? window.bootstrap.Modal.getOrCreateInstance(bizregModalEl)
+        : null;
+    let active = null;
+
+    const caseStatusForm = document.getElementById("crmCaseStatusExportForm");
+    const caseStatusScope = document.getElementById("crmCaseStatusExportScope");
+    const caseStatusSelectedInputs = document.getElementById("crmCaseStatusSelectedInputs");
+    const caseStatusSelectedBtn = document.getElementById("crm-case-status-selected-btn");
+    const caseStatusSelectedMenuBtn = document.getElementById("crm-case-status-selected-menu-btn");
+    const caseStatusAllBtn = document.getElementById("crm-case-status-all-btn");
+    const caseStatusSelectedCount = document.getElementById("crm-case-status-selected-count");
+    const clientSelectAllPage = document.getElementById("crm-client-select-all-page");
+    const clientRowChecks = Array.from(document.querySelectorAll(".crm-client-row-check"));
+
+    const alertCaseStatus = (message) => {
+      if (window.AppAlert) {
+        window.AppAlert(message, { title: "Confirm" });
+      } else {
+        window.alert(message);
+      }
+    };
+
+    const selectedClientIds = () =>
+      clientRowChecks
+        .filter((input) => input.checked)
+        .map((input) => input.value)
+        .filter(Boolean);
+
+    const updateCaseStatusSelection = () => {
+      const ids = selectedClientIds();
+      if (caseStatusSelectedBtn) {
+        caseStatusSelectedBtn.disabled = ids.length === 0;
+      }
+      if (caseStatusSelectedMenuBtn) {
+        caseStatusSelectedMenuBtn.classList.toggle("disabled", ids.length === 0);
+        caseStatusSelectedMenuBtn.disabled = ids.length === 0;
+      }
+      if (caseStatusSelectedCount) {
+        caseStatusSelectedCount.textContent = ids.length ? `(${ids.length})` : "";
+      }
+      if (clientSelectAllPage) {
+        clientSelectAllPage.checked = clientRowChecks.length > 0 && ids.length === clientRowChecks.length;
+        clientSelectAllPage.indeterminate = ids.length > 0 && ids.length < clientRowChecks.length;
+      }
+    };
+
+    const submitCaseStatusExport = (scope) => {
+      if (!caseStatusForm || !caseStatusScope || !caseStatusSelectedInputs) return;
+      caseStatusScope.value = scope;
+      caseStatusSelectedInputs.innerHTML = "";
+      if (scope === "selected") {
+        const ids = selectedClientIds();
+        if (!ids.length) {
+          alertCaseStatus("Matter Download Client Select.");
+          return;
+        }
+        ids.forEach((id) => {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "client_ids";
+          input.value = id;
+          caseStatusSelectedInputs.appendChild(input);
+        });
+      }
+      caseStatusForm.submit();
+    };
+
+    clientRowChecks.forEach((input) => {
+      input.addEventListener("change", updateCaseStatusSelection);
+    });
+    if (clientSelectAllPage) {
+      clientSelectAllPage.addEventListener("change", () => {
+        clientRowChecks.forEach((input) => {
+          input.checked = clientSelectAllPage.checked;
+        });
+        updateCaseStatusSelection();
+      });
+    }
+    if (caseStatusSelectedBtn) {
+      caseStatusSelectedBtn.addEventListener("click", () => submitCaseStatusExport("selected"));
+    }
+    if (caseStatusSelectedMenuBtn) {
+      caseStatusSelectedMenuBtn.addEventListener("click", () => submitCaseStatusExport("selected"));
+    }
+    if (caseStatusAllBtn) {
+      caseStatusAllBtn.addEventListener("click", () => submitCaseStatusExport("all"));
+    }
+    updateCaseStatusSelection();
+
+    document.addEventListener("keydown", (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(tag)) {
+        e.preventDefault();
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select();
+        }
+      }
+    });
+
+    const setStatus = (clientId, message, type, downloadUrl) => {
+      const el = document.getElementById(`bizreg-status-${clientId}`);
+      if (!el) return;
+      el.className = "small d-block mt-1";
+      if (type === "error") {
+        el.classList.add("text-danger");
+      } else if (type === "success") {
+        el.classList.add("text-success");
+      } else {
+        el.classList.add("text-muted");
+      }
+      el.textContent = "";
+      if (type === "success" && downloadUrl) {
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.textContent = `${message} Download`;
+        link.className = "link-success text-decoration-none";
+        el.appendChild(link);
+      } else if (message) {
+        el.textContent = message;
+      }
+    };
+
+    const setModalAlert = (message, type = "info") => {
+      if (!bizregModalAlert) return;
+      bizregModalAlert.className = `alert alert-${type} mt-3 mb-0`;
+      bizregModalAlert.textContent = message || "";
+      bizregModalAlert.classList.toggle("d-none", !message);
+    };
+
+    const resetModalState = () => {
+      setModalAlert("");
+      if (bizregModalDownload) {
+        bizregModalDownload.classList.add("d-none");
+        bizregModalDownload.setAttribute("href", "#");
+      }
+    };
+
+    const setModalBusy = (busy) => {
+      if (!bizregModalDropzone) return;
+      bizregModalDropzone.classList.toggle("is-loading", busy);
+      bizregModalDropzone.setAttribute("aria-busy", busy ? "true" : "false");
+    };
+
+    const setButtonLoading = (btn, loading) => {
+      if (!btn) return;
+      if (loading) {
+        if (!btn.dataset.originalHtml) {
+          btn.dataset.originalHtml = btn.innerHTML;
+        }
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+      } else if (btn.dataset.originalHtml) {
+        btn.innerHTML = btn.dataset.originalHtml;
+      }
+    };
+
+    const setActiveFromButton = (btn) => {
+      active = {
+        id: btn.dataset.clientId,
+        uploadUrl: btn.dataset.uploadUrl,
+        downloadUrl: btn.dataset.downloadUrl,
+        button: btn,
+        clientName: btn.dataset.clientName || "",
+      };
+      if (bizregQuickClientName) {
+        bizregQuickClientName.textContent = active.clientName || `#${active.id}`;
+      }
+      resetModalState();
+      return active;
+    };
+
+    const uploadFile = async (file, ctx) => {
+      if (!file || !ctx || !ctx.uploadUrl || !ctx.id) return;
+      const clientId = ctx.id;
+      const btn =
+        ctx.button ||
+        document.querySelector(`.btn-bizreg-upload[data-client-id="${clientId}"]`);
+      let keepDisabled = false;
+
+      setStatus(clientId, "Upload In Progress...", "info");
+      setModalBusy(true);
+      setModalAlert("Business document upload  Analyzing...", "info");
+      if (btn) {
+        btn.disabled = true;
+        setButtonLoading(btn, true);
+      }
+
+      try {
+        const fd = new FormData();
+        fd.append("biz_reg_file", file);
+        const csrf = document
+          .querySelector('meta[name="csrf-token"]')
+          ?.getAttribute("content");
+        if (csrf) fd.append("csrf_token", csrf);
+
+        const resp = await fetch(ctx.uploadUrl, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          throw new Error(data.message || data.error || "Upload Failed.");
+        }
+
+        const fileName = (data.file && data.file.original_name) || file.name;
+        const downloadUrl = data.download_url || ctx.downloadUrl;
+        const parsed = data.parsed || {};
+        const parsedSummary =
+          data.parsed_summary ||
+          parsed.company_name ||
+          parsed.reg_number ||
+          parsed.corp_registration_number ||
+          "";
+        const statusText = parsedSummary ? `${fileName} / ${parsedSummary}` : fileName;
+
+        setStatus(clientId, statusText, "success", downloadUrl);
+        setModalAlert(statusText || "Upload complete", "success");
+        if (downloadUrl && bizregModalDownload) {
+          bizregModalDownload.href = downloadUrl;
+          bizregModalDownload.classList.remove("d-none");
+        }
+
+        if (btn) {
+          keepDisabled = true;
+          btn.dataset.hasBizreg = "1";
+          btn.title = "Business document  Upload";
+          btn.setAttribute("aria-label", "Business document  Upload");
+          btn.setAttribute("aria-disabled", "true");
+          btn.innerHTML = '<i class="bi bi-check2-circle"></i>';
+        }
+      } catch (err) {
+        const msg = err.message || "Upload Failed.";
+        setStatus(clientId, msg, "error");
+        setModalAlert(msg, "danger");
+      } finally {
+        if (btn) {
+          if (!keepDisabled) {
+            setButtonLoading(btn, false);
+          }
+          btn.disabled = keepDisabled ? true : false;
+          btn.classList.remove("is-dragover");
+        }
+        if (bizregModalInput) {
+          bizregModalInput.value = "";
+        }
+        setModalBusy(false);
+      }
+    };
+
+    document.querySelectorAll(".btn-bizreg-upload").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        if (btn.disabled || btn.dataset.hasBizreg === "1") {
+          e.preventDefault();
+          return;
+        }
+        setActiveFromButton(btn);
+      });
+
+      ["dragenter", "dragover"].forEach((evt) => {
+        btn.addEventListener(evt, (e) => {
+          if (btn.disabled || btn.dataset.hasBizreg === "1") return;
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+          btn.classList.add("is-dragover");
+        });
+      });
+
+      ["dragleave", "dragend"].forEach((evt) => {
+        btn.addEventListener(evt, () => {
+          btn.classList.remove("is-dragover");
+        });
+      });
+
+      btn.addEventListener("drop", (e) => {
+        if (btn.disabled || btn.dataset.hasBizreg === "1") return;
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.remove("is-dragover");
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        const ctx = setActiveFromButton(btn);
+        if (bizregModalApi) {
+          bizregModalApi.show();
+        }
+        uploadFile(file, ctx);
+      });
+    });
+
+    if (bizregModalEl) {
+      bizregModalEl.addEventListener("hidden.bs.modal", () => {
+        resetModalState();
+        active = null;
+      });
+    }
+
+    if (bizregModalDropzone && bizregModalInput) {
+      bizregModalDropzone.addEventListener("click", () => {
+        if (!bizregModalDropzone.classList.contains("is-loading")) {
+          bizregModalInput.click();
+        }
+      });
+
+      bizregModalDropzone.addEventListener("keydown", (e) => {
+        if ((e.key === "Enter" || e.key === " ") && !bizregModalDropzone.classList.contains("is-loading")) {
+          e.preventDefault();
+          bizregModalInput.click();
+        }
+      });
+
+      bizregModalInput.addEventListener("change", () => {
+        const file = bizregModalInput.files && bizregModalInput.files[0];
+        if (!file || !active) return;
+        uploadFile(file, active);
+      });
+
+      bizregModalDropzone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        if (bizregModalDropzone.classList.contains("is-loading")) return;
+        bizregModalDropzone.classList.add("is-dragover");
+      });
+
+      ["dragleave", "dragend"].forEach((evt) => {
+        bizregModalDropzone.addEventListener(evt, () => {
+          bizregModalDropzone.classList.remove("is-dragover");
+        });
+      });
+
+      bizregModalDropzone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        bizregModalDropzone.classList.remove("is-dragover");
+        if (bizregModalDropzone.classList.contains("is-loading")) return;
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file || !active) return;
+        uploadFile(file, active);
+      });
+    }
+
+  });
+</script>
+
+<style>
+  .crm-clients-page {
+    --crm-panel-border: rgba(29, 42, 68, 0.12);
+    --crm-panel-bg: rgba(255, 255, 255, 0.9);
+    --crm-ink: #1f2d45;
+    --crm-muted: #627389;
+    --crm-accent: #efad4e;
+    --crm-accent-2: #d58822;
+    --crm-soft: #f7f9fd;
+  }
+
+  .fade-in {
+    animation: crmFadeIn 0.35s ease-in-out;
+  }
+
+  @keyframes crmFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .crm-page-head {
+    border: 1px solid var(--crm-panel-border);
+    background:
+      radial-gradient(85% 120% at 0% 0%, rgba(239, 173, 78, 0.16), transparent 60%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(246, 250, 255, 0.94));
+  }
+
+  .crm-page-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: #84612f;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .crm-top-actions .btn {
+    box-shadow: 0 10px 20px rgba(29, 42, 68, 0.08);
+  }
+
+  .crm-metric-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .crm-metric-item {
+    border: 1px solid var(--crm-panel-border);
+    border-radius: 0.9rem;
+    padding: 0.7rem 0.85rem;
+    background: var(--crm-panel-bg);
+  }
+
+  .crm-metric-label {
+    display: block;
+    color: var(--crm-muted);
+    font-size: 0.78rem;
+  }
+
+  .crm-metric-value {
+    color: var(--crm-ink);
+    font-size: 1.12rem;
+    line-height: 1.2;
+  }
+
+  .crm-filter-card,
+  .crm-table-card,
+  .crm-subpanel-card {
+    border: 1px solid var(--crm-panel-border);
+    background: var(--crm-panel-bg);
+  }
+
+  .crm-search-input {
+    border-radius: 0.85rem;
+    overflow: hidden;
+  }
+
+  .crm-filter-hint kbd {
+    border-radius: 0.4rem;
+    border: 1px solid rgba(29, 42, 68, 0.22);
+    background: #fff;
+    color: #526276;
+    font-size: 0.72rem;
+    padding: 0.12rem 0.34rem;
+  }
+
+  .crm-table-wrap {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .crm-client-table {
+    min-width: 980px;
+    margin-bottom: 0;
+  }
+
+  .crm-client-table thead th {
+    background: #f8fafd;
+    box-shadow: inset 0 -1px 0 rgba(29, 42, 68, 0.08);
+  }
+
+  .crm-client-table tbody tr:hover td {
+    background: rgba(29, 42, 68, 0.035);
+    transition: background-color 0.2s ease;
+  }
+
+  .crm-actions .btn {
+    min-width: 2.2rem;
+  }
+
+  .btn-bizreg-upload {
+    background: #0f8f67;
+    border-color: #0f8f67;
+    color: #fff;
+  }
+
+  .btn-bizreg-upload:hover {
+    background: #0b7956;
+    border-color: #0b7956;
+    color: #fff;
+  }
+
+  .btn-bizreg-upload:disabled {
+    opacity: 0.72;
+  }
+
+  .btn-bizreg-upload.is-dragover {
+    box-shadow: 0 0 0 3px rgba(15, 143, 103, 0.32);
+    outline: 2px dashed #ffffff;
+    outline-offset: -2px;
+  }
+
+  .bizreg-modal-dropzone {
+    border: 2px dashed rgba(15, 143, 103, 0.28);
+    border-radius: 1rem;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background:
+      radial-gradient(circle at top left, rgba(15, 143, 103, 0.08), transparent 45%),
+      linear-gradient(180deg, rgba(248, 250, 255, 0.92), rgba(255, 255, 255, 0.98));
+    cursor: pointer;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+
+  .bizreg-modal-dropzone:hover,
+  .bizreg-modal-dropzone:focus-visible,
+  .bizreg-modal-dropzone.is-dragover {
+    border-color: rgba(15, 143, 103, 0.58);
+    box-shadow: 0 0 0 0.25rem rgba(15, 143, 103, 0.12);
+    transform: translateY(-1px);
+    outline: none;
+  }
+
+  .bizreg-modal-dropzone.is-loading {
+    opacity: 0.72;
+    cursor: progress;
+  }
+
+  .bizreg-modal-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.85rem;
+    background: rgba(15, 143, 103, 0.1);
+    color: #0f8f67;
+    font-size: 1.65rem;
+  }
+
+  @media (max-width: 1199.98px) {
+    .crm-metric-strip {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .crm-metric-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .crm-table-wrap {
+      max-height: none;
+      overflow: visible;
+    }
+
+    #main .crm-table-wrap > .crm-client-table,
+    .crm-client-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    .crm-client-table thead {
+      display: none;
+    }
+
+    .crm-client-table tbody,
+    .crm-client-table tbody tr,
+    .crm-client-table tbody td {
+      display: block;
+      width: 100%;
+    }
+
+    .crm-client-table tbody tr {
+      background: #fff;
+      border-top: 1px solid rgba(29, 42, 68, 0.08);
+      padding: 0.35rem 0;
+    }
+
+    .crm-client-table tbody td {
+      border-bottom: 1px solid rgba(29, 42, 68, 0.08);
+      min-width: 0;
+      overflow-wrap: anywhere;
+      padding: 0.7rem 1rem !important;
+      text-align: left !important;
+    }
+
+    .crm-client-table tbody td[data-label] {
+      display: grid;
+      gap: 0.55rem;
+      grid-template-columns: 5rem minmax(0, 1fr);
+    }
+
+    .crm-client-table tbody td[data-label]::before {
+      color: var(--crm-muted);
+      content: attr(data-label);
+      font-size: 0.78rem;
+      font-weight: 800;
+      padding-top: 0.08rem;
+    }
+
+    .crm-client-table tbody td[data-label] > * {
+      min-width: 0;
+    }
+
+    .crm-client-table tbody td[data-label="Client"] {
+      display: block;
+    }
+
+    .crm-client-table tbody td[data-label="Client"]::before {
+      display: block;
+      margin-bottom: 0.35rem;
+    }
+
+    .crm-actions {
+      justify-content: flex-start !important;
+    }
+
+    .crm-top-actions {
+      width: 100%;
+    }
+
+    .crm-top-actions .btn {
+      flex: 1 1 auto;
+      justify-content: center;
+    }
+  }
+</style>
+{% endblock %}

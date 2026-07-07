@@ -1,0 +1,59 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">View business profile</h2>
+  <div class="page-actions">
+   {% if is_admin() %}
+    <a class="btn" href="{{ url_for('mgmt_info.edit_business_profile', profile_id=profile['id']) }}">Edit</a>
+   {% endif %}
+   <a class="btn btn-ghost" href="{{ url_for('mgmt_info.list_business_profiles') }}">List</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <div class="grid grid-2">
+   <div>
+    <div class="muted">Representative name</div>
+    <div style="font-weight:600;">{{ profile['name'] }}</div>
+   </div>
+   <div>
+    <div class="muted">Sort order</div>
+    <div>{{ profile.get('sort_order') if profile.get('sort_order') is not none else '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Tax ID / EIN</div>
+    <div>{{ profile['tax_id'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Email</div>
+    <div>{{ profile['email'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Phone</div>
+    <div>{{ profile['phone'] or '-' }}</div>
+   </div>
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <div class="muted">Address</div>
+    <div>{{ profile['address'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Currency</div>
+    <div>{{ profile['currency'] or 'USD' }}</div>
+   </div>
+   <div>
+    <div class="muted">Sales tax(%)</div>
+    <div>{{ profile['vat_rate'] or 0 }}%</div>
+   </div>
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <div class="muted">Bank account</div>
+    <div style="white-space:pre-wrap;">{{ profile['bank_account'] or '-' }}</div>
+   </div>
+   {% if profile['logo_path'] %}
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <div class="muted"></div>
+    <div><img src="{{ profile['logo_path']|invoice_logo_url }}" alt="" class="logo-img" style="max-width:220px; border:1px solid #ddd;" loading="lazy" decoding="async" /></div>
+   </div>
+   {% endif %}
+  </div>
+ </div>
+{% endblock %}

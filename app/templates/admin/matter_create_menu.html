@@ -1,0 +1,1164 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Matter Create Menu{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.case_parameters_page') }}"><i class="bi bi-sliders"></i> Matter Parameters</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('case_work.select_matter_create') }}"><i class="bi bi-window"></i> New Matter Wizard</a>
+{% endblock %}
+
+{% block admin_content %}
+<form id="matter-create-menu-form" class="matter-create-menu-page">
+  <datalist id="case-menu-field-key-options">
+    {% for field in case_menu_field_options %}
+    <option value="{{ field.key }}">{{ field.label }}{% if field.input_type %} - {{ field.input_type }}{% endif %}</option>
+    {% endfor %}
+  </datalist>
+  <datalist id="case-menu-group-options"></datalist>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="small text-muted">
+      Configure the sections shown in <b>New Matter Wizard</b>, then choose which parameters appear on the create matter form for each matter type.
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="case-menu-default-btn">
+        <i class="bi bi-arrow-counterclockwise"></i> Use default
+      </button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="case-menu-preview-btn">
+        <i class="bi bi-check2-circle"></i> Validate
+      </button>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-save"></i> Save menu
+      </button>
+    </div>
+  </div>
+
+  <div id="matter-create-menu-wizard" class="row g-3 align-items-start">
+    <div class="col-12 col-xl-5">
+      <div class="border rounded bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-center gap-2 p-3 border-bottom">
+          <div>
+            <div class="fw-semibold">New Matter Wizard</div>
+            <div class="small text-muted">Sections and matter type buttons</div>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-section">
+            <i class="bi bi-plus-lg"></i> Section
+          </button>
+        </div>
+        <div id="matter-menu-sections" class="p-3 vstack gap-3"></div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+      <div class="border rounded bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-center gap-2 p-3 border-bottom">
+          <div>
+            <div class="fw-semibold">Matter Type Setup</div>
+            <div class="small text-muted">Edit display, profile inheritance, namespace, and create-form parameters.</div>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-item">
+            <i class="bi bi-plus-lg"></i> Matter type
+          </button>
+        </div>
+        <div id="matter-create-menu-editor" class="p-3"></div>
+      </div>
+    </div>
+  </div>
+
+  <details class="border rounded bg-white shadow-sm p-3 mt-3">
+    <summary class="fw-semibold">Advanced JSON</summary>
+    <div class="mt-3">
+      <label class="form-label">{{ case_menu_config_key }}</label>
+      <textarea id="case-menu-json" class="form-control font-monospace" rows="14" spellcheck="false">{{ case_menu_value }}</textarea>
+      <div class="form-text">
+        The visual editor writes this JSON. Advanced keys such as <code>forced_app_route</code>, <code>supports_image</code>, and <code>auto_status</code> can still be edited here.
+      </div>
+    </div>
+  </details>
+
+  <pre id="case-menu-preview" class="small bg-light border rounded p-2 mt-3 mb-0 d-none"></pre>
+</form>
+
+<style>
+  .matter-create-menu-page .wizard-section-card {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .matter-create-menu-page .wizard-icon {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+  .matter-create-menu-page .wizard-item-btn {
+    min-height: 46px;
+    border-color: rgba(0, 0, 0, 0.14);
+  }
+  .matter-create-menu-page .wizard-item-btn.active {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.12);
+  }
+  .matter-create-menu-page .create-form-preview {
+    display: block;
+  }
+  .matter-create-menu-page .matter-form-preview {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .matter-create-menu-page .matter-form-section + .matter-form-section {
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+  }
+  .matter-create-menu-page .matter-preview-title {
+    background: #f8f9fa;
+    padding: 8px 10px;
+    font-weight: 700;
+  }
+  .matter-create-menu-page .matter-preview-table {
+    table-layout: fixed;
+    min-width: 760px;
+  }
+  .matter-create-menu-page .matter-preview-table th {
+    background: #f8f9fa;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #495057;
+    overflow-wrap: anywhere;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .matter-create-menu-page .matter-preview-table td {
+    vertical-align: middle;
+  }
+  .matter-create-menu-page .parameter-health {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .matter-create-menu-page .parameter-health .badge {
+    font-weight: 500;
+  }
+  @media (max-width: 767.98px) {
+    .matter-create-menu-page .matter-preview-table {
+      min-width: 680px;
+    }
+  }
+</style>
+
+<script>
+  const caseMenuSaveUrl = "{{ url_for('admin.api_matter_create_menu') }}";
+  const caseMenuValidateUrl = "{{ url_for('admin.api_matter_create_menu_validate') }}";
+  const caseMenuInitialConfig = {{ case_menu_value|tojson }};
+  const caseMenuDefaultConfig = {{ default_case_menu_config|tojson }};
+  const caseMenuFieldOptions = {{ case_menu_field_options|tojson }};
+  const caseMenuDivisions = ["DOM", "INC", "OUT", "ETC"];
+  const caseMenuProfileTypes = ["PATENT", "UTILITY", "DESIGN", "TRADEMARK", "PCT", "LITIGATION", "MISC"];
+  const caseMenuThemes = ["primary", "success", "info", "secondary", "warning", "danger", "dark"];
+  const fieldOptionMap = Object.fromEntries(caseMenuFieldOptions.map((field) => [String(field.key || ""), field]));
+  let caseMenuEditorState = { version: 1, sections: [] };
+  let selectedSectionIndex = 0;
+  let selectedItemIndex = 0;
+  let caseMenuJsonDirty = false;
+
+  const readCsrfToken = () =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+  const escapeHtml = (value) =>
+    String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  function caseMenuList(value) {
+    return Array.isArray(value) ? value : [];
+  }
+
+  function caseMenuNumber(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function caseMenuOptionalNumber(value) {
+    if (value === null || value === undefined || value === "") return "";
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : "";
+  }
+
+  function splitCaseMenuList(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item || "").trim()).filter(Boolean);
+    }
+    return String(value || "")
+      .split(/[\n,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  function caseMenuSlug(value, fallback) {
+    const slug = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug || fallback;
+  }
+
+  function caseMenuNamespace(value, division, type) {
+    const raw = String(value || "").trim();
+    if (raw) return raw;
+    return `custom_${String(division || "case").toLowerCase()}_${String(type || "matter").toLowerCase()}`.replace(/[^a-z0-9_]+/g, "_");
+  }
+
+  function sortCaseMenuRows(rows) {
+    return caseMenuList(rows).sort((a, b) => {
+      const orderA = caseMenuNumber(a?.order, 0);
+      const orderB = caseMenuNumber(b?.order, 0);
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a?.label || a?.id || "").localeCompare(String(b?.label || b?.id || ""));
+    });
+  }
+
+  function parseCaseMenuConfig(raw) {
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw || "{}") : raw;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch (ignored) {}
+    try {
+      return JSON.parse(caseMenuDefaultConfig || "{}");
+    } catch (ignored) {
+      return { version: 1, sections: [] };
+    }
+  }
+
+  function hydrateCaseMenuState(raw) {
+    const config = parseCaseMenuConfig(raw);
+    const sections = sortCaseMenuRows(config.sections).map((section, sectionIndex) => {
+      const nextSection = { ...(section || {}) };
+      nextSection.id = String(nextSection.id || `section-${sectionIndex + 1}`);
+      nextSection.label = String(nextSection.label || "Case Menu");
+      nextSection.description = String(nextSection.description || "");
+      nextSection.division = String(nextSection.division || "INC").toUpperCase();
+      nextSection.icon = String(nextSection.icon || "bi-folder");
+      nextSection.theme = String(nextSection.theme || "secondary");
+      nextSection.order = caseMenuNumber(nextSection.order, (sectionIndex + 1) * 10);
+      nextSection.enabled = nextSection.enabled !== false;
+      nextSection.items = sortCaseMenuRows(nextSection.items).map((item, itemIndex) => {
+        const nextItem = { ...(item || {}) };
+        nextItem.id = String(nextItem.id || `${nextSection.division.toLowerCase()}-item-${itemIndex + 1}`);
+        nextItem.label = String(nextItem.label || nextItem.type || "New Matter");
+        nextItem.description = String(nextItem.description || "");
+        nextItem.division = String(nextItem.division || nextSection.division || "INC").toUpperCase();
+        nextItem.type = String(nextItem.type || nextItem.case_type || "CUSTOM").toUpperCase();
+        nextItem.order = caseMenuNumber(nextItem.order, (itemIndex + 1) * 10);
+        nextItem.enabled = nextItem.enabled !== false;
+        nextItem.profile_division = String(nextItem.profile_division ?? nextItem.division ?? "").toUpperCase();
+        nextItem.profile_type = String(nextItem.profile_type || "PATENT").toUpperCase();
+        nextItem.profile_group = String(nextItem.profile_group || "");
+        nextItem.namespace = caseMenuNamespace(nextItem.namespace, nextItem.division, nextItem.type);
+        nextItem.fields_inherited = nextItem.fields_inherited === true;
+        const rawExtraAllowed = Array.isArray(nextItem.field_mapping?.extra_allowed)
+          ? nextItem.field_mapping.extra_allowed
+          : nextItem.extra_allowed;
+        nextItem.extra_allowed = splitCaseMenuList(rawExtraAllowed);
+        const rawFields = Array.isArray(nextItem.field_mapping?.fields)
+          ? nextItem.field_mapping.fields
+          : nextItem.fields;
+        nextItem.fields = caseMenuList(rawFields).map((field, fieldIndex) => {
+          if (typeof field === "string") {
+            return { key: field, order: fieldIndex + 1, col: 1, required: false };
+          }
+          const nextField = { ...(field || {}) };
+          nextField.key = String(nextField.key || "");
+          nextField.order = caseMenuNumber(nextField.order, fieldIndex + 1);
+          nextField.col = caseMenuNumber(nextField.col, 1) === 2 ? 2 : 1;
+          nextField.required = Boolean(nextField.required);
+          nextField.group = String(nextField.group || field.section || "");
+          nextField.group_order = caseMenuOptionalNumber(nextField.group_order ?? field.section_order);
+          return nextField;
+        });
+        return nextItem;
+      });
+      return nextSection;
+    });
+    return { version: config.version || 1, sections };
+  }
+
+  function cleanCaseMenuState() {
+    return {
+      version: caseMenuEditorState.version || 1,
+      sections: caseMenuList(caseMenuEditorState.sections).map((section, sectionIndex) => {
+        const cleanSection = { ...(section || {}) };
+        cleanSection.id = caseMenuSlug(cleanSection.id || cleanSection.label, `section-${sectionIndex + 1}`);
+        cleanSection.label = String(cleanSection.label || "Case Menu").trim();
+        cleanSection.description = String(cleanSection.description || "").trim();
+        cleanSection.division = String(cleanSection.division || "INC").trim().toUpperCase();
+        cleanSection.icon = String(cleanSection.icon || "bi-folder").trim();
+        cleanSection.theme = String(cleanSection.theme || "secondary").trim();
+        cleanSection.order = caseMenuNumber(cleanSection.order, (sectionIndex + 1) * 10);
+        cleanSection.enabled = cleanSection.enabled !== false;
+        cleanSection.items = caseMenuList(cleanSection.items).map((item, itemIndex) => {
+          const cleanItem = { ...(item || {}) };
+          cleanItem.id = caseMenuSlug(cleanItem.id || cleanItem.label || cleanItem.type, `${cleanSection.division.toLowerCase()}-item-${itemIndex + 1}`);
+          cleanItem.label = String(cleanItem.label || cleanItem.type || "New Matter").trim();
+          cleanItem.description = String(cleanItem.description || "").trim();
+          cleanItem.division = String(cleanItem.division || cleanSection.division || "INC").trim().toUpperCase();
+          cleanItem.type = String(cleanItem.type || cleanItem.case_type || "CUSTOM").trim().toUpperCase();
+          cleanItem.order = caseMenuNumber(cleanItem.order, (itemIndex + 1) * 10);
+          cleanItem.enabled = cleanItem.enabled !== false;
+          cleanItem.profile_division = String(cleanItem.profile_division ?? cleanItem.division ?? "").trim().toUpperCase();
+          cleanItem.profile_type = String(cleanItem.profile_type || "PATENT").trim().toUpperCase();
+          cleanItem.profile_group = String(cleanItem.profile_group || "").trim();
+          cleanItem.namespace = caseMenuNamespace(cleanItem.namespace, cleanItem.division, cleanItem.type);
+          cleanItem.extra_allowed = splitCaseMenuList(cleanItem.extra_allowed);
+          if (cleanItem.fields_inherited === true) {
+            delete cleanItem.fields;
+          } else {
+            cleanItem.fields = caseMenuList(cleanItem.fields)
+              .map((field, fieldIndex) => {
+                const cleanField = {
+                  key: String(field?.key || "").trim(),
+                  order: caseMenuNumber(field?.order, fieldIndex + 1),
+                  col: caseMenuNumber(field?.col, 1) === 2 ? 2 : 1,
+                  required: Boolean(field?.required),
+                  group: String(field?.group || field?.section || "").trim(),
+                };
+                const groupOrder = caseMenuOptionalNumber(field?.group_order ?? field?.section_order);
+                if (groupOrder !== "") cleanField.group_order = groupOrder;
+                return cleanField;
+              })
+              .filter((field) => field.key);
+          }
+          delete cleanItem.case_type;
+          delete cleanItem.field_mapping;
+          delete cleanItem.fields_inherited;
+          delete cleanItem.list_endpoint;
+          delete cleanItem.is_custom;
+          return cleanItem;
+        });
+        delete cleanSection.collapse_id;
+        delete cleanSection.heading_id;
+        delete cleanSection.legacy_paths;
+        return cleanSection;
+      }),
+    };
+  }
+
+  function syncCaseMenuTextarea() {
+    const textarea = document.getElementById("case-menu-json");
+    if (!textarea) return;
+    textarea.value = JSON.stringify(cleanCaseMenuState(), null, 2);
+    caseMenuJsonDirty = false;
+  }
+
+  function ensureSelection() {
+    const sections = caseMenuList(caseMenuEditorState.sections);
+    if (!sections.length) {
+      selectedSectionIndex = -1;
+      selectedItemIndex = -1;
+      return;
+    }
+    selectedSectionIndex = Math.max(0, Math.min(selectedSectionIndex, sections.length - 1));
+    const items = caseMenuList(sections[selectedSectionIndex].items);
+    selectedItemIndex = items.length ? Math.max(0, Math.min(selectedItemIndex, items.length - 1)) : -1;
+  }
+
+  function selectedSection() {
+    ensureSelection();
+    return caseMenuEditorState.sections[selectedSectionIndex] || null;
+  }
+
+  function selectedItem() {
+    const section = selectedSection();
+    if (!section) return null;
+    return caseMenuList(section.items)[selectedItemIndex] || null;
+  }
+
+  function fieldLabel(key) {
+    const field = fieldOptionMap[String(key || "")];
+    return field?.label || key || "Parameter";
+  }
+
+  function fieldInputType(key) {
+    return fieldOptionMap[String(key || "")]?.input_type || "text";
+  }
+
+  function caseMenuFieldGroups() {
+    const groups = new Set(["Default/Responsible", "Management", "Applicant/Title", "Filing/Publication", "Priority", "Registration", "Abandoned/Other/Done"]);
+    caseMenuList(caseMenuEditorState.sections).forEach((section) => {
+      caseMenuList(section.items).forEach((item) => {
+        caseMenuList(item.fields).forEach((field) => {
+          const group = String(field.group || "").trim();
+          if (group) groups.add(group);
+        });
+      });
+    });
+    return [...groups].sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderGroupOptions() {
+    const datalist = document.getElementById("case-menu-group-options");
+    if (!datalist) return;
+    datalist.innerHTML = caseMenuFieldGroups()
+      .map((group) => `<option value="${escapeHtml(group)}"></option>`)
+      .join("");
+  }
+
+  function parameterInsights(item) {
+    const fields = [...caseMenuList(item?.fields)].sort((a, b) => caseMenuNumber(a.order, 0) - caseMenuNumber(b.order, 0));
+    const seen = new Set();
+    const duplicateKeys = new Set();
+    const unknownKeys = new Set();
+    const groups = new Set();
+    let requiredCount = 0;
+    let leftCount = 0;
+    let rightCount = 0;
+    fields.forEach((field) => {
+      const key = String(field.key || "").trim();
+      if (!key) return;
+      if (seen.has(key)) duplicateKeys.add(key);
+      seen.add(key);
+      if (!fieldOptionMap[key]) unknownKeys.add(key);
+      if (field.required) requiredCount += 1;
+      if (Number(field.col || 1) === 2) rightCount += 1;
+      else leftCount += 1;
+      const group = String(field.group || "").trim();
+      if (group) groups.add(group);
+    });
+    return { fields, duplicateKeys, unknownKeys, groups, requiredCount, leftCount, rightCount };
+  }
+
+  function renderParameterHealth(item) {
+    const stats = parameterInsights(item);
+    const warnings = [];
+    if (stats.duplicateKeys.size) {
+      warnings.push(`Duplicate: ${[...stats.duplicateKeys].join(", ")}`);
+    }
+    if (stats.unknownKeys.size) {
+      warnings.push(`Unknown: ${[...stats.unknownKeys].join(", ")}`);
+    }
+    return `
+      <div class="parameter-health mb-3">
+        <span class="badge text-bg-light border">Fields ${stats.fields.length}</span>
+        <span class="badge text-bg-light border">Required ${stats.requiredCount}</span>
+        <span class="badge text-bg-light border">Left ${stats.leftCount}</span>
+        <span class="badge text-bg-light border">Right ${stats.rightCount}</span>
+        <span class="badge text-bg-light border">Groups ${stats.groups.size}</span>
+        ${item?.fields_inherited ? '<span class="badge text-bg-info">Profile defaults</span>' : '<span class="badge text-bg-secondary">Custom layout</span>'}
+        ${warnings.map((warning) => `<span class="badge text-bg-warning">${escapeHtml(warning)}</span>`).join("")}
+      </div>
+    `;
+  }
+
+  function selectOptions(values, selected, includeBlank = false) {
+    const allValues = includeBlank ? ["", ...values] : values;
+    return allValues
+      .map((value) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected || "") ? "selected" : ""}>${escapeHtml(value || "-")}</option>`)
+      .join("");
+  }
+
+  function iconThemeClass(theme) {
+    return `bg-${theme || "secondary"} bg-opacity-10 text-${theme || "secondary"}`;
+  }
+
+  function renderWizardSections() {
+    const container = document.getElementById("matter-menu-sections");
+    ensureSelection();
+    if (!container) return;
+    const sections = caseMenuList(caseMenuEditorState.sections);
+    if (!sections.length) {
+      container.innerHTML = '<div class="text-muted small border rounded p-3 bg-light">No sections configured.</div>';
+      return;
+    }
+    container.innerHTML = sections.map((section, sectionIndex) => `
+      <div class="wizard-section-card" data-section-index="${sectionIndex}">
+        <div class="d-flex align-items-start gap-3 p-3 border-bottom">
+          <button type="button" class="btn ${iconThemeClass(section.theme)} rounded-circle wizard-icon d-inline-flex align-items-center justify-content-center" data-select-section="${sectionIndex}" title="Select section">
+            <i class="bi ${escapeHtml(section.icon || "bi-folder")}"></i>
+          </button>
+          <div class="flex-grow-1 min-w-0">
+            <button type="button" class="btn btn-link text-start text-decoration-none p-0 fw-semibold text-dark" data-select-section="${sectionIndex}">
+              ${escapeHtml(section.label || "Case Menu")}
+            </button>
+            <div class="small text-muted">${escapeHtml(section.description || "")}</div>
+            <div class="small text-muted mt-1">${escapeHtml(section.division || "")} - ${caseMenuList(section.items).length} matter types</div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-action="move-section-up" title="Move section up"><i class="bi bi-arrow-up"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-action="move-section-down" title="Move section down"><i class="bi bi-arrow-down"></i></button>
+          </div>
+        </div>
+        <div class="p-3 d-grid gap-2">
+          ${caseMenuList(section.items).map((item, itemIndex) => `
+            <button type="button" class="btn btn-outline-light text-dark text-start py-2 d-flex align-items-center wizard-item-btn ${sectionIndex === selectedSectionIndex && itemIndex === selectedItemIndex ? "active" : ""}" data-select-section="${sectionIndex}" data-select-item="${itemIndex}">
+              <span class="flex-grow-1">
+                <span class="fw-medium">${escapeHtml(item.label || "Matter type")}</span>
+                <span class="small text-muted d-block">${escapeHtml(item.division || "")}:${escapeHtml(item.type || "")} - ${caseMenuList(item.fields).length} parameters${item.fields_inherited ? " (profile)" : ""}</span>
+              </span>
+              <i class="bi bi-chevron-right text-muted small"></i>
+            </button>
+          `).join("") || '<div class="text-muted small border rounded p-2 bg-light">No matter types configured.</div>'}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function renderPreviewControl(field) {
+    const inputType = fieldInputType(field.key);
+    if (inputType === "textarea") {
+      return '<textarea class="form-control form-control-sm" rows="2" disabled></textarea>';
+    }
+    if (inputType === "select" || inputType === "multiselect") {
+      return '<select class="form-select form-select-sm" disabled><option></option></select>';
+    }
+    if (inputType === "checkbox") {
+      return '<input class="form-check-input" type="checkbox" disabled>';
+    }
+    const htmlType = inputType === "date" ? "date" : "text";
+    return `<input class="form-control form-control-sm" type="${htmlType}" disabled>`;
+  }
+
+  function groupedParameterSections(item) {
+    const groups = new Map();
+    parameterInsights(item).fields.forEach((field, index) => {
+      const label = String(field.group || "").trim() || "Registry";
+      const order = caseMenuOptionalNumber(field.group_order);
+      if (!groups.has(label)) {
+        groups.set(label, {
+          label,
+          order: order === "" ? null : Number(order),
+          first: index,
+          fields: [],
+        });
+      } else if (order !== "") {
+        const group = groups.get(label);
+        group.order = group.order === null ? Number(order) : Math.min(group.order, Number(order));
+      }
+      groups.get(label).fields.push(field);
+    });
+    return [...groups.values()]
+      .sort((a, b) => {
+        const orderA = a.order === null ? 10000 + a.first : a.order;
+        const orderB = b.order === null ? 10000 + b.first : b.order;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.first - b.first;
+      })
+      .map((group) => ({
+        ...group,
+        fields: group.fields.sort((a, b) => {
+          const orderA = caseMenuNumber(a.order, 0);
+          const orderB = caseMenuNumber(b.order, 0);
+          if (orderA !== orderB) return orderA - orderB;
+          return caseMenuNumber(a.col, 1) - caseMenuNumber(b.col, 1);
+        }),
+      }));
+  }
+
+  function renderPreviewCells(field) {
+    if (!field) {
+      return '<th>&nbsp;</th><td>&nbsp;</td>';
+    }
+    return `
+      <th>
+        ${escapeHtml(fieldLabel(field.key))}
+        ${field.required ? '<span class="text-danger">*</span>' : ""}
+      </th>
+      <td>${renderPreviewControl(field)}</td>
+    `;
+  }
+
+  function renderPreviewSection(section) {
+    const left = section.fields.filter((field) => Number(field.col || 1) !== 2);
+    const right = section.fields.filter((field) => Number(field.col || 1) === 2);
+    const rowCount = Math.max(left.length, right.length, 1);
+    const rows = [];
+    for (let index = 0; index < rowCount; index += 1) {
+      rows.push(`
+        <tr>
+          ${renderPreviewCells(left[index])}
+          ${renderPreviewCells(right[index])}
+        </tr>
+      `);
+    }
+    return `
+      <section class="matter-form-section">
+        <div class="matter-preview-title">${escapeHtml(section.label)}</div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-sm small align-middle mb-0 matter-preview-table">
+            <colgroup>
+              <col style="width: 14%;">
+              <col style="width: 36%;">
+              <col style="width: 14%;">
+              <col style="width: 36%;">
+            </colgroup>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderParameterPreview(item) {
+    const sections = groupedParameterSections(item);
+    if (!sections.length) {
+      return '<div class="text-muted small border rounded p-3 bg-light">No create-form parameters configured for this matter type.</div>';
+    }
+    return `
+      <div class="create-form-preview matter-form-preview">
+        ${sections.map(renderPreviewSection).join("")}
+      </div>
+    `;
+  }
+
+  function renderParameterRows(item) {
+    const fields = parameterInsights(item).fields;
+    if (!fields.length) {
+      return '<div class="text-muted small border rounded p-3 bg-light">No create-form parameters configured for this matter type.</div>';
+    }
+    return `
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Parameter</th>
+              <th style="width:90px">Order</th>
+              <th style="width:115px">Column</th>
+              <th style="width:170px">Group</th>
+              <th style="width:118px">Group order</th>
+              <th style="width:95px">Required</th>
+              <th style="width:112px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fields.map((field, fieldIndex) => `
+              <tr data-field-index="${fieldIndex}">
+                <td>
+                  <input class="form-control form-control-sm" list="case-menu-field-key-options" data-field-prop="key" value="${escapeHtml(field.key || "")}" placeholder="application_no">
+                  <div class="small text-muted">${escapeHtml(fieldLabel(field.key))} - ${escapeHtml(fieldInputType(field.key))}</div>
+                </td>
+                <td><input class="form-control form-control-sm" type="number" data-field-prop="order" value="${escapeHtml(field.order ?? fieldIndex + 1)}"></td>
+                <td>
+                  <select class="form-select form-select-sm" data-field-prop="col">
+                    <option value="1" ${Number(field.col || 1) === 1 ? "selected" : ""}>Left</option>
+                    <option value="2" ${Number(field.col || 1) === 2 ? "selected" : ""}>Right</option>
+                  </select>
+                </td>
+                <td><input class="form-control form-control-sm" data-field-prop="group" list="case-menu-group-options" value="${escapeHtml(field.group || "")}" placeholder="Default/Responsible"></td>
+                <td><input class="form-control form-control-sm" type="number" step="0.1" data-field-prop="group_order" value="${escapeHtml(field.group_order ?? "")}" placeholder="10"></td>
+                <td class="text-center">
+                  <input class="form-check-input" type="checkbox" data-field-prop="required" ${field.required ? "checked" : ""}>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-field-up" title="Move parameter up"><i class="bi bi-arrow-up"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-field-down" title="Move parameter down"><i class="bi bi-arrow-down"></i></button>
+                    <button type="button" class="btn btn-outline-danger" data-action="delete-field" title="Delete parameter"><i class="bi bi-trash"></i></button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderEditor() {
+    const editor = document.getElementById("matter-create-menu-editor");
+    ensureSelection();
+    if (!editor) return;
+    const section = selectedSection();
+    const item = selectedItem();
+    if (!section) {
+      editor.innerHTML = '<div class="text-muted small border rounded p-3 bg-light">Add a section to start configuring the create menu.</div>';
+      return;
+    }
+    if (!item) {
+      editor.innerHTML = `
+        <div class="vstack gap-3">
+          ${renderSectionSettings(section)}
+          <div class="text-muted small border rounded p-3 bg-light">Add a matter type to this section.</div>
+        </div>
+      `;
+      return;
+    }
+    editor.innerHTML = `
+      <div class="vstack gap-3">
+        ${renderSectionSettings(section)}
+        ${renderItemSettings(item)}
+        <section class="border rounded p-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+              <div class="fw-semibold">Create matter parameters</div>
+              <div class="small text-muted">${caseMenuList(item.fields).length} fields shown on create form${item.fields_inherited ? " from profile defaults" : ""}</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-action="inherit-fields">
+                <i class="bi bi-diagram-3"></i> Use profile defaults
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-action="customize-fields">
+                <i class="bi bi-pencil-square"></i> Customize
+              </button>
+            </div>
+          </div>
+          ${renderParameterHealth(item)}
+          ${renderParameterPreview(item)}
+          <div class="row g-2 align-items-end mt-3">
+            <div class="col-md-4">
+              <label class="form-label small" for="parameter-add-key">Add parameter</label>
+              <input id="parameter-add-key" class="form-control form-control-sm" list="case-menu-field-key-options" placeholder="Search field key">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small" for="parameter-add-group">Group</label>
+              <input id="parameter-add-group" class="form-control form-control-sm" list="case-menu-group-options" placeholder="Default/Responsible">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small" for="parameter-add-group-order">Group order</label>
+              <input id="parameter-add-group-order" class="form-control form-control-sm" type="number" step="0.1" placeholder="10">
+            </div>
+            <div class="col-6 col-md-1">
+              <label class="form-label small" for="parameter-add-col">Column</label>
+              <select id="parameter-add-col" class="form-select form-select-sm">
+                <option value="1">Left</option>
+                <option value="2">Right</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-1">
+              <div class="form-check mt-4">
+                <input id="parameter-add-required" class="form-check-input" type="checkbox">
+                <label class="form-check-label small" for="parameter-add-required">Required</label>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-field"><i class="bi bi-plus-lg"></i> Add</button>
+            </div>
+          </div>
+          <div class="mt-3">${renderParameterRows(item)}</div>
+        </section>
+      </div>
+    `;
+  }
+
+  function renderSectionSettings(section) {
+    return `
+      <section class="border rounded p-3">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+          <div class="fw-semibold">Section</div>
+          <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-section"><i class="bi bi-trash"></i> Delete</button>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label small">Label</label>
+            <input class="form-control form-control-sm" data-section-prop="label" value="${escapeHtml(section.label || "")}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Division</label>
+            <select class="form-select form-select-sm" data-section-prop="division">${selectOptions(caseMenuDivisions, section.division || "INC")}</select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Theme</label>
+            <select class="form-select form-select-sm" data-section-prop="theme">${selectOptions(caseMenuThemes, section.theme || "secondary")}</select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Order</label>
+            <input class="form-control form-control-sm" type="number" data-section-prop="order" value="${escapeHtml(section.order || 10)}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Icon</label>
+            <input class="form-control form-control-sm" data-section-prop="icon" value="${escapeHtml(section.icon || "bi-folder")}">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label small">Description</label>
+            <input class="form-control form-control-sm" data-section-prop="description" value="${escapeHtml(section.description || "")}">
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderItemSettings(item) {
+    return `
+      <section class="border rounded p-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <div class="fw-semibold">${escapeHtml(item.label || "Matter type")}</div>
+            <div class="small text-muted">${escapeHtml(item.division || "")}:${escapeHtml(item.type || "")} / namespace ${escapeHtml(item.namespace || "")}</div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-action="move-item-up" title="Move matter type up"><i class="bi bi-arrow-up"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-action="move-item-down" title="Move matter type down"><i class="bi bi-arrow-down"></i></button>
+            <button type="button" class="btn btn-outline-danger" data-action="delete-item" title="Delete matter type"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-4">
+            <label class="form-label small">Label</label>
+            <input class="form-control form-control-sm" data-item-prop="label" value="${escapeHtml(item.label || "")}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Division</label>
+            <select class="form-select form-select-sm" data-item-prop="division">${selectOptions(caseMenuDivisions, item.division || "INC")}</select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Type</label>
+            <input class="form-control form-control-sm" data-item-prop="type" value="${escapeHtml(item.type || "")}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Order</label>
+            <input class="form-control form-control-sm" type="number" data-item-prop="order" value="${escapeHtml(item.order || 10)}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Profile division</label>
+            <select class="form-select form-select-sm" data-item-prop="profile_division">${selectOptions(caseMenuDivisions, item.profile_division || "", true)}</select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Profile type</label>
+            <select class="form-select form-select-sm" data-item-prop="profile_type">${selectOptions(caseMenuProfileTypes, item.profile_type || "PATENT")}</select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Namespace</label>
+            <input class="form-control form-control-sm" data-item-prop="namespace" value="${escapeHtml(item.namespace || "")}">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label small">Description</label>
+            <input class="form-control form-control-sm" data-item-prop="description" value="${escapeHtml(item.description || "")}">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small">Extra allowed field keys</label>
+            <textarea class="form-control form-control-sm" rows="2" data-item-prop="extra_allowed">${escapeHtml(caseMenuList(item.extra_allowed).join("\n"))}</textarea>
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" data-item-prop="enabled" ${item.enabled !== false ? "checked" : ""}>
+              <label class="form-check-label small">Enabled</label>
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAll() {
+    renderGroupOptions();
+    renderWizardSections();
+    renderEditor();
+    syncCaseMenuTextarea();
+  }
+
+  function markDirty() {
+    syncCaseMenuTextarea();
+    renderWizardSections();
+  }
+
+  function resequence(rows) {
+    caseMenuList(rows).forEach((row, index) => {
+      row.order = (index + 1) * 10;
+    });
+  }
+
+  function moveRow(rows, index, delta) {
+    const next = index + delta;
+    if (next < 0 || next >= rows.length) return false;
+    const [row] = rows.splice(index, 1);
+    rows.splice(next, 0, row);
+    resequence(rows);
+    return true;
+  }
+
+  function addSection() {
+    const nextOrder = (caseMenuEditorState.sections.length + 1) * 10;
+    caseMenuEditorState.sections.push({
+      id: `section-${caseMenuEditorState.sections.length + 1}`,
+      label: "New Section",
+      description: "",
+      division: "INC",
+      icon: "bi-folder",
+      theme: "secondary",
+      order: nextOrder,
+      enabled: true,
+      items: [],
+    });
+    selectedSectionIndex = caseMenuEditorState.sections.length - 1;
+    selectedItemIndex = -1;
+    renderAll();
+  }
+
+  function addItem() {
+    const section = selectedSection();
+    if (!section) {
+      addSection();
+      return;
+    }
+    section.items = caseMenuList(section.items);
+    const nextOrder = (section.items.length + 1) * 10;
+    const division = section.division || "INC";
+    section.items.push({
+      id: `${String(division).toLowerCase()}-custom-${section.items.length + 1}`,
+      label: "New Matter",
+      description: "",
+      division,
+      type: "CUSTOM",
+      order: nextOrder,
+      enabled: true,
+      profile_division: division,
+      profile_type: "PATENT",
+      profile_group: "",
+      namespace: caseMenuNamespace("", division, "CUSTOM"),
+      fields: [],
+      fields_inherited: false,
+      extra_allowed: [],
+    });
+    selectedItemIndex = section.items.length - 1;
+    renderAll();
+  }
+
+  function markFieldsCustom(item) {
+    if (!item) return;
+    item.fields = caseMenuList(item.fields);
+    item.fields_inherited = false;
+  }
+
+  function addField() {
+    const item = selectedItem();
+    if (!item) return;
+    const keyInput = document.getElementById("parameter-add-key");
+    const key = String(keyInput?.value || "").trim();
+    if (!key) return;
+    markFieldsCustom(item);
+    const nextOrder = caseMenuList(item.fields).reduce((max, field) => Math.max(max, caseMenuNumber(field.order, 0)), 0) + 10;
+    const nextField = {
+      key,
+      order: nextOrder,
+      col: Number(document.getElementById("parameter-add-col")?.value || 1) === 2 ? 2 : 1,
+      required: Boolean(document.getElementById("parameter-add-required")?.checked),
+      group: String(document.getElementById("parameter-add-group")?.value || "").trim(),
+    };
+    const groupOrder = caseMenuOptionalNumber(document.getElementById("parameter-add-group-order")?.value);
+    if (groupOrder !== "") nextField.group_order = groupOrder;
+    item.fields.push(nextField);
+    renderAll();
+  }
+
+  function updateSelectedSection(prop, target) {
+    const section = selectedSection();
+    if (!section) return;
+    let value = target.type === "checkbox" ? target.checked : target.value;
+    if (prop === "order") value = caseMenuNumber(value, section.order || 10);
+    if (prop === "division") value = String(value || "").toUpperCase();
+    section[prop] = value;
+    if (prop === "label" && !section.id) {
+      section.id = caseMenuSlug(value, "section");
+    }
+    markDirty();
+  }
+
+  function updateSelectedItem(prop, target) {
+    const item = selectedItem();
+    if (!item) return;
+    let value = target.type === "checkbox" ? target.checked : target.value;
+    if (prop === "order") value = caseMenuNumber(value, item.order || 10);
+    if (["division", "type", "profile_division", "profile_type"].includes(prop)) value = String(value || "").toUpperCase();
+    if (prop === "extra_allowed") value = splitCaseMenuList(value);
+    item[prop] = value;
+    if (prop === "division" || prop === "type") {
+      item.namespace = caseMenuNamespace(item.namespace, item.division, item.type);
+    }
+    markDirty();
+  }
+
+  function updateSelectedField(fieldIndex, prop, target, rerender = true) {
+    const item = selectedItem();
+    if (!item) return;
+    markFieldsCustom(item);
+    const fields = [...caseMenuList(item.fields)].sort((a, b) => caseMenuNumber(a.order, 0) - caseMenuNumber(b.order, 0));
+    const field = fields[fieldIndex];
+    if (!field) return;
+    let value = target.type === "checkbox" ? target.checked : target.value;
+    if (prop === "order") value = caseMenuNumber(value, field.order || fieldIndex + 1);
+    if (prop === "col") value = Number(value) === 2 ? 2 : 1;
+    if (prop === "group_order") {
+      const parsed = caseMenuOptionalNumber(value);
+      if (parsed === "") delete field.group_order;
+      else field.group_order = parsed;
+    } else {
+      field[prop] = value;
+    }
+    item.fields = fields;
+    syncCaseMenuTextarea();
+    renderWizardSections();
+    if (rerender) {
+      renderEditor();
+    }
+  }
+
+  document.getElementById("matter-create-menu-wizard")?.addEventListener("click", async (event) => {
+    const target = event.target.closest("[data-action], [data-select-section], [data-select-item]");
+    if (!target) return;
+    const selectSection = target.getAttribute("data-select-section");
+    const selectItem = target.getAttribute("data-select-item");
+    if (selectSection !== null) {
+      selectedSectionIndex = Number(selectSection);
+      selectedItemIndex = selectItem !== null ? Number(selectItem) : 0;
+      renderAll();
+      return;
+    }
+
+    const action = target.getAttribute("data-action");
+    const section = selectedSection();
+    const item = selectedItem();
+    if (action === "add-section") return addSection();
+    if (action === "add-item") return addItem();
+    if (action === "delete-section" && section) {
+      if (!window.confirm("Delete this create-menu section?")) return;
+      caseMenuEditorState.sections.splice(selectedSectionIndex, 1);
+      selectedSectionIndex = Math.max(0, selectedSectionIndex - 1);
+      selectedItemIndex = 0;
+      return renderAll();
+    }
+    if (action === "move-section-up" || action === "move-section-down") {
+      const moved = moveRow(caseMenuEditorState.sections, selectedSectionIndex, action === "move-section-up" ? -1 : 1);
+      if (moved) selectedSectionIndex += action === "move-section-up" ? -1 : 1;
+      return renderAll();
+    }
+    if (action === "delete-item" && section && item) {
+      if (!window.confirm("Delete this matter type?")) return;
+      section.items.splice(selectedItemIndex, 1);
+      selectedItemIndex = Math.max(0, selectedItemIndex - 1);
+      return renderAll();
+    }
+    if (action === "move-item-up" || action === "move-item-down") {
+      if (!section) return;
+      const moved = moveRow(section.items, selectedItemIndex, action === "move-item-up" ? -1 : 1);
+      if (moved) selectedItemIndex += action === "move-item-up" ? -1 : 1;
+      return renderAll();
+    }
+    if (action === "inherit-fields" && item) {
+      item.fields_inherited = true;
+      item.fields = [];
+      return renderAll();
+    }
+    if (action === "customize-fields" && item) {
+      markFieldsCustom(item);
+      return renderAll();
+    }
+    if (action === "add-field") return addField();
+    if ((action === "move-field-up" || action === "move-field-down" || action === "delete-field") && item) {
+      markFieldsCustom(item);
+      const row = target.closest("[data-field-index]");
+      const fieldIndex = Number(row?.getAttribute("data-field-index") || -1);
+      const fields = [...caseMenuList(item.fields)].sort((a, b) => caseMenuNumber(a.order, 0) - caseMenuNumber(b.order, 0));
+      if (fieldIndex < 0 || fieldIndex >= fields.length) return;
+      if (action === "delete-field") {
+        fields.splice(fieldIndex, 1);
+      } else {
+        moveRow(fields, fieldIndex, action === "move-field-up" ? -1 : 1);
+      }
+      item.fields = fields;
+      return renderAll();
+    }
+  });
+
+  document.getElementById("matter-create-menu-editor")?.addEventListener("input", (event) => {
+    const target = event.target;
+    const sectionProp = target.getAttribute("data-section-prop");
+    const itemProp = target.getAttribute("data-item-prop");
+    const fieldProp = target.getAttribute("data-field-prop");
+    if (sectionProp) return updateSelectedSection(sectionProp, target);
+    if (itemProp) return updateSelectedItem(itemProp, target);
+    if (fieldProp) {
+      const row = target.closest("[data-field-index]");
+      return updateSelectedField(Number(row?.getAttribute("data-field-index") || -1), fieldProp, target, false);
+    }
+  });
+
+  document.getElementById("matter-create-menu-editor")?.addEventListener("change", (event) => {
+    const target = event.target;
+    const sectionProp = target.getAttribute("data-section-prop");
+    const itemProp = target.getAttribute("data-item-prop");
+    const fieldProp = target.getAttribute("data-field-prop");
+    if (sectionProp) return updateSelectedSection(sectionProp, target);
+    if (itemProp) return updateSelectedItem(itemProp, target);
+    if (fieldProp) {
+      const row = target.closest("[data-field-index]");
+      return updateSelectedField(Number(row?.getAttribute("data-field-index") || -1), fieldProp, target);
+    }
+  });
+
+  document.getElementById("case-menu-json")?.addEventListener("input", () => {
+    caseMenuJsonDirty = true;
+  });
+
+  document.getElementById("case-menu-default-btn")?.addEventListener("click", () => {
+    caseMenuEditorState = hydrateCaseMenuState(caseMenuDefaultConfig);
+    selectedSectionIndex = 0;
+    selectedItemIndex = 0;
+    renderAll();
+  });
+
+  async function validateCaseMenu() {
+    const previewEl = document.getElementById("case-menu-preview");
+    if (caseMenuJsonDirty) {
+      caseMenuEditorState = hydrateCaseMenuState(document.getElementById("case-menu-json")?.value || "{}");
+      selectedSectionIndex = 0;
+      selectedItemIndex = 0;
+      renderAll();
+    } else {
+      syncCaseMenuTextarea();
+    }
+    const raw = document.getElementById("case-menu-json")?.value || "{}";
+    const response = await fetch(caseMenuValidateUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": readCsrfToken() },
+      body: JSON.stringify({ value: raw }),
+    });
+    const data = await response.json();
+    if (previewEl) {
+      previewEl.classList.remove("d-none");
+      previewEl.textContent = JSON.stringify(data, null, 2);
+    }
+    if (!response.ok || data.valid === false) {
+      throw new Error((data.errors || []).join(", ") || data.error || "Validation failed");
+    }
+    if (data.value) {
+      caseMenuEditorState = hydrateCaseMenuState(data.value);
+      renderAll();
+    }
+    return data;
+  }
+
+  document.getElementById("case-menu-preview-btn")?.addEventListener("click", async () => {
+    try {
+      await validateCaseMenu();
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Validation failed", { title: "Error" }); } catch (e2) {}
+    }
+  });
+
+  document.getElementById("matter-create-menu-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await validateCaseMenu();
+      const response = await fetch(caseMenuSaveUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": readCsrfToken() },
+        body: JSON.stringify({ value: document.getElementById("case-menu-json")?.value || "{}" }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.success === false) {
+        throw new Error((data.errors || []).join(", ") || data.error || "Save failed");
+      }
+      if (data.value) {
+        caseMenuEditorState = hydrateCaseMenuState(data.value);
+        renderAll();
+      }
+      try { await window.AppAlert("Matter create menu saved.", { title: "Done" }); } catch (e2) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Save failed", { title: "Error" }); } catch (e2) {}
+    }
+  });
+
+  caseMenuEditorState = hydrateCaseMenuState(caseMenuInitialConfig);
+  renderAll();
+</script>
+{% endblock %}

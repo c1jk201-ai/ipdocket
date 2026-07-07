@@ -1,0 +1,335 @@
+<!-- Alerts & Actions (outside scaling container) -->
+<div class="sheet no-print invoice-actions">
+ {% if request.args.get('print') == '1' %}
+ {# Print helper: show a minimal UI in auto-print views as a reliable fallback. #}
+ {% set back_url = url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice['id'], lang=invoice_lang, outgoing=('1' if outgoing_mode else '0')) %}
+ <div class="note-strip is-info">
+  <div class="note-strip__head">
+   <strong class="note-strip__title">Print mode</strong>
+   <span id="printModeStatus" role="status" aria-live="polite" aria-atomic="true" class="note-strip__status">
+    Preparing invoice print view.
+   </span>
+  </div>
+
+  <div class="note-strip__actions">
+   <button class="btn btn-primary" id="manualPrintBtn" type="button">Print</button>
+   <a class="btn btn-ghost" href="{{ back_url }}">Back</a>
+  </div>
+
+  <div class="note-strip__help">
+   If automatic printing does not open, use the Print button.
+  </div>
+ </div>
+ {% else %}
+ {% set rev_view = (is_revision_view is defined and is_revision_view) %}
+ {% set latest_url = url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice['id'], lang=invoice_lang, outgoing=('1' if outgoing_mode else '0')) %}
+ {% set billing_status = ((invoice.get('billing_status') or invoice.get('status') or '') | string | trim | lower) %}
+ {% set payment_status = ((invoice.get('payment_status') or '') | string | trim | lower) %}
+ {% set payment_complete = invoice.get('payment_effectively_complete') or invoice.get('payment_verified') or payment_status == 'paid' or invoice.get('status') == 'paid' %}
+ {% set warning_key = None %}
+ {% if billing_status in ['tax_issued','cash_issued','processed'] %}
+  {% set warning_key = 'tax_issued_warning' %}
+ {% endif %}
+ {% if warning_key %}
+  <div class="note-strip is-warning">
+   <div class="note-strip__head">
+    <strong class="note-strip__title">{{ t(warning_key) }}</strong>
+    <span class="note-strip__status">Process type: {{ invoice.get('tax_issue_type_label') or 'Uncategorized' }}</span>
+   </div>
+   <div class="note-strip__help">{{ t('tax_issued_restriction') }}</div>
+  </div>
+ {% endif %}
+
+ {% if foreign_remittance_required is defined and foreign_remittance_required and not foreign_remittance_satisfied %}
+  <div class="note-strip is-warning">
+   <div class="note-strip__head">
+    <strong class="note-strip__title">Foreign remittance proof required</strong>
+    <span class="note-strip__status">Attachment required for foreign matters</span>
+   </div>
+   <div class="note-strip__actions">
+    <a class="btn btn-ghost btn-sm" href="#sec-remittance-proof">Attach</a>
+   </div>
+   <div class="note-strip__help">{{ foreign_remittance_required_message or 'Foreign matters require remittance proof in addition to payment verification.' }}</div>
+  </div>
+ {% endif %}
+
+ {% if rev_view %}
+  <div class="note-strip is-info">
+   <div class="note-strip__head">
+    <strong class="note-strip__title">View previous version</strong>
+    <span class="note-strip__status">
+     {% if revision_no is not none and (revision_no|int) == 0 %}Original{% else %}rev{{ revision_no }}{% endif %}
+     {% if revision_created_at %} · {{ revision_created_at }}{% endif %}
+     {% if revision_created_by_username %} · {{ revision_created_by_username }}{% endif %}
+    </span>
+   </div>
+   <div class="note-strip__actions">
+    <a class="btn btn-ghost" href="{{ latest_url }}">View current version</a>
+   </div>
+  </div>
+ {% endif %}
+
+ {% if invoice_revisions is defined and invoice_revisions and (invoice_revisions|length> 0) %}
+  <div class="invoice-actions__row invoice-actions__revisions">
+   <span class="muted invoice-actions__label">Version</span>
+   <select
+    class="input-inline input-inline-auto"
+    aria-label="Invoice version"
+    onchange="try{ if(this.value) window.location.href=this.value; }catch(e){}"
+  >
+    <option value="{{ latest_url }}" {% if not rev_view %}selected{% endif %}>Current</option>
+    {% for r in invoice_revisions %}
+     {% set rno = (r.get('revision_no') or 0) %}
+     <option
+      value="{{ url_for('billing_invoices.invoices.view_invoice_revision', invoice_id=invoice['id'], revision_no=rno, lang=invoice_lang, outgoing=('1' if outgoing_mode else '0')) }}"
+      {% if rev_view and revision_no is not none and (revision_no|int) == (rno|int) %}selected{% endif %}
+    >
+      {% if (rno|int) == 0 %}Original{% else %}rev{{ rno }}{% endif %}
+      {% if r.get('created_at') %} · {{ r.get('created_at') }}{% endif %}
+      {% if r.get('created_by_username') %} · {{ r.get('created_by_username') }}{% endif %}
+     </option>
+    {% endfor %}
+   </select>
+   {% if rev_view and revision_file_name %}
+    <span class="muted text-xs" style="margin-left: 8px">File name: {{ revision_file_name }}</span>
+   {% endif %}
+  </div>
+ {% endif %}
+
+ <div class="invoice-actions__row invoice-actions__toolbar">
+  {# Desktop-only: "fit-to-one-page" dynamic scaling UI. #}
+  <button
+   type="button"
+   class="btn btn-ghost btn-sm"
+   id="fitPageBtn"
+   onclick="toggleFitToPage()"
+   aria-pressed="false"
+   title="Scale to fit one A4 page"
+ >
+   Fit to one page
+  </button>
+
+  <div class="invoice-actions__spacer"></div>
+
+  <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.invoices.save_as_template', invoice_id=invoice['id']) }}" title="Save this invoice as a template">
+   Save as template
+  </a>
+
+  {% if billing_status == 'draft' %}
+  <form
+   method="post"
+   action="{{ url_for('billing_invoices.invoices.publish_and_print', invoice_id=invoice['id']) }}"
+   data-prevent-double-submit="true"
+   id="publishAndPrintForm"
+   style="display: inline"
+ >
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+   <input type="hidden" name="lang" value="{{ invoice_lang }}" />
+   <input type="hidden" name="outgoing" value="{{ '1' if outgoing_mode else '0' }}" />
+   <input type="hidden" name="fit" id="publishAndPrintFit" value="0" />
+   <button class="btn btn-primary" type="submit">Issue invoice</button>
+  </form>
+  {% else %}
+  <button class="btn btn-primary" id="printBtn" type="button">Print / Save PDF</button> {% endif %}
+ </div>
+
+ {# Quick jump (desktop). Helps on long invoice pages (payment/logs/etc). #}
+ {% if not rev_view %}
+ <div class="invoice-actions__row invoice-actions__quickjump" aria-label="Invoice page sections">
+  <span class="invoice-jump-nav__label">Jump</span>
+  <nav class="invoice-jump-nav" aria-label="Invoice page sections">
+   <a class="invoice-jump-nav__link" href="#invoice-print-container">Invoice</a>
+   <a class="invoice-jump-nav__link" href="#{{ payment_anchor_id }}">Payment</a>
+   <a class="invoice-jump-nav__link" href="#sec-case-matching">Matter</a>
+   <a class="invoice-jump-nav__link" href="#sec-logs">Activity</a>
+  </nav>
+  <a class="invoice-jump-nav__link invoice-jump-nav__top" href="#invoice-print-container" title="Back to top">Top</a>
+ </div>
+ {% endif %}
+
+ <!-- Actions Row: Edit / Delete / Tax Issued -->
+ {% if has_role('admin','staff') and not rev_view %}
+ <div class="invoice-actions__row invoice-actions__admin">
+  <div class="invoice-actions__spacer"></div>
+
+  {% if payment_status != 'paid' and billing_status not in ['tax_issued','cash_issued','processed'] %}
+   <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('billing_invoices.invoices.edit_invoice', invoice_id=invoice['id']) }}">Edit</a>
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.delete_invoice', invoice_id=invoice['id']) }}"
+    data-confirm="Delete this invoice?"
+    data-prevent-double-submit="true"
+    style="display: inline"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+   </form>
+  {% endif %}
+
+  {% if billing_status in ['sent','pre_overdue'] %}
+   <form
+    id="invoiceDetailTaxIssueForm"
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.update_invoice_status', invoice_id=invoice['id']) }}"
+    data-prevent-double-submit="true"
+    style="display: inline"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="status" value="tax_issued" />
+    <input type="hidden" name="tax_issue_type" value="" />
+    <input type="hidden" name="tax_issue_source" value="manual_detail" />
+    <input type="hidden" name="confirm_unverified_tax" value="yes" />
+    <button
+     class="btn btn-tax-issue btn-sm"
+     type="button"
+     onclick="submitInvoiceDetailTaxIssue({{ 'true' if payment_complete else 'false' }})"
+   >Mark tax recorded</button>
+   </form>
+  {% endif %}
+
+ </div>
+
+ {% if billing_status in ['sent','pre_overdue'] %}
+ <script>
+  (function() {
+   const TAX_ISSUE_TYPE_OPTIONS = [
+    {
+     value: 'tax_invoice',
+     label: 'Tax documentation',
+     desc: 'Sales tax or other tax documentation recorded'
+    },
+    {
+     value: 'cash_receipt',
+     label: 'Payment receipt',
+     desc: 'Payment receipt recorded'
+    },
+    {
+     value: 'card',
+     label: 'Card payment',
+     desc: 'Card receipt recorded'
+    },
+    {
+     value: 'non_taxable',
+     label: 'Non-taxable',
+     desc: 'No tax documentation required'
+    }
+   ];
+
+   function getInvoiceRoot() {
+    return document.querySelector('.invoice-theme') || document.body;
+   }
+
+   function chooseInvoiceDetailTaxIssueType() {
+    return new Promise(function(resolve) {
+     try {
+      const existing = document.getElementById('invoiceDetailTaxIssueOverlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'invoiceDetailTaxIssueOverlay';
+      overlay.className = 'modal-overlay show';
+
+      const panel = document.createElement('div');
+      panel.className = 'modal-card is-wide tax-issue-type-modal';
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'true');
+      panel.setAttribute('aria-labelledby', 'invoiceDetailTaxIssueTitle');
+      const optionsHtml = TAX_ISSUE_TYPE_OPTIONS.map((opt, idx) => `
+       <label class="tax-issue-type-option">
+        <input type="radio" name="invoiceDetailTaxIssueChoice" value="${opt.value}" ${idx === 0 ? 'checked' : ''}>
+        <span class="tax-issue-type-marker" aria-hidden="true"></span>
+        <span class="tax-issue-type-copy">
+         <strong>${opt.label}</strong>
+         <span>${opt.desc}</span>
+        </span>
+       </label>
+      `).join('');
+      panel.innerHTML = `
+       <div class="tax-issue-type-head">
+        <h3 class="modal-title" id="invoiceDetailTaxIssueTitle">Mark tax recorded</h3>
+        <p class="modal-help">Choose how tax documentation was recorded for this invoice.</p>
+       </div>
+       <div class="tax-issue-type-options">${optionsHtml}</div>
+       <div class="confirm-actions">
+        <button type="button" id="invoiceDetailTaxIssueCancelBtn" class="btn btn-ghost">Cancel</button>
+        <button type="button" id="invoiceDetailTaxIssueOkBtn" class="btn btn-primary">Mark tax recorded</button>
+       </div>
+      `;
+
+      overlay.appendChild(panel);
+      getInvoiceRoot().appendChild(overlay);
+
+      const cleanup = function(value) {
+       document.removeEventListener('keydown', onKeydown);
+       try { overlay.remove(); } catch (e) {}
+       resolve(value);
+      };
+      const syncSelected = function() {
+       panel.querySelectorAll('.tax-issue-type-option').forEach(function(option) {
+        const input = option.querySelector('input[name="invoiceDetailTaxIssueChoice"]');
+        option.classList.toggle('is-selected', !!(input && input.checked));
+       });
+      };
+      const onKeydown = function(ev) {
+       if (ev.key === 'Escape') {
+        ev.preventDefault();
+        cleanup(null);
+       }
+      };
+
+      panel.querySelectorAll('input[name="invoiceDetailTaxIssueChoice"]').forEach(function(input) {
+       input.addEventListener('change', syncSelected);
+      });
+      panel.querySelectorAll('.tax-issue-type-option').forEach(function(option) {
+       option.addEventListener('dblclick', function(ev) {
+        ev.preventDefault();
+        const input = option.querySelector('input[name="invoiceDetailTaxIssueChoice"]');
+        cleanup(input ? input.value : null);
+       });
+      });
+      document.getElementById('invoiceDetailTaxIssueCancelBtn').addEventListener('click', function(ev) {
+       ev.preventDefault();
+       cleanup(null);
+      });
+      document.getElementById('invoiceDetailTaxIssueOkBtn').addEventListener('click', function(ev) {
+       ev.preventDefault();
+       const checked = panel.querySelector('input[name="invoiceDetailTaxIssueChoice"]:checked');
+       cleanup(checked ? checked.value : null);
+      });
+      overlay.addEventListener('click', function(ev) {
+       if (ev.target === overlay) cleanup(null);
+      });
+      document.addEventListener('keydown', onKeydown);
+      syncSelected();
+     } catch (e) {
+      resolve(null);
+     }
+    });
+   }
+
+   window.submitInvoiceDetailTaxIssue = async function(paymentVerified) {
+    const form = document.getElementById('invoiceDetailTaxIssueForm');
+    if (!form) return;
+
+    const taxIssueType = await chooseInvoiceDetailTaxIssueType();
+    if (!taxIssueType) return;
+
+    if (!paymentVerified) {
+     const message = 'Mark this invoice as tax recorded before payment is verified?\n\nPayment verification will remain open.';
+     if (!window.AppConfirm || !(await window.AppConfirm(message))) return;
+    }
+
+    const typeInput = form.querySelector('input[name="tax_issue_type"]');
+    if (typeInput) typeInput.value = taxIssueType;
+    if (form.requestSubmit) {
+     form.requestSubmit();
+    } else {
+     form.submit();
+    }
+   };
+  })();
+ </script>
+ {% endif %}
+ {% endif %}
+ {% endif %}
+</div>

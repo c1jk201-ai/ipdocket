@@ -1,0 +1,162 @@
+{% extends "admin/base.html" %}
+{% block title %}Disk Usage{% endblock %}
+{% block admin_description %}Review recent upload and backup disk usage samples from the last 7 days.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.retention_home') }}">Retention History</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.service_health') }}">Service Health</a>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">Label</label>
+        <select id="label" class="form-select">
+          <option value="uploads">uploads</option>
+          <option value="backups">backups</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button id="reload" class="btn btn-primary" type="button">Reload</button>
+      </div>
+      <div class="col-md-7 text-md-end small text-muted">Chart shows recent 7-day disk usage.</div>
+    </div>
+  </div>
+</div>
+
+{% if not disk_snapshot.has_points %}
+<div class="alert alert-secondary mb-3" role="alert">
+  No disk samples yet. Run the <code>disk_monitor</code> scheduler job to display recent usage.
+</div>
+{% endif %}
+
+{% if disk_snapshot.labels %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-3">
+    <div class="fw-semibold">Recent Disk Samples</div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Latest</th>
+            <th>Used %</th>
+            <th>7d Delta</th>
+            <th>Samples</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in disk_snapshot.labels %}
+            <tr>
+              <td>{{ item.label }}</td>
+              <td class="small">{{ item.latest.sampled_at|local_dt if item.latest and item.latest.sampled_at else "-" }}</td>
+              <td>{{ item.latest.used_pct|round(1) if item.latest else "-" }}{% if item.latest %}%{% endif %}</td>
+              <td>{% if item.used_delta_pct is not none %}{{ '+' if item.used_delta_pct > 0 else '' }}{{ item.used_delta_pct }}%p{% else %}-{% endif %}</td>
+              <td>{{ item.point_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if retention_preview %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-3">
+    <div class="fw-semibold">Retention Dry Run</div>
+  </div>
+  <div class="card-body">
+    {% set policies = retention_preview.policies or {} %}
+    <div class="row g-2 small mb-3">
+      <div class="col-md-2"><span class="text-muted">uploads</span><br>{{ policies.upload_retention_days }}</div>
+      <div class="col-md-2"><span class="text-muted">backups</span><br>{{ policies.backup_retention_days }}</div>
+      <div class="col-md-2"><span class="text-muted">ignored email</span><br>{{ policies.ignored_inbox_email_days }}</div>
+      <div class="col-md-2"><span class="text-muted">file asset GC</span><br>{{ policies.file_asset_gc_min_age_days }}</div>
+      <div class="col-md-2"><span class="text-muted">staging</span><br>{{ policies.staging_retention_hours }}</div>
+      <div class="col-md-2"><span class="text-muted">PDF cache</span><br>{{ policies.pdf_text_cache_retention_days }}</div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Scope</th>
+            <th>Scanned</th>
+            <th>Delete candidates</th>
+            <th>Reclaimable</th>
+            <th>Errors</th>
+            <th>Sample</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for scope, preview in (retention_preview.previews or {}).items() %}
+            {% set sample = (preview.samples or [])|first %}
+            <tr>
+              <td>{{ scope }}</td>
+              <td>{{ preview.scanned }}</td>
+              <td>{{ preview.candidates }}</td>
+              <td>{{ (preview.bytes_reclaimable / 1024 / 1024)|round(1) }} MB</td>
+              <td>{{ preview.errors }}</td>
+              <td class="small text-muted">{{ sample.path if sample else "-" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body">
+    <canvas id="chart" height="120"></canvas>
+  </div>
+</div>
+
+<script src="{{ static_asset_url('vendor/chart/chart.umd.min.js') }}"></script>
+<script>
+let chart = null;
+
+async function load(label) {
+  try {
+    if (typeof window.Chart !== "function") throw new Error("Chart.js unavailable");
+    const res = await fetch(`/admin/ops/disk/data?label=${encodeURIComponent(label)}`);
+    if (!res.ok) throw new Error("Failed to load");
+    const data = await res.json();
+    const labels = data.points.map(p => p.t);
+    const values = data.points.map(p => p.used_pct);
+
+    const ctx = document.getElementById("chart");
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: { labels, datasets: [{ label: `${label} used %`, data: values }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, max: 100 }
+        }
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    try { await window.AppAlert("Load failed", { title: "Error" }); } catch (e2) {}
+  }
+}
+
+document.getElementById("reload").addEventListener("click", () => {
+  load(document.getElementById("label").value);
+});
+document.getElementById("label").addEventListener("change", (e) => load(e.target.value));
+
+load("uploads");
+</script>
+{% endblock %}

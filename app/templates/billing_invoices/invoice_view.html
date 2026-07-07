@@ -1,0 +1,81 @@
+{% extends 'invoice_base.html' %}
+{% block title %}{{ invoice['number'] }}{% if (is_revision_view is defined and is_revision_view) and revision_no is not none and (revision_no|int)> 0 %}_rev{{ revision_no }}{% endif %}{% endblock %}
+{% block head_meta %}
+ {{ super() }}
+ <link rel="stylesheet" href="{{ asset_url('billing_invoices.static', 'invoice_print.css') }}" />
+ <link rel="stylesheet" href="{{ asset_url('billing_invoices.static', 'invoice_mobile.css') }}" />
+{% endblock %}
+{% block body_class %}
+ {{ super() }} invoice-print
+{% endblock %}
+
+{% block invoice_content %}
+{# ===== Standardize outgoing mode once at the top of the template ===== #}
+{% set outgoing_mode = outgoing_mode if (outgoing_mode is defined)
+ else (invoice['is_outgoing'] if ('is_outgoing' in invoice.keys()) else 0) %}
+{# ========================================================== #}
+{% macro amount_no_unit(amount, currency_code) -%}
+ {%- set cur = (currency_code or 'USD')|upper -%}
+ {{- currency(amount, cur)|replace(' ' ~ cur, '') -}}
+{%- endmacro %}
+
+{# Outgoing-mode display: recompute subtotal/Sales tax from line items (exclude estimated). #}
+{% set total_billed = namespace(value=0.0, taxable=0.0, vat=0.0) %}
+{% set total_vat_multiplier = (invoice['vat_rate'] or 0) %}
+{% if total_vat_multiplier> 1 %}
+ {% set total_vat_multiplier = total_vat_multiplier / 100 %}
+{% endif %}
+{% for it in items %}
+ {% set is_est = (it['is_estimated'] if 'is_estimated' in it.keys() else 0) %}
+ {% if not is_est %}
+  {% set item_type = (it['item_type'] if 'item_type' in it.keys() else 'service') %}
+  {% set disc = ((it['discount'] if 'discount' in it.keys() else 0) or 0) | float %}
+  {% if item_type == 'foreign' %}
+   {% set fee = ((it['fx_fee'] if 'fx_fee' in it.keys() else 0) or 0) | float %}
+   {% set gov = ((it['fx_gov'] if 'fx_gov' in it.keys() else 0) or 0) | float %}
+   {% set r = ((it['fx_rate_used'] if 'fx_rate_used' in it.keys() else 0) or 0) | float %}
+   {% set m = ((it['fx_markup'] if 'fx_markup' in it.keys() else 0) or 0) | float %}
+   {% if r %}
+    {% set eff = r * (1 + m/100) %}
+    {% set amt = (fee + gov) * eff %}
+   {% else %}
+    {% set amt = (it['qty']|float) * (it['unit_price']|float) * (1 - disc/100) %}
+   {% endif %}
+   {% set total_billed.value = total_billed.value + amt %}
+   {% if (it['is_taxable'] if 'is_taxable' in it.keys() else 0) %}
+    {% set total_billed.taxable = total_billed.taxable + amt %}
+   {% endif %}
+  {% else %}
+   {% set amt = (it['qty']|float) * (it['unit_price']|float) * (1 - disc/100) %}
+   {% set total_billed.value = total_billed.value + amt %}
+   {% if (it['is_taxable'] if 'is_taxable' in it.keys() else 1) %}
+    {% set total_billed.taxable = total_billed.taxable + amt %}
+   {% endif %}
+  {% endif %}
+ {% endif %}
+{% endfor %}
+{% set total_billed.vat = total_billed.taxable * total_vat_multiplier %}
+{% set is_usd_payment_currency = (invoice['currency'] or 'USD')|upper == 'USD' %}
+{% set payment_anchor_id = 'sec-payment-usd' if is_usd_payment_currency else 'sec-payment-fx' %}
+{% set payment_title_id = 'paymentPanelTitleUsd' if is_usd_payment_currency else 'paymentPanelTitleFx' %}
+
+<div id="invoice-print-container" class="invoice{% if outgoing_mode %} is-outgoing{% endif %}">
+ {% include 'billing_invoices/partials/invoice_view/_header.html' %}
+ {% include 'billing_invoices/partials/invoice_view/_client_info.html' %}
+ {% include 'billing_invoices/partials/invoice_view/_items.html' %}
+</div>
+
+{% include 'billing_invoices/partials/invoice_view/_actions.html' %}
+{% include 'billing_invoices/partials/invoice_view/_certificates.html' %}
+{% include 'billing_invoices/partials/invoice_view/_fit_print_scripts.html' %}
+{# Print views (?print=1) should stay lightweight and focused. Revisions also skip non-essential panels. #}
+{% if request.args.get('print') != '1' and not (is_revision_view is defined and is_revision_view) %}
+ {% if is_usd_payment_currency %}
+  {% include 'billing_invoices/partials/invoice_view/_payment_usd.html' %}
+ {% else %}
+  {% include 'billing_invoices/partials/invoice_view/_payment_fx.html' %}
+ {% endif %}
+
+ {% include 'billing_invoices/partials/invoice_view/_recent_logs.html' %}
+{% endif %}
+{% endblock %}

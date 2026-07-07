@@ -1,0 +1,34 @@
+{# Administrator top : JS health.json  Status Display #}
+<div id="security-health-badge" style="display:inline-flex; gap:8px; align-items:center;">
+  <a href="/admin/security/health" style="text-decoration:none;">
+    <span id="security-health-pill"
+          style="padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #ccc;">
+      Security Settings : ...
+    </span>
+  </a>
+</div>
+
+<script>
+(function () {
+  var pill = document.getElementById("security-health-pill");
+  if (!pill) return;
+
+  fetch("/admin/security/health.json", {credentials: "same-origin"})
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var overall = (data && data.overall) || "ok";
+      pill.textContent = "Security Settings : " + overall.toUpperCase();
+      if (overall === "fail") {
+        pill.style.borderColor = "#b00020";
+      } else if (overall === "warn") {
+        pill.style.borderColor = "#b26a00";
+      } else {
+        pill.style.borderColor = "#0a7a0a";
+      }
+    })
+    .catch(function () {
+      pill.textContent = "Security Settings : UNKNOWN";
+      pill.style.borderColor = "#666";
+    });
+})();
+</script>

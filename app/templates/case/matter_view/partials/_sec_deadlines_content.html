@@ -1,0 +1,511 @@
+{% set staff_by_party = {} %}
+{% set user_id_by_party = {} %}
+{% for u in (staff_users_all or []) %}
+  {% if u.staff_party_id %}
+    {% set _ = staff_by_party.update({(u.staff_party_id|string): u.username}) %}
+    {% set _ = user_id_by_party.update({(u.staff_party_id|string): u.id}) %}
+  {% endif %}
+{% endfor %}
+{% macro done_status_cell(done_date) -%}
+  {% set _raw = (done_date or '')|trim %}
+  {% set _upper = _raw|upper %}
+  {% set _label = 'Done' %}
+  {% set _tone = 'text-success' %}
+  {% if _upper.startswith('AUTO_CANCELLED') %}
+    {% set _label = 'Cancel' %}
+    {% set _tone = 'text-secondary' %}
+  {% elif _upper.startswith('AUTO_EXPIRED') %}
+    {% set _label = 'DeadlineOverdue()' %}
+    {% set _tone = 'text-secondary' %}
+  {% endif %}
+  {% set _date = _raw.split(':', 1)[1] if ':' in _raw else _raw %}
+  <span class="badge bg-light {{ _tone }} border">{{ _label }}</span>
+  <span class="small text-muted d-block">{{ _date }}</span>
+{%- endmacro %}
+{% set _open_dockets = (docket_open if docket_open is defined else (docket_due or [])) %}
+{% set _done_dockets = (docket_done if docket_done is defined else []) %}
+{% if (not _done_dockets) and docket_items is defined %}
+  {% for d in (docket_items or []) %}
+    {% if (d.done_date or '')|trim %}
+      {% set _ = _done_dockets.append(d) %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+{% set system_dockets = [] %}
+{% set system_done_dockets = [] %}
+{% set custom_dockets = [] %}
+{% set custom_done_dockets = [] %}
+{% for d in (_open_dockets or []) %}
+  {% set _memo_data = (d.memo|fromjson if d.memo else {}) %}
+  {% set _is_system = ((d.name_ref or '')|trim) or (_memo_data is mapping and _memo_data.get('auto')) %}
+  {% if _is_system %}
+    {% set _ = system_dockets.append(d) %}
+  {% else %}
+    {% set _ = custom_dockets.append(d) %}
+  {% endif %}
+{% endfor %}
+{% for d in (_done_dockets or []) %}
+  {% set _memo_data = (d.memo|fromjson if d.memo else {}) %}
+  {% set _is_system = ((d.name_ref or '')|trim) or (_memo_data is mapping and _memo_data.get('auto')) %}
+  {% if _is_system %}
+    {% set _ = system_done_dockets.append(d) %}
+  {% else %}
+    {% set _ = custom_done_dockets.append(d) %}
+  {% endif %}
+{% endfor %}
+
+<div class="legacy-section-header mb-2">
+  <div class="legacy-title"> TaskDeadline</div>
+  <div class="case-section-actions case-section-meta-actions">
+    <span class="badge bg-light text-secondary" id="caseSystemDeadlineCount">Open {{ (system_dockets or [])|length }}items{% if (system_done_dockets or [])|length %} / Done {{ (system_done_dockets or [])|length }}items{% endif %}</span>
+    <span class="text-muted small">Task  <b>Task </b> .</span>
+  </div>
+</div>
+<div class="legacy-grid-wrap">
+  <table class="legacy-grid small">
+    <thead>
+      <tr>
+        <th>TaskDeadline</th>
+        <th style="width: 120px;">Final Due date</th>
+        <th style="width: 120px;">Internal Due date</th>
+        <th style="width: 120px;">Task </th>
+        <th style="width: 120px;">Contact</th>
+        <th style="width: 120px;">Status</th>
+        {% if can_edit_case %}<th style="width: 90px;"></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody id="caseSystemDeadlineList">
+      {% for d in (system_dockets or []) %}
+        {% set _memo_data = (d.memo|fromjson if d.memo else {}) %}
+        {% set _locked = (_memo_data is mapping and _memo_data.get('locked')) %}
+        {% set _is_auto = (_memo_data is mapping and _memo_data.get('auto')) %}
+        {% set _owner_pid = (d.owner_staff_party_id|string) if d.owner_staff_party_id else '' %}
+        {% set _owner_name = staff_by_party.get(_owner_pid, '') %}
+        {% set _assignee_id = user_id_by_party.get(_owner_pid, '') %}
+        {% set _vf = (d.visible_from_date or '')|trim %}
+        {% set _is_hidden = (_vf and (today_iso or '') and _vf > (today_iso or '')) %}
+        <tr
+          class="legacy-row-hover {% if _is_hidden %}text-muted{% endif %}"
+          data-docket-id="{{ d.docket_id }}"
+          data-docket-name="{{ (d.name_free or d.name_ref or '')|e }}"
+          data-name-ref="{{ (d.name_ref or '')|e }}"
+          data-due-date="{{ (d.due_date or '') }}"
+          data-internal-due-date="{{ (d.extended_due_date or '') }}"
+          data-visible-from-date="{{ (d.visible_from_date or '') }}"
+          data-owner-party-id="{{ _owner_pid }}"
+          data-assignee-id="{{ _assignee_id }}"
+          data-is-system="1"
+          data-is-auto="{{ 1 if _is_auto else 0 }}"
+          data-locked="{{ 1 if _locked else 0 }}"
+          data-priority=""
+        >
+          <td style="text-align:left;">
+            <a href="{{ url_for('deadlines.docket_detail', docket_id=d.docket_id) }}" class="text-decoration-none">
+              {{ d.name_free or d.name_ref or '' }}
+            </a>
+            {% if _is_hidden %}
+              <span class="badge bg-light text-secondary border ms-1" title="Task  Status"></span>
+            {% endif %}
+            {% if _locked %}
+              <span class="badge bg-warning text-dark ms-1" title="Auto  "></span>
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.due_date %}
+              {% set _calendar_endpoint = d.calendar_month_endpoint or 'deadlines.calendar_month' %}
+              <a
+                href="{{ url_for(_calendar_endpoint, date=d.due_date, due_axis='final') }}"
+                class="text-decoration-none"
+                title="Statutory Due date"
+              >{{ d.due_date }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.extended_due_date %}
+              <a
+                href="{{ url_for('deadlines.internal_close', filter='all', date=d.extended_due_date, due_axis='internal') }}"
+                class="text-decoration-none"
+                title="Internal/ Due date(Task )"
+              >{{ d.extended_due_date }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.visible_from_date %}
+              {{ d.visible_from_date }}
+            {% else %}
+              <span class="text-muted">Immediate</span>
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if _owner_pid %}
+              <a
+                href="{{ url_for('deadlines.list_view', owner=_owner_pid, owner_name=_owner_name) }}"
+                class="text-decoration-none"
+                title="Contact to TaskDeadline View"
+              >{{ _owner_name or _owner_pid }}</a>
+              <a
+                href="{{ url_for('worklog.index', owner_role='owner', owner=_owner_pid, owner_name=_owner_name) }}"
+                class="link-muted ms-1"
+                title="Contact Task"
+              ><i class="bi bi-kanban"></i></a>
+            {% else %}
+              {{ _owner_name or '-' }}
+            {% endif %}
+          </td>
+          <td align="center">
+            <span class="badge bg-light text-secondary border"></span>
+          </td>
+          {% if can_edit_case %}
+            <td align="center">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-deadline-edit="1">Edit</button>
+            </td>
+          {% endif %}
+        </tr>
+      {% else %}
+        <tr data-empty="1">
+          <td colspan="{{ 7 if can_edit_case else 6 }}" class="text-center py-4">
+            <div class="app-empty-state"><i class="bi bi-calendar-x"></i><span>In progress  TaskDeadline none.</span></div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if (system_done_dockets or [])|length %}
+  <details class="case-deadline-completed mt-2">
+    <summary>
+      <span class="case-deadline-completed__title">Done  TaskDeadline</span>
+      <span class="badge bg-light text-secondary border">{{ (system_done_dockets or [])|length }}items</span>
+    </summary>
+    <div class="legacy-grid-wrap mt-2">
+      <table class="legacy-grid small">
+        <thead>
+          <tr>
+            <th>TaskDeadline</th>
+            <th style="width: 120px;">Final Due date</th>
+            <th style="width: 120px;">Internal Due date</th>
+            <th style="width: 120px;">Task </th>
+            <th style="width: 120px;">Contact</th>
+            <th style="width: 120px;">Status</th>
+            {% if can_edit_case %}<th style="width: 90px;"></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="caseSystemDeadlineDoneList">
+          {% for d in (system_done_dockets or []) %}
+            {% set _memo_data = (d.memo|fromjson if d.memo else {}) %}
+            {% set _locked = (_memo_data is mapping and _memo_data.get('locked')) %}
+            {% set _is_auto = (_memo_data is mapping and _memo_data.get('auto')) %}
+            {% set _owner_pid = (d.owner_staff_party_id|string) if d.owner_staff_party_id else '' %}
+            {% set _owner_name = staff_by_party.get(_owner_pid, '') %}
+            {% set _assignee_id = user_id_by_party.get(_owner_pid, '') %}
+            <tr
+              class="legacy-row-hover text-muted"
+              data-docket-id="{{ d.docket_id }}"
+              data-docket-name="{{ (d.name_free or d.name_ref or '')|e }}"
+              data-name-ref="{{ (d.name_ref or '')|e }}"
+              data-due-date="{{ (d.due_date or '') }}"
+              data-internal-due-date="{{ (d.extended_due_date or '') }}"
+              data-visible-from-date="{{ (d.visible_from_date or '') }}"
+              data-owner-party-id="{{ _owner_pid }}"
+              data-assignee-id="{{ _assignee_id }}"
+              data-is-system="1"
+              data-is-auto="{{ 1 if _is_auto else 0 }}"
+              data-locked="{{ 1 if _locked else 0 }}"
+              data-priority=""
+            >
+              <td style="text-align:left;">
+                <a href="{{ url_for('deadlines.docket_detail', docket_id=d.docket_id) }}" class="text-decoration-none">
+                  {{ d.name_free or d.name_ref or '' }}
+                </a>
+                {% if _locked %}
+                  <span class="badge bg-warning text-dark ms-1" title="Auto  "></span>
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if d.due_date %}
+                  {% set _calendar_endpoint = d.calendar_month_endpoint or 'deadlines.calendar_month' %}
+                  <a
+                    href="{{ url_for(_calendar_endpoint, date=d.due_date, due_axis='final') }}"
+                    class="text-decoration-none"
+                    title="Statutory Due date"
+                  >{{ d.due_date }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if d.extended_due_date %}
+                  <a
+                    href="{{ url_for('deadlines.internal_close', filter='all', date=d.extended_due_date, due_axis='internal') }}"
+                    class="text-decoration-none"
+                    title="Internal/ Due date(Task )"
+                  >{{ d.extended_due_date }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if d.visible_from_date %}
+                  {{ d.visible_from_date }}
+                {% else %}
+                  <span class="text-muted">Immediate</span>
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if _owner_pid %}
+                  <a
+                    href="{{ url_for('deadlines.list_view', owner=_owner_pid, owner_name=_owner_name) }}"
+                    class="text-decoration-none"
+                    title="Contact to TaskDeadline View"
+                  >{{ _owner_name or _owner_pid }}</a>
+                  <a
+                    href="{{ url_for('worklog.index', owner_role='owner', owner=_owner_pid, owner_name=_owner_name) }}"
+                    class="link-muted ms-1"
+                    title="Contact Task"
+                  ><i class="bi bi-kanban"></i></a>
+                {% else %}
+                  {{ _owner_name or '-' }}
+                {% endif %}
+              </td>
+              <td align="center">
+                {{ done_status_cell(d.done_date) }}
+              </td>
+              {% if can_edit_case %}
+                <td align="center">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-deadline-edit="1">Edit</button>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+{% endif %}
+
+<div class="legacy-section-header mb-2 mt-4">
+  <div class="legacy-title">User TaskDeadline</div>
+  <div class="case-section-actions">
+    <span class="badge bg-light text-secondary" id="caseDeadlineCount" data-completed-count="{{ (custom_done_dockets or [])|length }}">Open {{ (custom_dockets or [])|length }}items{% if (custom_done_dockets or [])|length %} / Done {{ (custom_done_dockets or [])|length }}items{% endif %}</span>
+    {% if can_edit_case %}
+      <button type="button" class="btnGreen" data-bs-toggle="modal" data-bs-target="#quickDeadlineModal">TaskDeadline Add</button>
+    {% endif %}
+  </div>
+</div>
+<div class="legacy-grid-wrap">
+  <table class="legacy-grid small">
+    <thead>
+      <tr>
+        <th>TaskDeadline</th>
+        <th style="width: 120px;">Final Due date</th>
+        <th style="width: 120px;">Internal Due date</th>
+        <th style="width: 120px;">Task </th>
+        <th style="width: 120px;">Contact</th>
+        <th style="width: 120px;">Priority</th>
+        {% if can_edit_case %}<th style="width: 90px;"></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody id="caseDeadlineList">
+      {% for d in (custom_dockets or []) %}
+        {% set _owner_pid = (d.owner_staff_party_id|string) if d.owner_staff_party_id else '' %}
+        {% set _owner_name = staff_by_party.get(_owner_pid, '') %}
+        {% set _assignee_id = user_id_by_party.get(_owner_pid, '') %}
+        {% set _vf = (d.visible_from_date or '')|trim %}
+        {% set _is_hidden = (_vf and (today_iso or '') and _vf > (today_iso or '')) %}
+        <tr
+          class="legacy-row-hover {% if _is_hidden %}text-muted{% endif %}"
+          data-docket-id="{{ d.docket_id }}"
+          data-docket-name="{{ (d.name_free or d.name_ref or '')|e }}"
+          data-name-ref="{{ (d.name_ref or '')|e }}"
+          data-due-date="{{ (d.due_date or '') }}"
+          data-internal-due-date="{{ (d.extended_due_date or '') }}"
+          data-visible-from-date="{{ (d.visible_from_date or '') }}"
+          data-owner-party-id="{{ _owner_pid }}"
+          data-assignee-id="{{ _assignee_id }}"
+          data-is-system="0"
+          data-is-auto="0"
+          data-locked="0"
+          data-priority="{{ (d.memo or '')|e }}"
+        >
+          <td style="text-align:left;">
+            <a href="{{ url_for('deadlines.docket_detail', docket_id=d.docket_id) }}" class="text-decoration-none">
+              {{ d.name_free or d.name_ref or '' }}
+            </a>
+            {% if _is_hidden %}
+              <span class="badge bg-light text-secondary border ms-1" title="Task  Status"></span>
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.due_date %}
+              {% set _calendar_endpoint = d.calendar_month_endpoint or 'deadlines.calendar_month' %}
+              <a
+                href="{{ url_for(_calendar_endpoint, date=d.due_date, due_axis='final') }}"
+                class="text-decoration-none"
+                title="Statutory Due date"
+              >{{ d.due_date }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.extended_due_date %}
+              <a
+                href="{{ url_for('deadlines.internal_close', filter='all', date=d.extended_due_date, due_axis='internal') }}"
+                class="text-decoration-none"
+                title="Internal/ Due date(Task )"
+              >{{ d.extended_due_date }}</a>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if d.visible_from_date %}
+              {{ d.visible_from_date }}
+            {% else %}
+              <span class="text-muted">Immediate</span>
+            {% endif %}
+          </td>
+          <td align="center">
+            {% if _owner_pid %}
+              <a
+                href="{{ url_for('deadlines.list_view', owner=_owner_pid, owner_name=_owner_name) }}"
+                class="text-decoration-none"
+                title="Contact to TaskDeadline View"
+              >{{ _owner_name or _owner_pid }}</a>
+              <a
+                href="{{ url_for('worklog.index', owner_role='owner', owner=_owner_pid, owner_name=_owner_name) }}"
+                class="link-muted ms-1"
+                title="Contact Task"
+              ><i class="bi bi-kanban"></i></a>
+            {% else %}
+              {{ _owner_name or '-' }}
+            {% endif %}
+          </td>
+          <td align="center">{{ d.memo or '' }}</td>
+          {% if can_edit_case %}
+            <td align="center">
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-deadline-edit="1">Edit</button>
+            </td>
+          {% endif %}
+        </tr>
+      {% else %}
+        <tr data-empty="1">
+          <td colspan="{{ 7 if can_edit_case else 6 }}" class="text-center py-4">
+            <div class="app-empty-state"><i class="bi bi-calendar-x"></i><span>Registration User TaskDeadline none.</span></div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if (custom_done_dockets or [])|length %}
+  <details class="case-deadline-completed mt-2">
+    <summary>
+      <span class="case-deadline-completed__title">Done User TaskDeadline</span>
+      <span class="badge bg-light text-secondary border">{{ (custom_done_dockets or [])|length }}items</span>
+    </summary>
+    <div class="legacy-grid-wrap mt-2">
+      <table class="legacy-grid small">
+        <thead>
+          <tr>
+            <th>TaskDeadline</th>
+            <th style="width: 120px;">Final Due date</th>
+            <th style="width: 120px;">Internal Due date</th>
+            <th style="width: 120px;">Task </th>
+            <th style="width: 120px;">Contact</th>
+            <th style="width: 120px;">Status</th>
+            {% if can_edit_case %}<th style="width: 90px;"></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="caseDeadlineDoneList">
+          {% for d in (custom_done_dockets or []) %}
+            {% set _owner_pid = (d.owner_staff_party_id|string) if d.owner_staff_party_id else '' %}
+            {% set _owner_name = staff_by_party.get(_owner_pid, '') %}
+            {% set _assignee_id = user_id_by_party.get(_owner_pid, '') %}
+            <tr
+              class="legacy-row-hover text-muted"
+              data-docket-id="{{ d.docket_id }}"
+              data-docket-name="{{ (d.name_free or d.name_ref or '')|e }}"
+              data-name-ref="{{ (d.name_ref or '')|e }}"
+              data-due-date="{{ (d.due_date or '') }}"
+              data-internal-due-date="{{ (d.extended_due_date or '') }}"
+              data-visible-from-date="{{ (d.visible_from_date or '') }}"
+              data-owner-party-id="{{ _owner_pid }}"
+              data-assignee-id="{{ _assignee_id }}"
+              data-is-system="0"
+              data-is-auto="0"
+              data-locked="0"
+              data-priority="{{ (d.memo or '')|e }}"
+            >
+              <td style="text-align:left;">
+                <a href="{{ url_for('deadlines.docket_detail', docket_id=d.docket_id) }}" class="text-decoration-none">
+                  {{ d.name_free or d.name_ref or '' }}
+                </a>
+              </td>
+              <td align="center">
+                {% if d.due_date %}
+                  {% set _calendar_endpoint = d.calendar_month_endpoint or 'deadlines.calendar_month' %}
+                  <a
+                    href="{{ url_for(_calendar_endpoint, date=d.due_date, due_axis='final') }}"
+                    class="text-decoration-none"
+                    title="Statutory Due date"
+                  >{{ d.due_date }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if d.extended_due_date %}
+                  <a
+                    href="{{ url_for('deadlines.internal_close', filter='all', date=d.extended_due_date, due_axis='internal') }}"
+                    class="text-decoration-none"
+                    title="Internal/ Due date(Task )"
+                  >{{ d.extended_due_date }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if d.visible_from_date %}
+                  {{ d.visible_from_date }}
+                {% else %}
+                  <span class="text-muted">Immediate</span>
+                {% endif %}
+              </td>
+              <td align="center">
+                {% if _owner_pid %}
+                  <a
+                    href="{{ url_for('deadlines.list_view', owner=_owner_pid, owner_name=_owner_name) }}"
+                    class="text-decoration-none"
+                    title="Contact to TaskDeadline View"
+                  >{{ _owner_name or _owner_pid }}</a>
+                  <a
+                    href="{{ url_for('worklog.index', owner_role='owner', owner=_owner_pid, owner_name=_owner_name) }}"
+                    class="link-muted ms-1"
+                    title="Contact Task"
+                  ><i class="bi bi-kanban"></i></a>
+                {% else %}
+                  {{ _owner_name or '-' }}
+                {% endif %}
+              </td>
+              <td align="center">
+                {{ done_status_cell(d.done_date) }}
+              </td>
+              {% if can_edit_case %}
+                <td align="center">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" data-deadline-edit="1">Edit</button>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
+{% endif %}

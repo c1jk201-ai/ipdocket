@@ -1,0 +1,512 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ <div class="page-header">
+  <div>
+   <h2 class="invoice-page-title">{{ t('clients') }}</h2>
+   <div class="invoice-page-subtitle">Billing contacts, retainers, and CRM links.</div>
+  </div>
+  <div class="page-actions">
+   <a class="btn btn-primary" href="{{ url_for('billing_invoices.clients.new_client') }}"><i class="bi bi-plus-lg"></i> New client</a>
+   <button id="toggleMergeBtn" type="button" class="btn">Merge clients</button>
+  </div>
+ </div>
+
+ {% set view_module = "invoice_client_list" %}
+ {% include "_saved_views_bar.html" %}
+
+ <div class="invoice-summary-grid">
+  <div class="invoice-summary-panel-card">
+   <div class="invoice-summary-label">Total clients</div>
+   <div class="invoice-summary-value">{{ stats['total_clients'] }}</div>
+  </div>
+  <div class="invoice-summary-panel-card">
+   <div class="invoice-summary-label">Clients with invoices</div>
+   <div class="invoice-summary-value">{{ stats['clients_with_invoices'] }}</div>
+  </div>
+  <div class="invoice-summary-panel-card">
+   <div class="invoice-summary-label">Total invoices</div>
+   <div class="invoice-summary-value">{{ stats['total_invoices'] }}</div>
+  </div>
+ </div>
+
+ <div class="invoice-filter-panel">
+  <h3 class="invoice-section-title">Search and filters</h3>
+  <h3 style="margin-top:0;">🔍 Search Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   {% if request.args.get('has_outstanding') %}
+   <input type="hidden" name="has_outstanding" value="{{ request.args.get('has_outstanding') }}">
+   {% endif %}
+   <div class="col-12 col-lg-6">
+    <label>Search (Client name, Email, Phone, Address, Notes)</label>
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search clients..." />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Sort</label>
+    <select name="sort">
+     <option value="recent" {% if sort_by=='recent' %}selected{% endif %}>Registration</option>
+     <option value="name" {% if sort_by=='name' %}selected{% endif %}>Name</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>Per page</label>
+    <select name="per_page">
+     <option value="20" {% if per_page==20 %}selected{% endif %}>20 items</option>
+     <option value="50" {% if per_page==50 %}selected{% endif %}>50 items</option>
+     <option value="100" {% if per_page==100 %}selected{% endif %}>100 items</option>
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Search</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.clients.list_clients') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="invoice-data-panel">
+  <div style="display:flex; align-items:center; margin-bottom:12px; gap:8px;">
+   <div style="font-weight:600; color:var(--muted);">
+    Total {{ total_count }} clients
+    {% if search_query %}
+     <span style="color:var(--accent);"> (Search: "{{ search_query }}")</span>
+    {% endif %}
+   </div>
+   <div class="spacer"></div>
+   <div class="muted" style="font-size:0.9em;">
+    {% if total_count %}
+     {{ (page - 1) * per_page + 1 }} - {{ [page * per_page, total_count]|min }} Display
+    {% else %}
+     0 - 0 Display
+    {% endif %}
+   </div>
+  </div>
+
+  <!-- Merge toolbar (shown when>=2 selected across pages) -->
+  <div id="mergeBar" class="card" style="display:none; background:#FAF4E4; border:1px solid #C8A24A;">
+   <form method="post" action="{{ url_for('billing_invoices.clients.merge_clients') }}" id="mergeForm" style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label style="margin:0;">Selected: <strong id="selCount">0</strong></label>
+    <div class="row" style="gap:8px; align-items:center;">
+     <label style="margin:0;">:</label>
+     <select id="targetSelect" name="target_id" required></select>
+     <label class="pill" style="margin:0; display:flex; align-items:center; gap:6px;">
+      <input type="checkbox" name="merge_notes" value="1" checked> Merge notes
+     </label>
+    </div>
+    <!-- Selected chips -->
+    <div id="selChips" class="row wrap" style="gap:6px; align-items:center; width:100%;"></div>
+    <!-- Brief info cards for selected clients -->
+    <div id="selBrief" class="grid grid-3" style="gap:8px; width:100%;"></div>
+    <!-- Add by search / ID -->
+    <div class="row wrap" style="gap:8px; align-items:end; width:100%;">
+     <div style="min-width:240px; flex:1 1 260px;">
+      <label>Client Searchto Add</label>
+      <input type="text" id="mergeSearchInput" placeholder="Name/Email/Phone Search..." />
+      <div id="mergeSearchResults" class="card" style="display:none; position:relative; z-index:2; max-height:220px; overflow:auto; border:1px solid #e5e7eb; margin-top:6px;"></div>
+     </div>
+     <div>
+      <label>Client ID Add</label>
+      <div class="row" style="gap:6px;">
+       <input type="number" id="mergeAddId" placeholder="#ID" min="1" style="width:120px;" />
+       <button type="button" id="mergeAddIdBtn" class="btn">Add</button>
+      </div>
+     </div>
+    </div>
+    <div class="spacer"></div>
+    <button id="mergeSubmitBtn" type="button" class="btn btn-warning desktop-preferred-action" disabled title="Select at least two clients.">Merge clients</button>
+    <button type="button" class="btn btn-ghost" onclick="clearSelection();">Clear selection</button>
+   </form>
+  </div>
+
+  <div class="table-card">
+   <table class="responsive table-compact client-list-table">
+    <thead>
+     <tr>
+      <th class="selCol" style="width:36px; display:none;"><input type="checkbox" id="selAll" /></th>
+      <th>Client name</th>
+      <th>Phone</th>
+      <th class="right">Invoice</th>
+      <th class="right">Total Revenue</th>
+      <th>Recent Invoice</th>
+      <th class="right"></th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for client in clients %}
+     <tr>
+      <td data-label="Select" class="selCol" style="display:none;"><input type="checkbox" class="selClient" data-id="{{ client['id'] }}" data-name="{{ client['name'] }}" /></td>
+      <td data-label="Client name" style="font-weight:600;">
+       <a href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id']) }}" style="color:var(--accent);">
+        {{ client['name'] }}
+       </a>
+       {% if client['notes'] %}
+        <div class="muted" style="font-size:0.8em; font-weight:400; margin-top:2px;">
+         📝 {{ client['notes'][:50] }}{% if client['notes']|length> 50 %}...{% endif %}
+        </div>
+       {% endif %}
+      </td>
+      <td data-label="Phone" class="muted" style="font-size:0.9em;">
+       {% if client['email'] %}<div>✉️ {{ client['email'] }}</div>{% endif %}
+       {% if client['phone'] %}<div>📞 {{ client['phone'] }}</div>{% endif %}
+       {% if client['address'] %}<div>📍 {{ client['address'][:30] }}{% if client['address']|length> 30 %}...{% endif %}</div>{% endif %}
+       {% if not client['email'] and not client['phone'] and not client['address'] %}<span class="muted">-</span>{% endif %}
+      </td>
+      <td data-label="Invoice" class="right">
+       {% if client['invoice_count']> 0 %}
+        <span class="pill" style="background:#EAF4FF; color:#12395F; border-color:#B7D4EA;">{{ client['invoice_count'] }} invoices</span>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td data-label="Total Revenue" class="right" style="font-weight:600;">
+       {% if client['total_revenue']> 0 %}
+        {% if client['currency_count'] == 1 and client['currency_code'] %}
+         {{ client['currency_code'] }} {{ "{:,.0f}".format(client['total_revenue']) }}
+        {% else %}
+         <span class="muted"> Currency</span>
+        {% endif %}
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td data-label="Recent Invoice" class="muted" style="font-size:0.9em;">
+       {% if client['last_invoice_date'] %}
+        {{ client['last_invoice_date'] }}
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td data-label="View" class="right nowrap">
+       <a class="btn btn-ui-compact" href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id']) }}">View</a>
+       <a class="btn btn-ghost btn-ui-compact" href="{{ url_for('billing_invoices.clients.client_deposit_ledger', client_id=client['id']) }}">Retainer</a>
+       {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+       {% set crm_id = (client['id'] if unified_mode else client['ipm_client_id']) %}
+       {% if crm_id %}
+       <a class="btn btn-ghost btn-ui-compact" href="/crm/clients/{{ crm_id }}">CRM</a>
+       <a class="btn btn-ghost btn-ui-compact" href="/crm/clients/{{ crm_id }}/edit">CRM Edit</a>
+       {% else %}
+       <form method="post" action="{{ url_for('customers.sync_from_invoice_client') }}" class="d-inline" data-confirm="CRM Client /Link ? ">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="invoice_client_id" value="{{ client['id'] }}">
+        <input type="hidden" name="next" value="{{ url_for('billing_invoices.clients.list_clients') }}">
+        <button type="submit" class="btn btn-ghost btn-ui-compact">CRM </button>
+       </form>
+       {% endif %}
+       {% if has_role('admin','staff') %}
+       <button class="btn btn-ghost btn-ui-compact" type="button" data-client-id="{{ client['id'] }}" data-client-name="{{ client['name']|e }}" onclick="openQuickDepositTopup(this.dataset.clientId, this.dataset.clientName)" title="Add retainer"><i class="bi bi-wallet2"></i></button>
+       {% endif %}
+       <a class="btn btn-ghost btn-ui-compact" href="{{ url_for('billing_invoices.clients.edit_client', client_id=client['id']) }}">Edit</a>
+      </td>
+     </tr>
+     {% else %}
+      <tr><td colspan="7" class="muted" style="text-align:center; padding:40px;">
+       {% if search_query %}No search results.{% else %}No registered clients.{% endif %}
+      </td></tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set invoice_clients_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = invoice_clients_pagination_args.update({'q': search_query, 'sort': sort_by, 'per_page': per_page}) %}
+ {{ ui.pagination('billing_invoices.clients.list_clients', page, total_pages, invoice_clients_pagination_args, 'Invoice Client Pagination') }}
+
+ {% if has_role('admin','staff') %}
+ <div id="quickDepositTopupModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999; align-items:center; justify-content:center;">
+  <div class="card" style="max-width:560px; width:92%;">
+   <div class="page-header">
+    <h3 style="margin:0;">🏦 Retainer </h3>
+    <div class="page-actions">
+     <button class="btn btn-ghost" type="button" onclick="closeQuickDepositTopup()">Close</button>
+    </div>
+   </div>
+   <div class="muted" style="margin-top:6px; font-size:0.9em;">
+    <span id="qdtClientLabel"></span>
+   </div>
+   <form id="quickDepositTopupForm" method="post" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="next" value="{{ url_for('billing_invoices.clients.list_clients', q=search_query, sort=sort_by, per_page=per_page, page=page) }}" />
+    <div class="grid grid-2" style="margin-top:12px;">
+     <div>
+      <label>Business profile</label>
+      <select name="business_profile_id" required>
+       {% for p in all_profiles %}
+       <option value="{{ p['id'] }}">#{{ p['id'] }} · {{ p['name'] }}</option>
+       {% endfor %}
+      </select>
+     </div>
+     <div>
+      <label>Currency</label>
+      <select name="currency" required>
+       {% for c in currency_options %}
+       <option value="{{ c }}">{{ c }}</option>
+       {% endfor %}
+      </select>
+     </div>
+     <div>
+      <label>Amount</label>
+      <input name="amount" required placeholder=": 100000" />
+     </div>
+     <div>
+      <label>Bank activity TID (Select)</label>
+      <input name="related_bank_transaction_id" placeholder="tid" />
+     </div>
+     <div style="grid-column: 1 / -1;">
+      <label>Notes (Select)</label>
+      <input name="memo" placeholder="" />
+     </div>
+    </div>
+    <div class="row" style="margin-top:12px; gap:8px;">
+     <button class="btn btn-primary" type="submit"> Registration</button>
+     <button class="btn btn-ghost" type="button" onclick="closeQuickDepositTopup()">Cancel</button>
+    </div>
+   </form>
+  </div>
+ </div>
+ {% endif %}
+
+ <script>
+  function openQuickDepositTopup(clientId, clientName) {
+   const modal = document.getElementById('quickDepositTopupModal');
+   const form = document.getElementById('quickDepositTopupForm');
+   const label = document.getElementById('qdtClientLabel');
+   if (!modal || !form || !label) return;
+   label.textContent = `#${clientId} · ${clientName}`;
+   form.action = `/clients/${clientId}/deposit/topup`;
+   modal.style.display = 'flex';
+   try {
+    const amt = form.querySelector('input[name="amount"]');
+    if (amt) { amt.value = ''; amt.focus(); }
+   } catch (e) {}
+  }
+  function closeQuickDepositTopup() {
+   const modal = document.getElementById('quickDepositTopupModal');
+   if (modal) modal.style.display = 'none';
+  }
+  const selAll = document.getElementById('selAll');
+  const mergeBar = document.getElementById('mergeBar');
+  const selCountEl = document.getElementById('selCount');
+  const targetSelect = document.getElementById('targetSelect');
+  const mergeForm = document.getElementById('mergeForm');
+  const toggleMergeBtn = document.getElementById('toggleMergeBtn');
+  let mergeEnabled = false;
+  const storageKey = 'merge_selected_clients';
+
+  function loadSel(){
+   try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch(e){ return []; }
+  }
+  function saveSel(arr){ localStorage.setItem(storageKey, JSON.stringify(arr)); }
+  function addSel(item){
+   const arr = loadSel();
+   if (!arr.some(x => String(x.id) === String(item.id))) {
+    arr.push({ id: String(item.id), name: item.name });
+    saveSel(arr);
+   }
+  }
+  function removeSel(id){ saveSel(loadSel().filter(x => String(x.id) !== String(id))); }
+  function syncPageCheckboxesFromSel(){
+   const set = new Set(loadSel().map(x => String(x.id)));
+   document.querySelectorAll('.selClient').forEach(cb => {
+    cb.checked = set.has(cb.getAttribute('data-id'));
+   });
+   if (selAll) selAll.checked = document.querySelectorAll('.selClient:not(:checked)').length === 0;
+  }
+
+  function getSelections() { return loadSel(); }
+
+  function renderChips(){
+   const wrap = document.getElementById('selChips');
+   if (!wrap) return;
+   const sels = loadSel();
+   wrap.innerHTML = '';
+   sels.forEach(s => {
+    const chip = document.createElement('span');
+    chip.className = 'pill';
+    chip.style.display = 'inline-flex';
+    chip.style.alignItems = 'center';
+    chip.style.gap = '6px';
+    chip.textContent = `#${s.id} · ${s.name}`;
+    const x = document.createElement('button');
+    x.type = 'button'; x.className = 'btn btn-ghost'; x.textContent = '×'; x.style.padding = '2px 6px';
+    x.onclick = () => { removeSel(s.id); syncPageCheckboxesFromSel(); refreshMergeBar(); };
+    chip.appendChild(x);
+    wrap.appendChild(chip);
+   });
+  }
+  function escapeHtml(text) {
+   if (text === null || typeof text === "undefined") return "";
+   return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+  }
+
+  function renderSelBrief(){
+   const cont = document.getElementById('selBrief');
+   if (!cont) return;
+   const ids = loadSel().map(s => s.id);
+   if (!ids.length) { cont.innerHTML = ''; return; }
+   const token = ++briefToken;
+   fetch(`{{ url_for('billing_invoices.clients.brief_clients_json') }}?ids=` + encodeURIComponent(ids.join(',')))
+    .then(r => r.json())
+    .then(d => {
+     if (token !== briefToken) return;
+     const items = (d && d.results) || [];
+     const formatNumber = (n) => (typeof n === 'number' ? n : parseFloat(n || 0)).toLocaleString('en-US');
+     cont.innerHTML = items.map(it => {
+      const email = it.email ? `Email: ${escapeHtml(it.email)}` : '';
+      const phone = it.phone ? `Phone: ${escapeHtml(it.phone)}` : '';
+      const meta = `${it.invoice_count || 0} invoices | ${formatNumber(it.total_revenue || 0)}` + (it.last_invoice_date ? ` | ${escapeHtml(it.last_invoice_date)}` : '');
+      return `
+       <div class="card" style="padding:8px;">
+        <div style="font-weight:600;">#${it.id} | ${escapeHtml(it.name)}</div>
+        <div class="muted" style="font-size:.9em;">${[email, phone].filter(Boolean).join(' | ') || '-'}</div>
+        <div class="muted" style="margin-top:4px;">${meta}</div>
+        <div class="row" style="gap:6px; margin-top:6px;">
+         <button type="button" class="btn btn-ui-xs" onclick="(function(){ const sel=document.getElementById('targetSelect'); if(sel){ sel.value='${it.id}'; } })()">Set as target</button>
+        </div>
+       </div>
+      `;
+     }).join('');
+    })
+    .catch(() => { if (token !== briefToken) return; cont.innerHTML = ''; });
+  }
+
+  function refreshMergeBar() {
+   const sels = loadSel();
+   selCountEl.textContent = sels.length;
+   // Show toolbar as soon as 1 client is selected (so search/add is available)
+   mergeBar.style.display = (mergeEnabled && sels.length>= 1) ? 'block' : 'none';
+   // Rebuild target options
+   targetSelect.innerHTML = '';
+   sels.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `#${s.id} | ${s.name}`;
+    targetSelect.appendChild(opt);
+   });
+   // Enable submit only when 2+ selected
+   const submitBtn = document.getElementById('mergeSubmitBtn');
+   if (submitBtn) {
+    submitBtn.disabled = (sels.length < 2);
+    submitBtn.title = submitBtn.disabled ? 'Select at least two clients.' : '';
+   }
+   renderChips();
+   renderSelBrief();
+  }
+
+  function clearSelection() { saveSel([]); syncPageCheckboxesFromSel(); refreshMergeBar(); }
+
+  async function beforeMergeSubmit() {
+   const sels = loadSel();
+   if (sels.length < 2) { try { await window.AppAlert('Select at least two clients.', { title: "Confirm" }); } catch (e2) {} return; }
+   const targetId = targetSelect.value;
+   if (!targetId) { try { await window.AppAlert('Select a target client.', { title: "Confirm" }); } catch (e2) {} return; }
+   mergeForm.querySelectorAll('input[name="source_ids[]"]').forEach(el => el.remove());
+   sels.filter(s => s.id !== targetId).forEach(s => {
+    const hi = document.createElement('input');
+    hi.type = 'hidden'; hi.name = 'source_ids[]'; hi.value = s.id;
+    mergeForm.appendChild(hi);
+   });
+   const ok = await window.AppConfirm(`Merge ${sels.length} selected clients into #${targetId}?`);
+   if (ok) mergeForm.submit();
+  }
+
+  function setMergeEnabled(on) {
+   mergeEnabled = !!on;
+   document.querySelectorAll('.selCol').forEach(td => { td.style.display = mergeEnabled ? '' : 'none'; });
+   if (mergeEnabled) {
+    syncPageCheckboxesFromSel();
+   } else {
+    mergeBar.style.display = 'none';
+   }
+   if (toggleMergeBtn) toggleMergeBtn.textContent = mergeEnabled ? 'Cancel merge' : 'Merge clients';
+   refreshMergeBar();
+  }
+
+  // Event wiring
+  document.querySelectorAll('.selClient').forEach(cb => cb.addEventListener('change', function(){
+   const id = cb.getAttribute('data-id');
+   const name = cb.getAttribute('data-name');
+   if (cb.checked) { addSel({id, name}); } else { removeSel(id); }
+   refreshMergeBar();
+  }));
+  if (selAll) selAll.addEventListener('change', function(){
+   document.querySelectorAll('.selClient').forEach(cb => {
+    const id = cb.getAttribute('data-id');
+    const name = cb.getAttribute('data-name');
+    if (selAll.checked) { addSel({id, name}); cb.checked = true; }
+    else { removeSel(id); cb.checked = false; }
+   });
+   refreshMergeBar();
+  });
+  if (toggleMergeBtn) toggleMergeBtn.addEventListener('click', function(){ setMergeEnabled(!mergeEnabled); });
+  if (mergeForm) mergeForm.addEventListener('submit', function(e){
+   e.preventDefault();
+   beforeMergeSubmit();
+  });
+  if (submitBtn) submitBtn.addEventListener('click', function(){ beforeMergeSubmit(); });
+  // Search add handlers
+  const mergeSearchInput = document.getElementById('mergeSearchInput');
+  const mergeSearchResults = document.getElementById('mergeSearchResults');
+  let searchTimer = null;
+  let searchToken = 0;
+  let briefToken = 0;
+  function renderResults(items){
+   if (!mergeSearchResults) return;
+   if (!items || !items.length) { mergeSearchResults.style.display='none'; mergeSearchResults.innerHTML=''; return; }
+   mergeSearchResults.innerHTML = '';
+   items.forEach(it => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.style.justifyContent = 'space-between';
+    row.style.padding = '6px 8px';
+    row.style.borderBottom = '1px solid #eee';
+    const label = document.createElement('div');
+    const rev = (typeof it.total_revenue === 'number' ? it.total_revenue : parseFloat(it.total_revenue || 0)).toLocaleString();
+    const last = it.last_invoice_date || '-';
+    label.textContent = `#${it.id} | ${it.name}` + (it.email ? ` | ${it.email}`:'') + (it.phone ? ` | ${it.phone}`:'') + ` | ${it.invoice_count||0} invoices | ${rev} | ${last}`;
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'btn'; addBtn.style.padding = '4px 8px'; addBtn.textContent = 'Add';
+    addBtn.onclick = () => { addSel({id: it.id, name: it.name}); syncPageCheckboxesFromSel(); refreshMergeBar(); mergeSearchResults.style.display='none'; };
+    row.appendChild(label); row.appendChild(addBtn);
+    mergeSearchResults.appendChild(row);
+   });
+   mergeSearchResults.style.display = 'block';
+  }
+  if (mergeSearchInput) {
+   mergeSearchInput.addEventListener('input', function(){
+    const q = mergeSearchInput.value.trim();
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+     if (!q) { renderResults([]); return; }
+     const token = ++searchToken;
+     fetch(`{{ url_for('billing_invoices.clients.search_clients_json') }}?q=` + encodeURIComponent(q))
+      .then(r => r.json()).then(d => { if (token !== searchToken) return; renderResults((d && d.results) || []); })
+      .catch(() => { if (token !== searchToken) return; renderResults([]); });
+    }, 250);
+   });
+  }
+  const mergeAddId = document.getElementById('mergeAddId');
+  const mergeAddIdBtn = document.getElementById('mergeAddIdBtn');
+  if (mergeAddIdBtn) mergeAddIdBtn.addEventListener('click', function(){
+   const v = (mergeAddId && mergeAddId.value || '').trim();
+   if (!v) return;
+   fetch(`{{ url_for('billing_invoices.clients.get_client_json') }}?id=` + encodeURIComponent(v))
+    .then(r => r.json()).then(d => { if (!d || d.error) { try { if (window.AppAlert) window.AppAlert('Client not found.', { title: "Confirm" }); } catch (e2) {} return; }
+     addSel({id: d.id, name: d.name}); syncPageCheckboxesFromSel(); refreshMergeBar(); })
+    .catch(() => { try { if (window.AppAlert) window.AppAlert('Error .', { title: "Error" }); } catch (e2) {} });
+  });
+
+  // Initialize in safe mode (disabled); keep persisted selections available
+  setMergeEnabled(false);
+  // Enter to submit search
+  const q = document.querySelector('input[name="q"]');
+  if (q) q.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); q.form.submit(); } });
+ </script>
+{% endblock %}

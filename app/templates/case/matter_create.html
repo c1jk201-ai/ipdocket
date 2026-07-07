@@ -1,0 +1,571 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set display_division_upper = (display_division or division or '')|upper %}
+{% set display_case_type_upper = (display_case_type or case_type or '')|upper %}
+{% set profile_division_upper = (profile_division or division or '')|upper %}
+{% set profile_case_type_upper = (profile_case_type or case_type or '')|upper %}
+{% set is_madrid = (is_madrid if is_madrid is defined else False) or (display_division_upper == 'ETC' and display_case_type_upper == 'MADRID') %}
+{% set is_hague = (is_hague if is_hague is defined else False) or (display_division_upper == 'ETC' and display_case_type_upper == 'HAGUE') %}
+{% set is_copyright = (is_copyright if is_copyright is defined else False) or (display_division_upper == 'ETC' and display_case_type_upper == 'COPYRIGHT') %}
+{% set is_dom_pat = is_dom_pat if is_dom_pat is defined else (profile_division_upper == 'DOM' and profile_case_type_upper in ['PATENT', 'UTILITY']) %}
+{% set is_dom_utility = profile_division_upper == 'DOM' and profile_case_type_upper == 'UTILITY' %}
+{% set is_dom_design = is_dom_design if is_dom_design is defined else (profile_division_upper == 'DOM' and profile_case_type_upper == 'DESIGN') %}
+{% set is_dom_tm = is_dom_tm if is_dom_tm is defined else (profile_division_upper == 'DOM' and profile_case_type_upper == 'TRADEMARK') %}
+{% set is_inc_pat = is_inc_pat if is_inc_pat is defined else (profile_division_upper == 'INC' and profile_case_type_upper in ['PATENT', 'UTILITY']) %}
+{% set is_inc_utility = profile_division_upper == 'INC' and profile_case_type_upper == 'UTILITY' %}
+{% set is_inc_design = is_inc_design if is_inc_design is defined else (profile_division_upper == 'INC' and profile_case_type_upper == 'DESIGN') %}
+{% set is_inc_tm = is_inc_tm if is_inc_tm is defined else (profile_division_upper == 'INC' and profile_case_type_upper == 'TRADEMARK') %}
+{% set is_out_pat = is_out_pat if is_out_pat is defined else (profile_division_upper == 'OUT' and profile_case_type_upper in ['PATENT', 'UTILITY']) %}
+{% set is_out_utility = profile_division_upper == 'OUT' and profile_case_type_upper == 'UTILITY' %}
+{% set is_out_design = (is_out_design if is_out_design is defined else (profile_division_upper == 'OUT' and profile_case_type_upper == 'DESIGN')) or is_hague %}
+{% set is_out_tm = (is_out_tm if is_out_tm is defined else (profile_division_upper == 'OUT' and profile_case_type_upper == 'TRADEMARK')) or is_madrid %}
+{% set is_pct = (is_pct if is_pct is defined else False) or profile_case_type_upper == 'PCT' or (display_division_upper == 'ETC' and display_case_type_upper == 'PCT') %}
+{% set is_litigation = (is_litigation if is_litigation is defined else False) or display_case_type_upper == 'LITIGATION' %}
+{% set is_misc = (is_misc if is_misc is defined else False) or profile_case_type_upper == 'MISC' or display_case_type_upper == 'MISC' or is_copyright %}
+{% set patent_label = 'Utility' if profile_case_type_upper == 'UTILITY' else 'Patent' %}
+
+{% set ref_mid_code = '' %}
+{% if is_dom_utility %}{% set ref_mid_code = 'UD' %}
+{% elif is_dom_pat %}{% set ref_mid_code = 'PD' %}
+{% elif is_dom_design %}{% set ref_mid_code = 'DD' %}
+{% elif is_dom_tm %}{% set ref_mid_code = 'TD' %}
+{% elif is_inc_utility %}{% set ref_mid_code = 'UI' %}
+{% elif is_inc_pat %}{% set ref_mid_code = 'PI' %}
+{% elif is_inc_design %}{% set ref_mid_code = 'DI' %}
+{% elif is_inc_tm %}{% set ref_mid_code = 'TI' %}
+{% elif is_out_utility %}{% set ref_mid_code = 'UO' %}
+{% elif is_out_pat %}{% set ref_mid_code = 'PO' %}
+{% elif is_out_design %}{% set ref_mid_code = 'DO' %}
+{% elif is_out_tm %}{% set ref_mid_code = 'TO' %}
+{% endif %}
+
+{% set staff_fields = ['manager','attorney','handler','drawing_handler','assignee1','assignee2'] %}
+{% set basic_staff_fields = ['manager','attorney','handler'] %}
+{% set basic_hidden_fields = basic_staff_fields + ['client_name'] %}
+{% set required_staff_fields = ['manager','attorney'] %}
+{% set blank_cell = ('', '__blank__', 'blank') %}
+{% set filing_type_options = ['Filing','Filing','In ProgressFiling','Divisional application','ChangeFiling','Filing','Filing','OtherFiling','Priority Filing','Patent Period RegistrationFiling','Patent 34  Filing','Separate application'] %}
+{% set app_route_options = ['PCT','PCT-NP','EP','EP-Validation','items','','CTM(OHIM)','HAGUE'] %}
+{% set application_language_options = ['',''] %}
+{% set invention_grade_options = ['S','A','B','C','D'] %}
+{% set department_options = (department_options or ['0-1','0','1-1','1','2-1','2','3','4','']) %}
+{% set stand_reason_options = ['','ApplicantWaiting','DraftIn Progress','Deposit','Patent officeExamination','FilingIn Progress','In Progress'] %}
+{% set tm_filing_type_options = ['TrademarkRegistrationFiling','TrademarkRegistrationDivisional application','TrademarkRegistrationRegistrationPreviousFiling','TrademarkRegistrationChangeFiling','AddRegistrationFiling','Parent application','PeriodUpdatedRegistration','categoryRegistration','PeriodUpdatedRegistration','categoryRegistration','PeriodRegistration  categoryRegistration','PeriodUpdatedRegistration  categoryRegistration'] %}
+{% set tm_right_type_options = ['Trademark','Servicetable','table','Tasktable','Trademark/Servicetable','Display table'] %}
+{% set tm_type_options = ['GeneralTrademark','Trademark','Trademark','Trademark','Trademark','  Trademark'] %}
+{% set tm_registration_payment_term_options = ['10','5'] %}
+{% set design_filing_type_options = ['DesignExaminationRegistrationFiling','DesignExaminationRegistrationFiling','DesignExaminationRegistrationDivisional application','DesignExaminationRegistrationDivisional application','  DesignExaminationRegistrationFiling','  Design ExaminationRegistrationFiling'] %}
+{% set design_filing_kind_options = ['',''] %}
+{% set litigation_right_type_options = ['Patent','','Design','Trademark','Servicetable','table','Tasktable','Trademark/Servicetable',''] %}
+{% set litigation_case_name_options = ['Patent ','Patent Void',' Confirm','',' Void','PatentCancel ','Patent Period Registration Void','Patent Registration ','Utility modelRegistration ','Utility modelRegistration Void','Utility modelRegistrationCancel ','Utility modelRegistrationFiling ','DesignRegistration','DesignRegistration Void','DesignRegistrationCancel','Design ExaminationRegistration ','  DesignExaminationRegistration ','TrademarkRegistration ',' AddRegistration ','TrademarkRegistration Void','TrademarkRegistration Cancel','Registration Cancel','Trademark Period UpdatedRegistration Void','categoryRegistration Void','Trademark Period UpdatedRegistration ','categoryRegistration ','TrademarkRegistration ',' ',' ','','Matter Billing','Cancel Litigation'] %}
+{% set litigation_court_options = ['Patent','Patent','','Patent office','Other'] %}
+{% set litigation_decision_options = ['','','Withdrawn',''] %}
+{% set forced_app_route = (forced_app_route if forced_app_route is defined else ((form_data.get('_forced_app_route') if form_data else '') or '')) %}
+{% macro render_staff_input(field_name, value, staff_kind, staff_assignment, staff_picker, required=False, suffix='basic') %}
+  {% set input_id = 'staff-' ~ field_name ~ '-' ~ suffix %}
+  {% set more_id = input_id ~ '-more' %}
+  {% if staff_kind == 'management' %}
+    {% set staff_list = staff_assignment.management_users if staff_assignment else [] %}
+    {% set local_staff_list = staff_picker.management_local_users if staff_picker else [] %}
+  {% elif staff_kind == 'professional' %}
+    {% set staff_list = staff_assignment.professional_users if staff_assignment else [] %}
+    {% set local_staff_list = ((staff_picker.attorney_local_users if staff_picker else []) or []) %}
+  {% elif staff_kind == 'processing' %}
+    {% set staff_list = staff_assignment.processing_users if staff_assignment else [] %}
+    {% set local_staff_list = ((staff_picker.processing_local_users if staff_picker else []) or []) %}
+  {% else %}
+    {% set staff_list = staff_assignment.all_users if staff_assignment else [] %}
+    {% set local_staff_list = staff_picker.local_users if staff_picker else [] %}
+  {% endif %}
+  {% set ns = namespace(items=[], seen=[]) %}
+  {% for u in (staff_list or []) %}
+    {% if u.value and u.value not in ns.seen %}
+      {% set _ = ns.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept, "scope": "group"}) %}
+      {% set _ = ns.seen.append(u.value) %}
+    {% endif %}
+  {% endfor %}
+  {% if local_staff_list %}
+    {% for u in local_staff_list %}
+      {% if u.value and u.value not in ns.seen %}
+        {% set _ = ns.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept, "scope": "all"}) %}
+        {% set _ = ns.seen.append(u.value) %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% set staff_search_items = ns.items %}
+  <div class="position-relative">
+    <div class="input-group input-group-sm staff-picker-group">
+      <select class="form-select form-select-sm staff-picker-select" onchange="pickStaffValue('{{ input_id }}', this)">
+      {% if staff_kind == 'management' %}
+        <option value="">-- Select docketing group user --</option>
+      {% elif staff_kind == 'professional' %}
+        <option value="">-- Select attorney group user --</option>
+      {% else %}
+        <option value="">-- Select user --</option>
+      {% endif %}
+      {% for u in (staff_list or []) %}
+        <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+      {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline-secondary staff-picker-more" onclick="toggleStaffMore('{{ more_id }}')">More</button>
+      <input
+        id="{{ input_id }}"
+        class="form-control form-control-sm staff-picker-input"
+        type="text"
+        name="{{ field_name }}"
+        value="{{ value }}"
+        placeholder="Type or search"
+        autocomplete="off"
+        data-staff-search="1"
+        data-staff-menu="{{ input_id }}-staff-menu"
+        data-staff-items='{{ staff_search_items | tojson }}'
+        {% if required %}required{% endif %}
+      />
+    </div>
+    <div
+      id="{{ input_id }}-staff-menu"
+      class="list-group position-absolute w-100 shadow-sm"
+      style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px; max-height:240px; overflow:auto;"
+    ></div>
+  </div>
+  <div id="{{ more_id }}" class="mt-1" style="display:none;">
+    <select class="form-select form-select-sm staff-picker-more-select" onchange="pickStaffValue('{{ input_id }}', this)">
+      <option value="">-- All users --</option>
+      {% if local_staff_list %}
+        <optgroup label="Login accounts">
+          {% for u in local_staff_list %}
+            <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+          {% endfor %}
+        </optgroup>
+      {% endif %}
+      {% if staff_picker and staff_picker.groups %}
+        {% for g in staff_picker.groups %}
+          {% if g.members %}
+            <optgroup label="Group: {{ g.label }}">
+              {% for m in g.members %}
+                <option value="{{ m.value }}">{{ m.label }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if staff_picker and staff_picker.org_units %}
+        {% for ou in staff_picker.org_units %}
+          {% if ou.members %}
+            <optgroup label="Org unit: {{ ou.label }}">
+              {% for m in ou.members %}
+                <option value="{{ m.value }}">{{ m.label }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </select>
+  </div>
+{% endmacro %}
+{% set staff_required = is_dom_pat or is_dom_design or is_dom_tm or is_inc_pat or is_inc_design or is_inc_tm or is_out_pat or is_out_design or is_out_tm or is_pct or is_litigation or is_misc %}
+{% set client_label = 'Foreign associate' if ((division or '')|upper == 'INC') else 'Client' %}
+{% set same_client_checked = ((division or '')|upper != 'INC') %}
+{% if form_data and form_data.get('applicant_same_as_client') %}
+  {% set _same_raw = (form_data.get('applicant_same_as_client') or '')|lower %}
+  {% set same_client_checked = _same_raw in ['1','true','y','yes','on'] %}
+{% endif %}
+
+<div class="container-fluid mt-2" style="max-width: 1200px;">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <div class="small text-muted">Matter management</div>
+      <h4 class="mb-0 fw-bold text-primary">Create matter</h4>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_list') }}">List</a>
+  </div>
+
+  <form
+    method="post"
+    class="card p-3"
+    enctype="multipart/form-data"
+    data-disable-submit="1"
+    data-client-id-guard="1"
+    data-filing-deadline-type-prefill="{{ (form_data.get('filing_deadline_type') if form_data else '') or '' }}"
+    action="{{ form_action }}"
+    data-show-loading="true"
+    data-loading-text="Creating new matter..."
+    data-loading-detail="Saving matter details and related records."
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <input type="hidden" name="idempotency_key" value="{{ idempotency_key or '' }}" />
+    <input type="hidden" name="category" value="{{ case_type or '' }}" />
+    <input type="hidden" name="in_out_type" value="{{ division or '' }}" />
+    <input type="hidden" name="division" value="{{ division or '' }}" />
+    <input type="hidden" name="case_type" value="{{ case_type or '' }}" />
+    {% if forced_app_route %}
+      <input type="hidden" name="_forced_app_route" value="{{ forced_app_route }}" />
+    {% endif %}
+    {% set _family_link_target_id = (form_data.get('family_link_target_id') if form_data else '') %}
+    {% if _family_link_target_id %}
+      <input
+        id="familyLinkTargetId"
+        type="hidden"
+        name="family_link_target_id"
+        value="{{ _family_link_target_id }}"
+      />
+    {% endif %}
+    {% set _family_create_mode = ((form_data.get('family_create_mode') if form_data else '') or (effective_family_create_mode or '')) %}
+    {% if _family_create_mode %}
+      <input
+        type="hidden"
+        name="family_create_mode"
+        value="{{ _family_create_mode }}"
+      />
+    {% endif %}
+    {% set _staff_form = form_data or {} %}
+    <input type="hidden" name="manager_id" value="{{ _staff_form.get('manager_id', '') }}" />
+    <input type="hidden" name="attorney_id" value="{{ _staff_form.get('attorney_id', '') }}" />
+    <input type="hidden" name="handler_id" value="{{ _staff_form.get('handler_id', '') }}" />
+
+    <div class="d-flex justify-content-end gap-2 mb-3">
+      <button type="submit" class="btn btn-sm btn-primary">Create</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_list') }}">Cancel</a>
+    </div>
+
+    {% if display_division or display_case_type or division or case_type %}
+    <div class="alert alert-light border small mb-3">
+      <span class="badge bg-secondary">{{ (display_division or division or '-') }} {{ (display_case_type or case_type or '-') }}</span>
+      <span class="ms-2">
+        {% if display_division_upper == 'ETC' and display_case_type_upper == 'PCT' %}
+          Other Matter &gt; PCT (<b>Our Ref.</b> auto-numbering, PCT registry)
+        {% elif display_division_upper == 'ETC' and display_case_type_upper == 'MADRID' %}
+          Other Matter &gt; Madrid (<b>Our Ref.</b> auto-numbering with country, foreign fields)
+        {% elif display_division_upper == 'ETC' and display_case_type_upper == 'HAGUE' %}
+          Other Matter &gt; Hague (<b>Our Ref.</b> auto-numbering with country, foreign fields)
+        {% elif display_division_upper == 'ETC' and display_case_type_upper == 'COPYRIGHT' %}
+          Other Matter &gt; Copyright (<b>Our Ref.</b> auto-numbering)
+        {% elif display_division_upper == 'ETC' and display_case_type_upper == 'LITIGATION' %}
+          Other Matter &gt; Proceedings / Litigation (<b>Our Ref.</b> auto-numbering)
+        {% elif display_division_upper == 'ETC' and display_case_type_upper == 'MISC' %}
+          Other Matter &gt; Other (<b>Our Ref.</b> auto-numbering)
+        {% elif is_dom_pat or is_dom_design or is_dom_tm %}
+          US Matter (<b>Our Ref.</b> auto-numbering, management fields)
+        {% elif is_inc_pat or is_inc_design or is_inc_tm %}
+          Inbound US Matter (<b>Our Ref.</b> auto-numbering with country, foreign fields)
+        {% elif is_out_pat or is_out_design or is_out_tm %}
+          Foreign Filing Matter (<b>Our Ref.</b> auto-numbering with country, foreign fields)
+        {% elif is_pct %}
+          PCT Matter (<b>Our Ref.</b> auto-numbering, PCT registry)
+        {% elif is_litigation %}
+          Proceedings / Litigation (<b>Our Ref.</b> auto-numbering)
+        {% elif is_misc %}
+          Other (<b>Our Ref.</b> auto-numbering)
+        {% else %}
+          (<b>Our Ref.</b> required)
+        {% endif %}
+      </span>
+    </div>
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Basic Information</h5>
+      <span class="small text-muted">Our Ref. required</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Our Ref. *</label>
+        {% if false %}
+          <div class="input-group mb-1">
+            <span class="input-group-text">{{ ref_mid_code }}</span>
+            <span class="input-group-text">US</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-division="{{ division or '' }}"
+              data-type="{{ display_case_type or case_type or '' }}"
+              data-country="US"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              ╋
+            </button>
+          </div>
+          <input
+            id="ourRefInput"
+            class="form-control"
+            name="our_ref"
+            required
+            value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+            placeholder="Click Auto"
+          />
+        {% elif ref_mid_code %}
+          <div class="input-group mb-1">
+             <input
+              id="ourRefInput"
+              class="form-control"
+              name="our_ref"
+              required
+              value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+              placeholder="Click Auto"
+            />
+            <input
+              id="countrySelect"
+              class="form-control"
+              name="application_country"
+              style="max-width: 80px"
+              maxlength="3"
+              value="{{ (form_data.get('application_country') if form_data else '') or '' }}"
+              placeholder="Country (US)"
+              data-sync-field-name="application_country"
+            />
+             <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-division="{{ division or '' }}"
+              data-type="{{ display_case_type or case_type or '' }}"
+              data-country-id="countrySelect"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              Auto
+            </button>
+          </div>
+          <div class="form-text">Click Auto to use the configured Our Ref. numbering rule. Foreign matters require a country code.</div>
+        {% elif is_pct %}
+          <div class="input-group mb-1">
+            <input
+              id="ourRefInput"
+              class="form-control"
+              name="our_ref"
+              required
+              value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+              placeholder="Ex. PCT260103"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-division="{{ division or '' }}"
+              data-type="{{ display_case_type or case_type or '' }}"
+              data-country="PCT"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              Auto
+            </button>
+          </div>
+          <div class="form-text">PCT matters use the configured Our Ref. pattern. Default: `PCTYY0000`.</div>
+        {% elif is_litigation %}
+          <div class="input-group mb-1">
+            <input
+              id="ourRefInput"
+              class="form-control"
+              name="our_ref"
+              required
+              value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+              placeholder="Ex. USL260001"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-type="{{ display_case_type or case_type or '' }}"
+              data-country="US"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              Auto
+            </button>
+          </div>
+        {% elif is_misc %}
+          <div class="input-group mb-1">
+            <input
+              id="ourRefInput"
+              class="form-control"
+              name="our_ref"
+              required
+              value="{{ (form_data.get('our_ref') if form_data else '') or '' }}"
+              placeholder="Ex. USM260101"
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-type="{{ display_case_type or case_type or '' }}"
+              data-country="US"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              Auto
+            </button>
+          </div>
+        {% else %}
+          <input id="ourRefInput" class="form-control" name="our_ref" required value="{{ (form_data.get('our_ref') if form_data else '') or '' }}" />
+        {% endif %}
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Your Ref</label>
+        <input class="form-control" name="your_ref" value="{{ (form_data.get('your_ref') if form_data else '') or '' }}" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{{ client_label }} *</label>
+        <div class="position-relative">
+          <input
+            id="clientNameBasic"
+            class="form-control"
+            type="text"
+            name="client_name"
+            required
+            value="{{ (form_data.get('client_name') if form_data else '') or '' }}"
+            autocomplete="off"
+            data-client-search="1"
+            data-client-id="clientIdBasic"
+            data-client-menu="clientMenuBasic"
+            placeholder="Search {{ client_label }} (2+ characters)"
+          />
+          <input
+            id="clientIdBasic"
+            type="hidden"
+            name="client_id"
+            value="{{ (form_data.get('client_id') if form_data else '') or '' }}"
+          />
+          <div
+            id="clientMenuBasic"
+            class="list-group position-absolute w-100 shadow"
+            style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+          ></div>
+          <div class="d-flex gap-2 mt-1">
+            <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">Create contact</a>
+            <span class="text-muted small">Search by name, email, or registration number</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">{{ 'Matter title' if is_misc else 'Proposal title' }}</label>
+        <input class="form-control" name="right_name" value="{{ (form_data.get('right_name') if form_data else '') or '' }}" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Intake date *</label>
+        <div class="input-group">
+          <input class="form-control" type="date" name="retained_at" required value="{{ (form_data.get('retained_at') if form_data else '') or '' }}" />
+          <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Entry date</label>
+        <div class="input-group">
+          <input class="form-control" type="date" name="entered_at" value="{{ (form_data.get('entered_at') if form_data else '') or '' }}" />
+          <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Internal status</label>
+        <input class="form-control" name="inhouse_status" value="{{ (form_data.get('inhouse_status') if form_data else '') or '' }}" />
+      </div>
+      <div class="w-100"></div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Responsible attorney {% if staff_required %}*{% endif %}</label>
+        {{ render_staff_input(
+            'attorney',
+            (form_data.get('attorney') if form_data else '') or '',
+            'professional',
+            staff_assignment,
+            staff_picker,
+            required=staff_required,
+            suffix='basic'
+          )
+        }}
+      </div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Docketing owner {% if staff_required %}*{% endif %}</label>
+        {{ render_staff_input(
+            'manager',
+            (form_data.get('manager') if form_data else '') or '',
+            'management',
+            staff_assignment,
+            staff_picker,
+            required=staff_required,
+            suffix='basic'
+          )
+        }}
+        {% if not staff_required %}
+          <div class="form-text">Select or type when needed.</div>
+        {% endif %}
+      </div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Paralegal / handler</label>
+        {{ render_staff_input(
+            'handler',
+            (form_data.get('handler') if form_data else '') or '',
+            'processing',
+            staff_assignment,
+            staff_picker,
+            suffix='basic'
+          )
+        }}
+        <div class="form-text">Optional.</div>
+      </div>
+      <div class="col-12 mt-2">
+        <label class="form-label">Memo</label>
+        <textarea class="form-control" name="memo" rows="3">{{ (form_data.get('memo') if form_data else '') or '' }}</textarea>
+      </div>
+    </div>
+
+    {% include "case/_matter_create_dom_sections.html" %}
+
+    {% include "case/_matter_create_foreign_design_tm.html" %}
+
+    {% include "case/_matter_create_foreign_patent.html" %}
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button type="submit" class="btn btn-sm btn-primary">Confirm</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% include "case/_client_search_modal.html" %}
+<script>
+  window.CASE_FORM_MISSING_FIELDS = {{ (missing_fields or [])|tojson }};
+  window.CASE_FORM_FIELD_META = {{ (field_meta or {})|tojson }};
+</script>
+<script src="{{ static_asset_url('js/case_form.js') }}"></script>
+<script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+<script>
+  function pickStaffValue(inputId, selectEl) {
+    const input = document.getElementById(inputId);
+    if (!input || !selectEl) return;
+    const v = (selectEl.value || '').toString().trim();
+    if (!v) {
+      selectEl.selectedIndex = 0;
+      if (window.AppStaff && typeof window.AppStaff.setStaffIdForInput === 'function') {
+        window.AppStaff.setStaffIdForInput(input, '');
+      }
+      return;
+    }
+    const selected = selectEl.options[selectEl.selectedIndex];
+    const staffId = selected ? selected.getAttribute('data-staff-id') : '';
+    const existing = (input.value || '')
+      .split(/[;,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const vLower = v.toLowerCase();
+    const hasValue = existing.some((item) => item.toLowerCase() === vLower);
+    if (!hasValue) {
+      existing.push(v);
+    }
+    input.value = existing.join("; ");
+    if (window.AppStaff && typeof window.AppStaff.setStaffIdForInput === 'function') {
+      if (existing.length === 1 && staffId) {
+        window.AppStaff.setStaffIdForInput(input, staffId);
+      } else {
+        window.AppStaff.setStaffIdForInput(input, '');
+      }
+    }
+    selectEl.selectedIndex = 0;
+  }
+
+  function toggleStaffMore(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+  }
+</script>
+{% endblock %}

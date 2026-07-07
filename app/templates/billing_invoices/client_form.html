@@ -1,0 +1,612 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<style>
+ :root {
+  --form-max-width: 800px;
+  --input-radius: 8px;
+  --input-bg: #fff;
+  --input-border: #cbd5e1;
+  --primary-color: #005EA8;
+  --muted-text: #64748b;
+ }
+
+ /* Centered Layout */
+ .form-container {
+  max-width: var(--form-max-width);
+  margin: 0 auto;
+  padding: 30px 20px;
+ }
+
+ .form-header {
+  margin-bottom: 24px;
+  text-align: center;
+ }
+ .form-title { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+ .form-subtitle { color: var(--muted-text); font-size: 14px; }
+
+ /* Card & Sections */
+ .form-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  padding: 30px;
+  margin-bottom: 20px;
+ }
+
+ .section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+ }
+
+ /* Input Styling Overrides */
+ .form-group { margin-bottom: 16px; }
+ label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+ }
+ label.req::after { content: "*"; color: #ef4444; margin-left: 2px; }
+
+ input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"], select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: 14px;
+  background: var(--input-bg);
+  transition: all 0.2s;
+ }
+ input:focus, select:focus, textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 94, 168, 0.1);
+  outline: none;
+ }
+
+ /* Smart Input Section */
+ .smart-import-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.2s;
+ }
+ .smart-import-box:hover { border-color: var(--primary-color); background: #EAF4FF; }
+
+ .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+ @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+ /* Sticky ActionBar at bottom */
+ .form-actions-sticky {
+  position: sticky;
+  bottom: 20px;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 20px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 50;
+  margin-top: 20px;
+ }
+</style>
+
+{% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+{% set crm_id = (client['id'] if (client and unified_mode) else (client.get('ipm_client_id') if client else None)) %}
+
+<div class="form-container">
+
+ <div class="form-header">
+  <h1 class="form-title">{{ 'Existing Client Edit' if client else 'New client Registration' }}</h1>
+  <div class="form-subtitle">
+    {% if client %}ID: #{{ client['id'] }} · Required fields for tax documentation are editable below.{% else %}Create a new client record.{% endif %}
+  </div>
+
+  {% if client %}
+  <div class="d-flex justify-content-center gap-2 mt-3">
+    {% if crm_id %}
+     <a class="btn btn-sm btn-outline-secondary" href="/crm/clients/{{ crm_id }}">CRM View</a>
+    {% else %}
+     <form method="post" action="{{ url_for('customers.sync_from_invoice_client') }}" class="d-inline m-0" data-confirm="CRM Client /Link ? ">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="invoice_client_id" value="{{ client['id'] }}">
+      <input type="hidden" name="next" value="{{ url_for('billing_invoices.clients.edit_client', client_id=client['id']) }}">
+      <button type="submit" class="btn btn-sm btn-outline-primary">CRM Link</button>
+     </form>
+    {% endif %}
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id']) }}"></a>
+  </div>
+  {% endif %}
+ </div>
+
+ <form method="post" enctype="multipart/form-data">
+
+  {% if not client %}
+  <!-- Smart Import Section -->
+  <div class="form-card">
+    <h3 class="section-title">Smart import</h3>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div id="bizregDrop" class="smart-import-box cursor-pointer" title="Select file">
+          <div class="mb-2" style="font-size:24px;">📄</div>
+          <div style="font-weight:600; font-size:14px; margin-bottom:4px;">Business document upload</div>
+          <div class="muted small">PDF or image auto-extraction</div>
+          <input id="bizregInput" type="file" accept=".pdf,image/*" style="display: none" />
+        </div>
+        <!-- Parse Status/Preview -->
+        <div id="bizregStatus" class="mt-2 small text-center" style="display:none;"></div>
+        <div id="bizregPreview" class="mt-2 p-3 bg-light rounded border" style="display:none; font-size:13px;">
+          <div class="fw-bold mb-2">Extracted fields</div>
+          <div class="small text-muted mb-2">Select fields to apply.</div>
+          <div id="bizregPreviewFields" class="d-grid gap-2"></div>
+          <div class="d-flex gap-2 mt-2">
+            <button type="button" id="bizregApplySelectedBtn" class="btn btn-xs btn-primary flex-fill">Apply selected</button>
+            <button type="button" id="bizregClearBtn" class="btn btn-xs btn-outline-secondary">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="smart-import-box cursor-pointer" onclick="openLLMModal()">
+          <div class="mb-2" style="font-size:24px;">🤖</div>
+          <div style="font-weight:600; font-size:14px; margin-bottom:4px;">Paste email or text</div>
+          <div class="muted small">Extract client details from text</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Basic Info -->
+  <div class="form-card">
+    <h3 class="section-title">Basic information</h3>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="req">Client name (business or individual)</label>
+        <input id="client_name" name="name" value="{{ client['name'] if client else '' }}" required placeholder="Example LLC" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input id="client_email" name="email" type="email" value="{{ (client['email'] or (biz_info.get('tax_invoice_email') if biz_info else '')) if client else '' }}" placeholder="billing@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input id="client_phone" name="phone" value="{{ client['phone'] if client else '' }}" placeholder="+1 555-0100" />
+      </div>
+       <div class="form-group">
+        <label>Contact name</label>
+        <input id="client_manager" name="manager" value="{{ (client['manager'] or (biz_info.get('representative_name') if biz_info else '')) if client else '' }}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Address</label>
+      <input id="client_address" name="address" value="{{ (client['address'] or (biz_info.get('business_location') if biz_info else '') or (biz_info.get('head_office_location') if biz_info else '')) if client else '' }}" />
+    </div>
+    <div class="form-group mb-0">
+      <label>Internal notes</label>
+      <textarea id="notes" name="notes" rows="2">{{ client['notes'] if client else '' }}</textarea>
+    </div>
+
+    <!-- Duplicate Warning -->
+    <div id="duplicate_warning_client" class="alert alert-warning mt-3 mb-0" style="display:none; border-left:4px solid #C8A24A;">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <h5 class="alert-heading h6 fw-bold mb-1">Duplicate client</h5>
+          <p class="small mb-2">A matching existing client may already exist.</p>
+          <div id="duplicate_matches_client" class="d-flex flex-column gap-2"></div>
+        </div>
+        <button type="button" class="btn-close" onclick="closeDuplicateWarningClient()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Info -->
+  <div class="form-card">
+    <h3 class="section-title">Business tax profile</h3>
+    <div class="grid-2">
+      <div class="form-group">
+        <label>Tax ID / EIN</label>
+        <input name="biz_reg_number" inputmode="numeric" placeholder="12-3456789" value="{{ (client['biz_reg_number'] or (biz_info.get('reg_number') if biz_info else '')) if client else '' }}" />
+      </div>
+      <div class="form-group">
+        <label>Entity registration number</label>
+        <input name="biz_corp_registration_number" placeholder="State entity file number" value="{{ (client['biz_corp_registration_number'] or (biz_info.get('corp_registration_number') if biz_info else '')) if client else '' }}" />
+      </div>
+      <div class="form-group">
+        <label>Legal business name</label>
+        <input name="biz_company_name" value="{{ (client['biz_company_name'] or (biz_info.get('company_name') if biz_info else '')) if client else '' }}" />
+      </div>
+      <div class="form-group">
+        <label>Authorized representative</label>
+        <input name="biz_representative_name" value="{{ (client['biz_representative_name'] or (biz_info.get('representative_name') if biz_info else '')) if client else '' }}" />
+      </div>
+      <div class="form-group">
+        <label>Entity type / business activity</label>
+        <input name="biz_business_type" placeholder="LLC, corporation, IP services, etc." value="{{ (client['biz_business_type'] or (biz_info.get('business_type') if biz_info else '')) if client else '' }}" />
+      </div>
+       <div class="form-group">
+        <label>Formation date</label>
+        <input type="date" name="biz_opening_date" value="{{ (client['biz_opening_date'] or (biz_info.get('opening_date') if biz_info else '')) if client else '' }}" />
+      </div>
+    </div>
+     <div class="form-group">
+      <label>Business address</label>
+      <input name="biz_business_location" value="{{ (client['biz_business_location'] or (biz_info.get('business_location') if biz_info else '')) if client else '' }}" />
+    </div>
+    <div class="form-group">
+      <label>Principal office address</label>
+      <input name="biz_head_office_location" value="{{ (client['biz_head_office_location'] or (biz_info.get('head_office_location') if biz_info else '')) if client else '' }}" />
+    </div>
+    <div class="form-group mb-0">
+      <label>Billing tax email</label>
+      <input type="email" name="biz_tax_invoice_email" value="{{ (client['biz_tax_invoice_email'] or (biz_info.get('tax_invoice_email') if biz_info else '')) if client else '' }}" />
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="form-actions-sticky">
+    <div>
+      <a href="{{ url_for('billing_invoices.clients.list_clients') }}" class="btn btn-ghost text-muted">Cancel</a>
+    </div>
+    <div class="d-flex gap-2">
+       {% if client %}
+       <!-- Delete Button Trigger -->
+       <button type="button" class="btn btn-outline-danger" data-confirm="Delete this client? Existing invoices will not be deleted." data-confirm-form="deleteForm">Delete</button>
+       {% endif %}
+       <button type="submit" class="btn btn-primary px-4">Save</button>
+    </div>
+  </div>
+ </form>
+
+ {% if client %}
+ <form id="deleteForm" method="post" action="{{ url_for('billing_invoices.clients.delete_client', client_id=client['id']) }}" style="display:none;">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+ </form>
+ {% endif %}
+
+</div>
+
+<!-- Scripts (Reused Logic) -->
+<script>
+ let duplicateCheckTimeout = null;
+ let duplicateCheckToken = 0;
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+ const bizregParseUrl = "{{ url_for('billing_invoices.clients.parse_bizreg') }}";
+ const bizregState = { data: null };
+ const bizregFieldDefs = [
+  {
+   key: "client_name",
+   label: "Client name",
+   getValue: (d) => d.company_name || d.representative_name,
+   apply: (v) => setVal("#client_name", v),
+  },
+  {
+   key: "client_email",
+   label: "Email",
+   getValue: (d) => d.tax_invoice_email,
+   apply: (v) => setVal("#client_email", v),
+  },
+  {
+   key: "client_address",
+   label: "Address",
+   getValue: (d) => d.business_location || d.head_office_location,
+   apply: (v) => setVal("#client_address", v),
+  },
+  {
+   key: "client_manager",
+   label: "Contact",
+   getValue: (d) => d.representative_name,
+   apply: (v) => setVal("#client_manager", v),
+  },
+  {
+   key: "biz_reg_number",
+   label: "Tax ID / EIN",
+   getValue: (d) => d.reg_number,
+   apply: (v) => setVal('input[name="biz_reg_number"]', v),
+  },
+  {
+   key: "biz_company_name",
+   label: "Legal business name",
+   getValue: (d) => d.company_name,
+   apply: (v) => setVal('input[name="biz_company_name"]', v),
+  },
+  {
+   key: "biz_representative_name",
+   label: "Representative",
+   getValue: (d) => d.representative_name,
+   apply: (v) => setVal('input[name="biz_representative_name"]', v),
+  },
+  {
+   key: "biz_opening_date",
+   label: "Formation date",
+   getValue: (d) => d.opening_date,
+   apply: (v) => setVal('input[name="biz_opening_date"]', v),
+  },
+  {
+   key: "biz_corp_registration_number",
+   label: "Entity registration number",
+   getValue: (d) => d.corp_registration_number,
+   apply: (v) => setVal('input[name="biz_corp_registration_number"]', v),
+  },
+  {
+   key: "biz_business_location",
+   label: "Business address",
+   getValue: (d) => d.business_location,
+   apply: (v) => setVal('input[name="biz_business_location"]', v),
+  },
+  {
+   key: "biz_head_office_location",
+   label: "Principal office address",
+   getValue: (d) => d.head_office_location,
+   apply: (v) => setVal('input[name="biz_head_office_location"]', v),
+  },
+  {
+   key: "biz_business_type",
+   label: "Business category",
+   getValue: (d) => d.business_type,
+   apply: (v) => setVal('input[name="biz_business_type"]', v),
+  },
+  {
+   key: "biz_tax_invoice_email",
+   label: "Billing tax email",
+   getValue: (d) => d.tax_invoice_email,
+   apply: (v) => setVal('input[name="biz_tax_invoice_email"]', v),
+  },
+ ];
+
+ // --- Duplicate Check Logic (Same as before but styled) ---
+ function checkDuplicateCustomerForm() {
+  const name = document.getElementById("client_name").value.trim();
+  const phone = document.getElementById("client_phone").value.trim();
+  const email = document.getElementById("client_email").value.trim();
+  const address = document.getElementById("client_address").value.trim();
+  const token = ++duplicateCheckToken;
+
+  if (!name) { closeDuplicateWarningClient(); return; }
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+
+  fetch(`${scriptRoot}/invoices/check_duplicate_customer`, {
+   method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+   body: JSON.stringify({ name, phone, email, address }),
+  })
+   .then((response) => response.json())
+   .then((data) => {
+    if (token !== duplicateCheckToken) return;
+    if (data.success && data.matches && data.matches.length> 0) {
+     showDuplicateWarningClient(data.matches);
+    } else {
+     closeDuplicateWarningClient();
+    }
+   })
+   .catch((error) => console.error("Duplicate check error:", error));
+ }
+
+ function debouncedDuplicateCheckClient() {
+  clearTimeout(duplicateCheckTimeout);
+  duplicateCheckTimeout = setTimeout(checkDuplicateCustomerForm, 500);
+ }
+
+ function escapeHtml(text) {
+  if (text === null || typeof text === "undefined") return "";
+  return String(text)
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#039;");
+ }
+
+ function setVal(selector, value) {
+  if (!value) return;
+  const el = document.querySelector(selector);
+  if (el) el.value = value;
+ }
+
+ function showDuplicateWarningClient(matches) {
+  const warning = document.getElementById("duplicate_warning_client");
+  const matchesContainer = document.getElementById("duplicate_matches_client");
+  matchesContainer.innerHTML = "";
+
+  matches.forEach((match) => {
+   const matchDiv = document.createElement("div");
+   matchDiv.className = "bg-white border rounded p-2 small";
+
+   const safeName = escapeHtml(match.name);
+   let linkHtml = "";
+   if (match.id) {
+     linkHtml = `<a href="${scriptRoot}/clients/${match.id}" class="fw-bold">#${match.id} ${safeName}</a>`;
+   } else {
+     linkHtml = `<span class="fw-bold">${safeName}</span>`;
+   }
+
+   let details = [];
+   if (match.email) details.push(escapeHtml(match.email));
+   if (match.phone) details.push(escapeHtml(match.phone));
+
+   const reasons = (match.reasons || []).map(r => escapeHtml(r)).join(', ');
+
+   matchDiv.innerHTML = `
+    <div class="d-flex justify-content-between">
+      <div>${linkHtml}</div>
+      <div class="text-danger fw-bold" style="font-size:0.8em"> ${match.score}</div>
+    </div>
+    <div class="muted">${details.join(' · ')}</div>
+    <div class="text-warning-dark mt-1" style="font-size:0.8em">${reasons}</div>
+   `;
+   matchesContainer.appendChild(matchDiv);
+  });
+  warning.style.display = "block";
+ }
+
+ function closeDuplicateWarningClient() {
+  document.getElementById("duplicate_warning_client").style.display = "none";
+ }
+
+ // --- Biz Reg Logic ---
+ function setBizregStatus(message, kind) {
+  const el = document.getElementById("bizregStatus");
+  if (!el) return;
+  el.style.display = message ? "block" : "none";
+  el.textContent = message;
+  el.className = `mt-2 small text-center text-${kind === 'error' ? 'danger' : kind === 'success' ? 'success' : 'muted'}`;
+ }
+
+ function renderBizregPreview(data) {
+  const preview = document.getElementById("bizregPreview");
+  const list = document.getElementById("bizregPreviewFields");
+  if (!preview || !list) return;
+  if (!data) {
+   preview.style.display = "none";
+   list.innerHTML = "";
+   return;
+  }
+
+  list.innerHTML = "";
+  bizregFieldDefs.forEach((def) => {
+   const value = (def.getValue ? def.getValue(data) : data[def.key]) || "";
+   const id = `bizreg-field-${def.key}`;
+
+   const row = document.createElement("div");
+   row.className = "form-check d-flex align-items-center gap-2";
+
+   const checkbox = document.createElement("input");
+   checkbox.className = "form-check-input";
+   checkbox.type = "checkbox";
+   checkbox.id = id;
+   checkbox.dataset.key = def.key;
+   checkbox.checked = Boolean(value);
+   checkbox.disabled = !value;
+
+   const label = document.createElement("label");
+   label.className = "form-check-label";
+   label.setAttribute("for", id);
+   label.textContent = def.label;
+
+   const valueSpan = document.createElement("span");
+   valueSpan.className = "ms-auto text-muted small";
+   valueSpan.textContent = value || "-";
+
+   row.appendChild(checkbox);
+   row.appendChild(label);
+   row.appendChild(valueSpan);
+   list.appendChild(row);
+  });
+
+  preview.style.display = "block";
+ }
+
+ function getSelectedBizregKeys() {
+  const list = document.getElementById("bizregPreviewFields");
+  if (!list) return [];
+  return Array.from(list.querySelectorAll('input[type="checkbox"][data-key]'))
+   .filter((cb) => cb.checked && !cb.disabled)
+   .map((cb) => cb.dataset.key);
+ }
+
+ function applyBizRegData(selectedKeys) {
+  const data = bizregState.data;
+  if (!data) return;
+  const keys = selectedKeys && selectedKeys.length ? selectedKeys : getSelectedBizregKeys();
+  if (!keys.length) return;
+  const selected = new Set(keys);
+  bizregFieldDefs.forEach((def) => {
+   if (!selected.has(def.key)) return;
+   const value = def.getValue ? def.getValue(data) : data[def.key];
+   if (!value) return;
+   def.apply(value);
+  });
+ }
+
+ async function parseBizRegFile(file) {
+  if (!file) return;
+  setBizregStatus("Analyzing...", "info");
+  renderBizregPreview(null);
+  const fd = new FormData();
+  fd.append("file", file);
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+  try {
+   const resp = await fetch(bizregParseUrl, { method: "POST", headers: { "X-CSRFToken": csrfToken }, body: fd });
+   const data = await resp.json();
+   if (!data.success) throw new Error(data.error || '');
+
+   bizregState.data = data.biz_reg || {};
+   renderBizregPreview(bizregState.data);
+   setBizregStatus("Analysis complete. Apply Item Select.", "success");
+  } catch (e) {
+   setBizregStatus("analysis : " + e.message, "error");
+   renderBizregPreview(null);
+  }
+ }
+
+ // --- Event Listeners ---
+ window.addEventListener("load", function () {
+  const nameField = document.getElementById("client_name");
+  if (nameField) {
+   nameField.addEventListener("blur", checkDuplicateCustomerForm);
+   nameField.addEventListener("input", debouncedDuplicateCheckClient);
+  }
+
+  // Biz Reg UI
+  const bizregDrop = document.getElementById("bizregDrop");
+  const bizregInput = document.getElementById("bizregInput");
+  const applySelectedBtn = document.getElementById("bizregApplySelectedBtn");
+  const clearBtn = document.getElementById("bizregClearBtn");
+
+  if (applySelectedBtn) {
+   applySelectedBtn.addEventListener("click", () => {
+    const keys = getSelectedBizregKeys();
+    if (!keys.length) {
+     setBizregStatus("Select item none.", "error");
+     return;
+    }
+    applyBizRegData(keys);
+    setBizregStatus("selected item Apply.", "success");
+   });
+  }
+  if (clearBtn) clearBtn.addEventListener("click", () => {
+    bizregState.data = null;
+    renderBizregPreview(null);
+    setBizregStatus("");
+  });
+
+  if (bizregDrop && bizregInput) {
+   bizregDrop.addEventListener("click", () => bizregInput.click());
+   bizregInput.addEventListener("change", (e) => {
+    if (e.target.files.length) {
+      parseBizRegFile(e.target.files[0]);
+      e.target.value = "";
+    }
+   });
+   bizregDrop.addEventListener("dragover", (e) => { e.preventDefault(); bizregDrop.style.backgroundColor = "#EAF4FF"; });
+   bizregDrop.addEventListener("dragleave", () => { bizregDrop.style.backgroundColor = "#f8fafc"; });
+   bizregDrop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    bizregDrop.style.backgroundColor = "#f8fafc";
+    if (e.dataTransfer.files.length) parseBizRegFile(e.dataTransfer.files[0]);
+   });
+  }
+ });
+
+ // LLM Modal Functions (Global Scope)
+ function openLLMModal() {
+  const modal = document.getElementById("llmModal");
+  if (modal) {
+    modal.style.display = "flex";
+    if(document.getElementById("llmEmailText")) document.getElementById("llmEmailText").value = "";
+  }
+ }
+
+ // Note: ensure parseLLM and closeLLMModal are defined globally or in the layout if used here.
+ // Assuming they are in base or existing scripts.Redefining for safety if needed within shared scope.
+</script>
+{% endblock %}

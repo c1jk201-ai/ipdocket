@@ -1,0 +1,810 @@
+{% set attachment_title = attachment_title if attachment_title is defined else '📎 File' %}
+{% set attachment_description = attachment_description if attachment_description is defined else 'Upload a file.' %}
+{% set attachment_dom_id = attachment_dom_id if attachment_dom_id is defined else 'attach' %}
+{% set attachment_section_id = attachment_section_id if attachment_section_id is defined else attachment_dom_id ~ 'Section' %}
+{% set attachment_list = attachment_list if attachment_list is defined else attachments %}
+{% set attachment_role = attachment_role if attachment_role is defined else 'general' %}
+{% set attachment_required = attachment_required if attachment_required is defined else false %}
+{% set attachment_satisfied = attachment_satisfied if attachment_satisfied is defined else true %}
+{% set attachment_empty_text = attachment_empty_text if attachment_empty_text is defined else 'No files attached.' %}
+
+<div
+ id="{{ attachment_section_id }}"
+ data-invoice-attachment-root="1"
+ data-attachment-role="{{ attachment_role }}"
+ style="margin-top: 12px"
+>
+ <h3 style="margin-top: 0">
+  {{ attachment_title }}
+  {% if attachment_required %}
+  <span class="pill" style="font-size: 0.65em; vertical-align: middle; background: #FAF4E4; color: #0B1F3A; border: 1px solid #E6D39B;">Required</span>
+  {% endif %}
+ </h3>
+ {% if attachment_required and not attachment_satisfied %}
+ <div
+  role="alert"
+  data-attachment-required-alert="1"
+  style="padding: 10px 12px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; color: #9a3412; margin: 0 0 10px 0; font-size: 0.9em;"
+>
+  Foreign remittance proof is required.
+ </div>
+ {% endif %}
+ <p id="{{ attachment_dom_id }}Desc" class="muted" style="margin: 6px 0 10px 0; font-size: 0.9em">
+  {{ attachment_description }}
+ </p>
+ <p id="{{ attachment_dom_id }}Help" class="visually-hidden">
+  Press Enter or Space to select a file. You can also paste an image with Ctrl+V.
+ </p>
+ <div
+  id="{{ attachment_dom_id }}Drop"
+  class="attach-dropzone"
+  role="button"
+  tabindex="0"
+  aria-label="File upload"
+  aria-describedby="{{ attachment_dom_id }}Desc {{ attachment_dom_id }}Help"
+  aria-controls="{{ attachment_dom_id }}Input {{ attachment_dom_id }}List"
+  style="
+   border: 2px dashed #cbd5e1;
+   border-radius: 12px;
+   padding: 16px;
+   background: #f8fafc;
+   text-align: center;
+   cursor: pointer;
+  "
+  title="Upload a file or paste an image with Ctrl+V"
+>
+  <div style="font-size: 0.95em; color: #475569">
+   File
+   <span
+    style="color: var(--accent); font-weight: 600; text-decoration: underline"
+   ></span
+  > Click to upload, or paste with Ctrl+V
+  </div>
+  <input id="{{ attachment_dom_id }}Input" type="file" multiple style="display: none" aria-label="Select file" />
+ </div>
+ <div
+  id="{{ attachment_dom_id }}Error"
+  class="muted"
+  role="alert"
+  aria-live="assertive"
+  style="color: #b91c1c; margin-top: 8px; display: none"
+></div>
+ <div id="{{ attachment_dom_id }}Status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+ <ul
+  id="{{ attachment_dom_id }}List"
+  aria-label="File List"
+  style="list-style: none; padding: 0; margin: 12px 0 0 0"
+>
+  {% for a in attachment_list %}
+  <li
+   data-id="{{ a['id'] }}"
+   data-content-type="{{ a['content_type'] or '' }}"
+   data-role="{{ a['role'] or attachment_role }}"
+   data-memo="{{ (a['analysis_meta']|from_json)['user_memo'] if a['analysis_meta'] and (a['analysis_meta']|from_json)['user_memo'] else '' }}"
+   style="
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid #e5e7eb;
+   "
+ >
+   <span
+    style="
+     flex: 1 1 auto;
+     overflow: hidden;
+     text-overflow: ellipsis;
+     white-space: nowrap;
+    "
+  >
+    <a
+     href="{{ url_for('billing_invoices.invoices.download_attachment', invoice_id=invoice['id'], att_id=a['id']) }}"
+     title="Download"
+    >{{ a['original_name'] }}</a
+   >
+    <span class="muted" style="font-size: 0.85em; padding-left: 6px"
+    >({{ a['size'] or 0 }} bytes, {{ a['uploaded_at']|local_dt }})</span
+   >
+   </span>
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.delete_attachment', invoice_id=invoice['id'], att_id=a['id']) }}"
+    data-confirm="File Delete ? "
+    data-prevent-double-submit="true"
+    style="margin: 0"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button class="btn btn-ghost btn-ui-compact" type="submit">
+     Delete
+    </button>
+   </form>
+   {% set analysis = a['analysis_meta']|from_json if a['analysis_meta']
+   else None %} {% if analysis %}
+   <div
+    class="muted attach-details"
+    style="padding: 6px 0 0 0; font-size: 0.85em; width: 100%"
+  >
+    <div><strong> :</strong> {{ analysis['doc_type'] }}</div>
+    <div style="margin: 2px 0 4px 0">
+     <strong>:</strong> {{ analysis['summary'] }}
+    </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap">
+     {% if analysis['sender'] %}
+     <div><strong>:</strong> {{ analysis['sender'] }}</div>
+     {% endif %} {% if analysis['receiver'] %}
+     <div><strong>:</strong> {{ analysis['receiver'] }}</div>
+     {% endif %} {% if analysis['amount'] %}
+     <div>
+      <strong>Amount:</strong> {{ analysis['amount'] }}{% if
+      analysis['currency'] %} {{ analysis['currency'] }}{% endif %}
+     </div>
+     {% endif %} {% if analysis['date'] %}
+     <div><strong>days:</strong> {{ analysis['date'] }}</div>
+     {% endif %} {% if analysis['reference'] %}
+     <div><strong>:</strong> {{ analysis['reference'] }}</div>
+     {% endif %} {% if analysis['sender_bank'] %}
+     <div><strong>row:</strong> {{ analysis['sender_bank'] }}</div>
+     {% endif %} {% if analysis['receiver_bank'] %}
+     <div><strong>row:</strong> {{ analysis['receiver_bank'] }}</div>
+     {% endif %} {% if analysis['receiver_account'] %}
+     <div><strong>Bank account:</strong> {{ analysis['receiver_account'] }}</div>
+     {% endif %} {% if analysis['swift_code'] %}
+     <div><strong>SWIFT:</strong> {{ analysis['swift_code'] }}</div>
+     {% endif %} {% if analysis['usd_amount'] %}
+     <div><strong>USD amount:</strong> {{ analysis['usd_amount'] }}</div>
+     {% endif %} {% if analysis['exchange_rate'] %}
+     <div><strong>Exchange rate:</strong> {{ analysis['exchange_rate'] }}</div>
+     {% endif %} {% if analysis['fee_amount'] %}
+     <div><strong>Fee:</strong> {{ analysis['fee_amount'] }}</div>
+     {% endif %} {% if analysis['purpose'] %}
+     <div><strong>:</strong> {{ analysis['purpose'] }}</div>
+     {% endif %} {% if analysis['parser'] %}
+     <div><strong>:</strong> {{ analysis['parser'] }}</div>
+     {% endif %}
+    </div>
+   </div>
+   {% elif a['content_type'] and 'pdf' in a['content_type'] %}
+   <div
+    class="muted attach-details"
+    style="padding: 6px 0 0 0; font-size: 0.85em; width: 100%"
+  >
+    PDF  API 
+   </div>
+   {% endif %}
+  </li>
+  {% else %}
+  <li class="muted" data-placeholder="1" style="padding: 8px">{{ attachment_empty_text }}</li>
+  {% endfor %}
+ </ul>
+ <script>
+  (function(){
+   const attachmentDomId = {{ attachment_dom_id|tojson }};
+   const attachmentSectionId = {{ attachment_section_id|tojson }};
+   const attachmentRole = {{ attachment_role|tojson }};
+   const attachmentTitle = {{ attachment_title|tojson }};
+   const root = document.getElementById(attachmentSectionId);
+   const drop = document.getElementById(`${attachmentDomId}Drop`);
+   const input = document.getElementById(`${attachmentDomId}Input`);
+   const list = document.getElementById(`${attachmentDomId}List`);
+   const err = document.getElementById(`${attachmentDomId}Error`);
+   const sr = document.getElementById(`${attachmentDomId}Status`);
+   const requiredAlert = root ? root.querySelector('[data-attachment-required-alert="1"]') : null;
+   const invoiceId = {{ invoice['id'] }};
+   const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+   const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+   let uploading = false;
+   let previewLastFocus = null;
+   let uploadModal = null;
+   let uploadModalDrop = null;
+   let uploadModalAlert = null;
+   let uploadModalLastFocus = null;
+
+   function setSr(msg){
+    if (!sr) return;
+    sr.textContent = msg || '';
+   }
+   function setErr(msg){
+    if (!err) return;
+    err.textContent = msg || '';
+    err.style.display = msg ? 'block' : 'none';
+    if (msg) setSr(msg);
+   }
+   function setDropBusy(busy){
+    if (!drop) return;
+    drop.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) drop.classList.add('is-uploading');
+    else drop.classList.remove('is-uploading');
+    setUploadModalBusy(busy);
+   }
+   function clearSkeleton(){
+    if (!list) return;
+    list.querySelectorAll('li[data-skeleton="1"]').forEach((el) => el.remove());
+   }
+   function showSkeleton(){
+    if (!list) return;
+    const li = document.createElement('li');
+    li.dataset.skeleton = '1';
+    li.style.cssText = 'padding:8px; border-bottom:1px solid #e5e7eb;';
+    li.innerHTML = `
+     <div class="skeleton skeleton-line" style="width: 58%"></div>
+     <div class="skeleton skeleton-line" style="width: 34%; margin-top: 8px"></div>
+    `;
+    list.appendChild(li);
+   }
+   function isUploadModalOpen(){
+    return !!uploadModal && uploadModal.classList.contains('show') && !uploadModal.hasAttribute('hidden');
+   }
+   function setUploadModalAlert(message, kind){
+    if (!uploadModalAlert) return;
+    uploadModalAlert.textContent = message || '';
+    uploadModalAlert.hidden = !message;
+    uploadModalAlert.style.display = message ? 'block' : 'none';
+    uploadModalAlert.style.background = kind === 'error' ? '#fef2f2' : '#EAF4FF';
+    uploadModalAlert.style.color = kind === 'error' ? '#b91c1c' : '#12395F';
+   }
+   function setUploadModalBusy(busy){
+    if (!uploadModalDrop) return;
+    uploadModalDrop.setAttribute('aria-busy', busy ? 'true' : 'false');
+    uploadModalDrop.style.opacity = busy ? '0.72' : '1';
+    uploadModalDrop.style.cursor = busy ? 'progress' : 'pointer';
+   }
+   function closeUploadModal(){
+    if (!uploadModal) return;
+    uploadModal.classList.remove('show');
+    uploadModal.setAttribute('hidden', '');
+    setUploadModalAlert('', '');
+    setUploadModalBusy(false);
+    const focusTarget = uploadModalLastFocus;
+    uploadModalLastFocus = null;
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+     try { focusTarget.focus(); } catch(_) {}
+    }
+   }
+   function ensureUploadModal(){
+    if (uploadModal) return uploadModal;
+    const overlay = document.createElement('div');
+    overlay.id = `${attachmentDomId}UploadModal`;
+    overlay.className = 'modal-overlay attach-upload-modal';
+    overlay.setAttribute('hidden', '');
+
+    const panel = document.createElement('div');
+    panel.className = 'modal-card is-wide attach-upload-modal__panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', `${attachmentDomId}UploadModalTitle`);
+    panel.innerHTML = `
+     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+       <h3 class="modal-title" id="${attachmentDomId}UploadModalTitle" data-attach-modal-title></h3>
+       <p class="modal-help">Select a file or paste an image with Ctrl+V.</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-attach-upload-close="1" aria-label="Close">Close</button>
+     </div>
+     <div
+      class="attach-upload-modal__dropzone"
+      role="button"
+      tabindex="0"
+      aria-label="File upload"
+      style="border:2px dashed #94a3b8; border-radius:8px; min-height:180px; padding:24px 16px; background:#f8fafc; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; text-align:center; cursor:pointer;"
+    >
+      <div style="font-size:28px; line-height:1;">📎</div>
+      <div style="font-weight:600; color:#111827;">Drop a file here or click to select one</div>
+      <div style="font-size:12px; color:#64748b;">PDF or image file. Ctrl+V image paste is supported.</div>
+     </div>
+     <div class="attach-upload-modal__alert" role="alert" hidden style="margin-top:12px; padding:10px 12px; border-radius:8px; font-size:13px;"></div>
+    `;
+    overlay.appendChild(panel);
+    (root || document.querySelector('.invoice-theme') || document.body).appendChild(overlay);
+
+    uploadModal = overlay;
+    uploadModalDrop = panel.querySelector('.attach-upload-modal__dropzone');
+    uploadModalAlert = panel.querySelector('.attach-upload-modal__alert');
+    const titleEl = panel.querySelector('[data-attach-modal-title]');
+    if (titleEl) titleEl.textContent = attachmentTitle || 'File upload';
+
+    overlay.addEventListener('click', (e)=>{
+     if (e.target === overlay) closeUploadModal();
+    });
+    overlay.addEventListener('keydown', (e)=>{
+     if (e.key === 'Escape') closeUploadModal();
+    });
+    panel.querySelector('[data-attach-upload-close="1"]')?.addEventListener('click', closeUploadModal);
+    uploadModalDrop.addEventListener('click', ()=>{
+     if (!uploading) input.click();
+    });
+    uploadModalDrop.addEventListener('keydown', (e)=>{
+     if (uploading) return;
+     if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      input.click();
+     }
+    });
+    uploadModalDrop.addEventListener('dragover', (e)=>{
+     e.preventDefault();
+     if (uploading) return;
+     uploadModalDrop.style.background = '#EAF4FF';
+     uploadModalDrop.style.borderColor = '#005EA8';
+    });
+    uploadModalDrop.addEventListener('dragleave', ()=>{
+     uploadModalDrop.style.background = '#f8fafc';
+     uploadModalDrop.style.borderColor = '#94a3b8';
+    });
+    uploadModalDrop.addEventListener('drop', (e)=>{
+     e.preventDefault();
+     uploadModalDrop.style.background = '#f8fafc';
+     uploadModalDrop.style.borderColor = '#94a3b8';
+     const files = e.dataTransfer && e.dataTransfer.files;
+     if (files && files.length) upload(files);
+    });
+    uploadModalDrop.addEventListener('paste', handlePaste);
+    return overlay;
+   }
+   function openUploadModal(focusTarget){
+    const modal = ensureUploadModal();
+    uploadModalLastFocus = focusTarget || document.activeElement;
+    setUploadModalAlert('', '');
+    setUploadModalBusy(uploading);
+    modal.removeAttribute('hidden');
+    modal.classList.add('show');
+    setTimeout(()=>{ if (uploadModalDrop) uploadModalDrop.focus(); }, 0);
+   }
+   function fmtSize(n){ if(!n) return '0 B'; const u=['B','KB','MB','GB']; let i=0; while(n>=1024 && i<u.length-1){ n/=1024; i++; } return (Math.round(n*10)/10)+' '+u[i]; }
+   function addItem(a){
+    const li = document.createElement('li');
+    li.dataset.id = a.id;
+    li.dataset.contentType = a.content_type || '';
+    li.dataset.role = a.role || attachmentRole || 'general';
+    li.style.cssText = 'display:flex; align-items:center; gap:8px; padding:8px; border-bottom:1px solid #e5e7eb;';
+    li.innerHTML = `
+     <span style="flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      <a href="${scriptRoot}/invoices/${invoiceId}/attachments/${a.id}/download" title="Download"></a>
+      <span class="muted" style="font-size:0.85em; padding-left:6px;"></span>
+     </span>
+     <form method="post" action="${scriptRoot}/invoices/${invoiceId}/attachments/${a.id}/delete" style="margin:0;" data-confirm="File Delete" data-prevent-double-submit="true">
+      <input type="hidden" name="csrf_token" value="${csrf}">
+      <button class="btn btn-ghost btn-ui-compact" type="submit">Delete</button>
+     </form>`;
+    li.querySelector('a').textContent = a.name || 'File';
+    li.querySelector('span.muted')?.remove();
+    const meta = document.createElement('span');
+    meta.className='muted'; meta.style.cssText='font-size:0.85em; padding-left:6px;';
+    meta.textContent = `(${fmtSize(a.size || 0)})`;
+    li.querySelector('span').appendChild(meta);
+    const makeAnalysisBlock = (analysis) => {
+     const wrap = document.createElement('div');
+     wrap.className = 'muted attach-details';
+     wrap.style.cssText = 'padding:6px 0 0 0; font-size:0.85em; width:100%;';
+     if (analysis) {
+      const hasDisplayValue = (value) => value !== null && value !== undefined && String(value) !== '';
+      const addLabeledValue = (parent, label, value, extraStyle='') => {
+       if (!hasDisplayValue(value)) return;
+       const row = document.createElement('div');
+       if (extraStyle) row.style.cssText = extraStyle;
+       const strong = document.createElement('strong');
+       strong.textContent = `${label}:`;
+       row.appendChild(strong);
+       row.appendChild(document.createTextNode(` ${value}`));
+       parent.appendChild(row);
+      };
+      const grid = document.createElement('div');
+      grid.style.display = 'flex'; grid.style.gap = '12px'; grid.style.flexWrap = 'wrap';
+      addLabeledValue(wrap, ' ', analysis.doc_type);
+      addLabeledValue(wrap, '', analysis.summary, 'margin:2px 0 4px 0');
+      addLabeledValue(grid, '', analysis.sender);
+      addLabeledValue(grid, '', analysis.receiver);
+      const amountStr = hasDisplayValue(analysis.amount)
+       ? `${analysis.amount}${analysis.currency ? ' ' + analysis.currency : ''}`
+       : '';
+      addLabeledValue(grid, 'Amount', amountStr);
+      addLabeledValue(grid, 'days', analysis.date);
+      addLabeledValue(grid, '', analysis.reference);
+      addLabeledValue(grid, 'row', analysis.sender_bank);
+      addLabeledValue(grid, 'row', analysis.receiver_bank);
+      addLabeledValue(grid, 'Bank account', analysis.receiver_account);
+      addLabeledValue(grid, 'SWIFT', analysis.swift_code);
+      addLabeledValue(grid, 'USD amount', analysis.usd_amount);
+      addLabeledValue(grid, 'Exchange rate', analysis.exchange_rate);
+      addLabeledValue(grid, 'Fee', analysis.fee_amount);
+      addLabeledValue(grid, '', analysis.purpose);
+      addLabeledValue(grid, '', analysis.parser);
+      wrap.appendChild(grid);
+     } else {
+      wrap.textContent = 'PDF  API ';
+     }
+     return wrap;
+    };
+    if (a.analysis) {
+     li.appendChild(makeAnalysisBlock(a.analysis));
+    } else if (a.content_type && a.content_type.toLowerCase().includes('pdf')) {
+     li.appendChild(makeAnalysisBlock(null));
+    }
+    list.appendChild(li);
+    setSr(`File upload complete: ${a.name || 'File'}`);
+    renderMemoUI(li, a.id, (a.analysis && a.analysis.user_memo) ? a.analysis.user_memo : '');
+   }
+   function clearEmpty(){
+    if (!list) return;
+    const placeholder = list.querySelector('li[data-placeholder="1"]');
+    if (placeholder) placeholder.remove();
+   }
+   function getFocusableEls(root){
+    try{
+     return Array.from(root.querySelectorAll('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])'))
+      .filter((el)=>!el.hasAttribute('hidden') && !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+    }catch(e){ return []; }
+   }
+   function trapFocus(modal){
+    if (!modal || modal.dataset.trapInit === '1') return;
+    modal.dataset.trapInit = '1';
+    modal.addEventListener('keydown', (e)=>{
+     if (e.key !== 'Tab') return;
+     const els = getFocusableEls(modal);
+     if (!els.length) return;
+     const first = els[0];
+     const last = els[els.length - 1];
+     if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault(); last.focus();
+     } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault(); first.focus();
+     }
+    });
+   }
+   function ensurePreviewModal(){
+    let modal = document.getElementById('attachPreviewModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'attachPreviewModal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', 'attachPreviewTitle');
+    modal.setAttribute('aria-describedby', 'attachPreviewMsg');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.style.cssText = 'display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:2000; padding:24px;';
+    modal.innerHTML = `
+     <div id="attachPreviewInner" style="max-width: 980px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 35px rgba(0,0,0,.35);">
+      <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#f8fafc; border-bottom:1px solid #e5e7eb;">
+       <div id="attachPreviewTitle" style="flex:1; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+       <a id="attachPreviewDownload" class="btn btn-ghost btn-ui-compact text-decoration-none" href="#" target="_blank" rel="noopener">Download</a>
+       <button id="attachPreviewClose" class="btn btn-ui-compact" type="button" aria-label="Preview Close">Close</button>
+      </div>
+      <div id="attachPreviewStage" style="background:#0b1220; display:flex; align-items:center; justify-content:center; position:relative;">
+       <img id="attachPreviewImg" alt="" style="max-width:100%; max-height: calc(100vh - 140px); object-fit: contain; display:block;" />
+       <canvas id="attachPreviewPdf" style="max-width:100%; max-height: calc(100vh - 140px); display:none;"></canvas>
+       <div id="attachPreviewMsg" role="status" aria-live="polite" aria-atomic="true" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; color:#e5e7eb; font-size:14px; padding:16px; text-align:center;"></div>
+      </div>
+     </div>`;
+    document.body.appendChild(modal);
+    const closeBtn = modal.querySelector('#attachPreviewClose');
+    const inner = modal.querySelector('#attachPreviewInner');
+    const close = () => {
+     modal.style.display = 'none';
+     modal.setAttribute('aria-hidden', 'true');
+     try{
+      if (previewLastFocus && previewLastFocus.focus) previewLastFocus.focus();
+     }catch(_){}
+    };
+    trapFocus(modal);
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.style.display !== 'none') close(); });
+    if (inner) inner.addEventListener('click', (e)=> e.stopPropagation());
+    return modal;
+   }
+
+   let _pdfJsPromise = null;
+   function _loadPdfJs(){
+    if (_pdfJsPromise) return _pdfJsPromise;
+    _pdfJsPromise = new Promise((resolve, reject) => {
+     if (window.pdfjsLib && window.pdfjsLib.getDocument) return resolve(window.pdfjsLib);
+     const s = document.createElement('script');
+     s.src = '{{ static_asset_url('vendor/pdfjs/pdf.min.js') }}';
+     s.async = true;
+     s.onload = () => {
+      try{
+       if (!window.pdfjsLib) throw new Error('pdfjsLib not found');
+       window.pdfjsLib.GlobalWorkerOptions.workerSrc = '{{ static_asset_url('vendor/pdfjs/pdf.worker.min.js') }}';
+       resolve(window.pdfjsLib);
+      }catch(e){ reject(e); }
+     };
+     s.onerror = () => reject(new Error('failed to load pdf.js'));
+     document.head.appendChild(s);
+    });
+    return _pdfJsPromise;
+   }
+
+   let _pdfRenderSeq = 0;
+   async function openPdfPreview(downloadUrl, title){
+    previewLastFocus = document.activeElement;
+    const modal = ensurePreviewModal();
+    const img = modal.querySelector('#attachPreviewImg');
+    const canvas = modal.querySelector('#attachPreviewPdf');
+    const msg = modal.querySelector('#attachPreviewMsg');
+    const stage = modal.querySelector('#attachPreviewStage');
+    const t = modal.querySelector('#attachPreviewTitle');
+    const dl = modal.querySelector('#attachPreviewDownload');
+    if (t) t.textContent = title || ' PDF';
+    if (dl) dl.href = downloadUrl;
+    if (img) { img.src = ''; img.style.display = 'none'; }
+    if (canvas) { canvas.style.display = 'block'; }
+    if (msg) {
+     msg.textContent = 'PDF Preview Loading...';
+     msg.style.display = 'flex';
+    }
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    try{
+     const closeBtn = modal.querySelector('#attachPreviewClose');
+     if (closeBtn && closeBtn.focus) closeBtn.focus();
+    }catch(_){}
+
+    const seq = ++_pdfRenderSeq;
+    let url = downloadUrl || '';
+    try{
+     const u = new URL(downloadUrl, window.location.origin);
+     u.searchParams.set('inline','1');
+     url = u.toString();
+    }catch(_){
+     url = downloadUrl + (downloadUrl.includes('?') ? '&' : '?') + 'inline=1';
+    }
+
+    try{
+     const pdfjsLib = await _loadPdfJs();
+     if (seq !== _pdfRenderSeq) return;
+     const task = pdfjsLib.getDocument({ url, withCredentials: true });
+     const pdf = await task.promise;
+     if (seq !== _pdfRenderSeq) return;
+     const page = await pdf.getPage(1);
+     if (seq !== _pdfRenderSeq) return;
+
+     let cw = 900;
+     try{
+      cw = (stage && stage.clientWidth ? stage.clientWidth : (canvas && canvas.parentElement ? canvas.parentElement.clientWidth : 900)) || 900;
+     }catch(_){ cw = 900; }
+     const baseViewport = page.getViewport({ scale: 1 });
+     const targetW = Math.max(320, Math.min(cw - 24, 940));
+     const scale = targetW / baseViewport.width;
+     const viewport = page.getViewport({ scale });
+     const ctx = canvas.getContext('2d', { alpha: false });
+     canvas.width = Math.floor(viewport.width);
+     canvas.height = Math.floor(viewport.height);
+     const renderTask = page.render({ canvasContext: ctx, viewport });
+     await renderTask.promise;
+     if (seq !== _pdfRenderSeq) return;
+     if (msg) msg.style.display = 'none';
+    }catch(e){
+     try{
+      if (msg) {
+       msg.textContent = 'PDF Preview . Download column.';
+       msg.style.display = 'flex';
+      }
+      if (canvas) canvas.style.display = 'none';
+     }catch(_){ }
+    }
+   }
+   function openImagePreview(downloadUrl, title){
+    previewLastFocus = document.activeElement;
+    const modal = ensurePreviewModal();
+    const img = modal.querySelector('#attachPreviewImg');
+    const canvas = modal.querySelector('#attachPreviewPdf');
+    const msg = modal.querySelector('#attachPreviewMsg');
+    const t = modal.querySelector('#attachPreviewTitle');
+    const dl = modal.querySelector('#attachPreviewDownload');
+    if (t) t.textContent = title || ' Image';
+    if (canvas) canvas.style.display = 'none';
+    if (msg) msg.style.display = 'none';
+    if (img) img.style.display = 'block';
+    try{
+     const u = new URL(downloadUrl, window.location.origin);
+     u.searchParams.set('inline','1');
+     if (img) img.src = u.toString();
+    }catch(_){
+     if (img) img.src = downloadUrl + (downloadUrl.includes('?') ? '&' : '?') + 'inline=1';
+    }
+    if (img) img.alt = title || ' Image';
+    if (dl) dl.href = downloadUrl;
+    modal.style.display = 'block';
+    modal.setAttribute('aria-hidden', 'false');
+    try{
+     const closeBtn = modal.querySelector('#attachPreviewClose');
+     if (closeBtn && closeBtn.focus) closeBtn.focus();
+    }catch(_){}
+   }
+   function isImageContentType(ct){
+    const v = String(ct || '').toLowerCase();
+    return v.startsWith('image/');
+   }
+   function isPdfContentType(ct){
+    const v = String(ct || '').toLowerCase();
+    return v.includes('pdf');
+   }
+   if (list){
+    list.addEventListener('click', (e)=>{
+     const a = e.target && e.target.closest ? e.target.closest('a') : null;
+     if (!a || !list.contains(a)) return;
+     const li = a.closest('li');
+     const ct = li ? (li.getAttribute('data-content-type') || li.dataset.contentType || '') : '';
+     if (isImageContentType(ct)) {
+      e.preventDefault();
+      openImagePreview(a.getAttribute('href') || '', a.textContent || ' Image');
+      return;
+     }
+     if (isPdfContentType(ct)) {
+      e.preventDefault();
+      openPdfPreview(a.getAttribute('href') || '', a.textContent || ' PDF');
+      return;
+     }
+    });
+   }
+   async function upload(files){
+    if (uploading) return;
+    uploading = true;
+    setErr('');
+    setSr('Uploading file...');
+    setUploadModalAlert('Uploading file...', 'info');
+    setDropBusy(true);
+    clearEmpty();
+    clearSkeleton();
+    showSkeleton();
+    const fd = new FormData();
+    Array.from(files).forEach(f=>fd.append('files[]', f));
+    fd.append('role', attachmentRole || 'general');
+    try{
+     const resp = await fetch(`${scriptRoot}/invoices/${invoiceId}/attachments/upload`, { method:'POST', headers:{ 'X-CSRFToken': csrf }, body: fd});
+     const data = await resp.json();
+     if(!resp.ok || !data.success){ throw new Error(data.error || 'Upload failed'); }
+     clearSkeleton();
+     clearEmpty();
+     (data.attachments||[]).forEach(addItem);
+     if (requiredAlert && (data.attachments||[]).length) requiredAlert.style.display = 'none';
+     setSr('File upload complete.');
+     if (isUploadModalOpen()) closeUploadModal();
+    }catch(e){
+     clearSkeleton();
+     setErr((e && e.message) ? e.message : 'Upload failed');
+     setUploadModalAlert((e && e.message) ? e.message : 'Upload failed', 'error');
+    }finally{
+     setDropBusy(false);
+     uploading = false;
+    }
+   }
+   function shouldHandlePaste(e){
+    if (!e || e.defaultPrevented || e.invoiceAttachmentPasteHandled || uploading) return false;
+    if (!isUploadModalOpen() || !uploadModal) return false;
+    const target = e.target && e.target.nodeType === 1 ? e.target : null;
+    const active = document.activeElement;
+    const targetInModal = !!(target && uploadModal.contains(target));
+    const activeInModal = !!(active && uploadModal.contains(active));
+    if (!targetInModal && !activeInModal) return false;
+
+    const editable = target && target.closest('input, textarea, select, [contenteditable="true"]');
+    if (editable) return false;
+    return true;
+   }
+   function handlePaste(e){
+    try{
+     if (!shouldHandlePaste(e)) return;
+     const cd = e.clipboardData || window.clipboardData; if(!cd || !cd.items) return;
+     const items = Array.from(cd.items);
+     const imgs = items.filter(it => it.kind === 'file' && it.type && it.type.startsWith('image/'));
+     if (!imgs.length) return;
+     const files = [];
+     const now = new Date();
+     const ts = now.toISOString().replace(/[:.]/g,'').replace('T','-').slice(0,15);
+     imgs.forEach((it, idx) => {
+      const blob = it.getAsFile(); if(!blob) return;
+      const type = blob.type || 'image/png';
+      let ext = 'png';
+      if (type.includes('jpeg') || type.includes('jpg')) ext = 'jpg';
+      else if (type.includes('png')) ext = 'png';
+      else if (type.includes('gif')) ext = 'gif';
+      else if (type.includes('webp')) ext = 'webp';
+      const name = `pasted-${ts}-${idx}.${ext}`;
+      let file = blob;
+      try { file = new File([blob], name, { type }); }
+      catch(_) { try { file.name = name; } catch(_) {} }
+      files.push(file);
+	     });
+	     if (files.length){
+	      e.invoiceAttachmentPasteHandled = attachmentDomId;
+	      e.preventDefault();
+	      e.stopPropagation();
+	      if (typeof e.stopImmediatePropagation === 'function') {
+	       e.stopImmediatePropagation();
+	      }
+	      upload(files);
+	     }
+	    } catch(_){}
+	   }
+   async function saveMemo(attId, memo, statusEl, btn){
+    try{
+     if (btn) {
+      if (btn.dataset.originalHtml === undefined) btn.dataset.originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.setAttribute('aria-busy', 'true');
+      btn.innerHTML = '<span class="inline-spinner" aria-hidden="true"></span>Saving...';
+     }
+     const resp = await fetch(`${scriptRoot}/invoices/${invoiceId}/attachments/${attId}/meta`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ user_memo: memo || '' })
+     });
+     const data = await resp.json();
+     if (!resp.ok || !data.success) throw new Error(data.error || 'Notes Save failed');
+     if (statusEl){ statusEl.textContent = 'Saved'; setTimeout(()=>{ statusEl.textContent=''; }, 1800); }
+     setSr('Notes Save.');
+    }catch(e){ setErr(e.message || 'Notes Save failed'); }
+    finally{
+     if (btn) {
+      btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+      if (btn.dataset.originalHtml !== undefined) btn.innerHTML = btn.dataset.originalHtml;
+     }
+    }
+   }
+   function renderMemoUI(li, attId, initial){
+    try{
+     const container = li.querySelector('.attach-details') || (function(){
+      const c = document.createElement('div');
+      c.className = 'muted attach-details';
+      c.style.cssText = 'padding:6px 0 0 0; font-size:0.85em; width:100%;';
+      li.appendChild(c);
+      return c;
+     })();
+     if (container.querySelector('.memo-input')) return;
+     const block = document.createElement('div');
+     block.style.cssText = 'padding:6px 0 0 0; width:100%';
+     const memoId = `${attachmentDomId}-memo-${attId}`;
+     const label = document.createElement('label');
+     label.className='muted';
+     label.style.fontSize='0.85em';
+     label.setAttribute('for', memoId);
+     label.textContent='Notes';
+     const row = document.createElement('div');
+     row.className='row'; row.style.gap='6px'; row.style.alignItems='flex-end'; row.style.flexWrap='wrap';
+     const ta = document.createElement('textarea');
+     ta.id = memoId;
+     ta.className='memo-input'; ta.style.width='100%'; ta.style.maxWidth='520px'; ta.style.height='70px'; ta.style.resize='vertical';
+     ta.placeholder='File Notes enter...';
+     ta.value = initial || '';
+     const btn = document.createElement('button');
+     btn.type='button'; btn.className='btn btn-ghost btn-ui-compact'; btn.textContent='Notes Save';
+     const status = document.createElement('span');
+     status.className='muted';
+     status.style.marginLeft='6px';
+     status.setAttribute('role', 'status');
+     status.setAttribute('aria-live', 'polite');
+     status.setAttribute('aria-atomic', 'true');
+     btn.addEventListener('click', ()=> saveMemo(attId, ta.value, status, btn));
+     row.appendChild(ta); row.appendChild(btn); row.appendChild(status);
+     block.appendChild(label); block.appendChild(row);
+     container.appendChild(block);
+    }catch(_){ }
+   }
+
+   if (drop && input) {
+    drop.addEventListener('click', ()=>{ if (!uploading) openUploadModal(drop); });
+    drop.addEventListener('keydown', (e)=>{
+     if (uploading) return;
+     if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      openUploadModal(drop);
+     }
+    });
+    input.addEventListener('change', (e)=>{ if(e.target.files && e.target.files.length) upload(e.target.files); });
+    drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.background='#EAF4FF'; drop.style.borderColor='#005EA8'; });
+    drop.addEventListener('dragleave', ()=>{ drop.style.background='#f8fafc'; drop.style.borderColor='#cbd5e1'; });
+	    drop.addEventListener('drop', (e)=>{ e.preventDefault(); drop.style.background='#f8fafc'; drop.style.borderColor='#cbd5e1'; const files=e.dataTransfer.files; if(files && files.length) upload(files); });
+	    drop.addEventListener('paste', handlePaste);
+	    document.addEventListener('paste', function(e){
+	     handlePaste(e);
+	    }, true);
+	   }
+   if (list) list.querySelectorAll('li[data-id]').forEach(li => {
+    const attId = li.getAttribute('data-id');
+    const memo = li.getAttribute('data-memo') || '';
+    renderMemoUI(li, attId, memo);
+   });
+  })();
+ </script>
+</div>

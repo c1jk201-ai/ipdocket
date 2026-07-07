@@ -1,0 +1,44 @@
+{% macro item_discount(it) -%}
+ {{- (((it['discount'] if 'discount' in it.keys() else 0) or 0)|float) -}}
+{%- endmacro %}
+
+{% macro standard_item_amount(it) -%}
+ {{- ((it['qty']|float) * (it['unit_price']|float) * (1 - ((item_discount(it)|float) / 100))) -}}
+{%- endmacro %}
+
+{% macro fx_item_amount_usd(it) -%}
+ {%- set fee = ((it['fx_fee'] if 'fx_fee' in it.keys() else 0) or 0)|float -%}
+ {%- set gov = ((it['fx_gov'] if 'fx_gov' in it.keys() else 0) or 0)|float -%}
+ {%- set rate = ((it['fx_rate_used'] if 'fx_rate_used' in it.keys() else 0) or 0)|float -%}
+ {%- set markup = ((it['fx_markup'] if 'fx_markup' in it.keys() else 0) or 0)|float -%}
+ {%- set fallback_usd = standard_item_amount(it)|float -%}
+ {{- ((fee + gov) * rate * (1 + markup / 100)) if rate else fallback_usd -}}
+{%- endmacro %}
+
+{% macro render_standard_item_row(it, has_discount, currency_code) -%}
+ {%- set amount = standard_item_amount(it)|float -%}
+ <tr>
+  <td class="cell-description">{{ it['description'] }}</td>
+  <td class="right num">{{ it['qty']|int }}</td>
+  <td class="right num">
+   {{ "{:,.0f}".format(it['unit_price']) if currency_code == 'USD' else "{:,.2f}".format(it['unit_price']) }}
+  </td>
+  {% if has_discount %}
+  <td class="right num">{{ (item_discount(it)|float)|round(1) }}%</td>
+  {% endif %}
+  <td class="right num">{{ amount_no_unit(amount, currency_code) }}</td>
+ </tr>
+{%- endmacro %}
+
+{% macro render_fx_cost_row(it) -%}
+ {%- set fee = ((it['fx_fee'] if 'fx_fee' in it.keys() else 0) or 0)|float -%}
+ {%- set gov = ((it['fx_gov'] if 'fx_gov' in it.keys() else 0) or 0)|float -%}
+ {%- set usd = fx_item_amount_usd(it)|float -%}
+ <tr>
+  <td class="cell-description">{{ it['description'] or '—' }}</td>
+  <td>{{ (it['fx_currency'] or '')|upper if it['fx_currency'] else '—' }}</td>
+  <td class="right num">{{ '{:,.0f}'.format(fee) if fee else '—' }}</td>
+  <td class="right num">{{ '{:,.0f}'.format(gov) if gov else '—' }}</td>
+  <td class="right num">{{ amount_no_unit(usd, 'USD') }}</td>
+ </tr>
+{%- endmacro %}

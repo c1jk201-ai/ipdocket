@@ -1,0 +1,226 @@
+{% extends "admin/base.html" %}
+{% block title %}Durable Queue{% endblock %}
+{% block admin_description %}Filter background jobs by status and queue name, then retry failed or queued actions when needed.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.service_health') }}">Service Health</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.scheduler_home') }}">Scheduler Status</a>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Waiting</div><div class="h4 mb-0">{{ queue_summary.queued_count }}</div></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Running</div><div class="h4 mb-0">{{ queue_summary.running_count }}</div></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Failed</div><div class="h4 mb-0">{{ queue_summary.failed_count }}</div></div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100"><div class="card-body p-3"><div class="small text-muted">Open</div><div class="h4 mb-0">{{ queue_summary.open_count }}</div></div></div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form
+      method="get"
+      class="row g-2 align-items-end"
+      data-show-loading="true"
+      data-loading-text="Searching queue status..."
+      data-loading-detail="Filtering jobs by status and queue."
+    >
+      <div class="col-md-3">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          {% for s in ["queued","running","succeeded","failed","cancelled"] %}
+            <option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Queue</label>
+        <input class="form-control" name="queue" value="{{ queue }}" placeholder="annuity/calendar/email">
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </div>
+      <div class="col-md-2 text-md-end small text-muted">
+        Showing the latest 200 jobs
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if queue_dashboard_rows %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-3">
+    <div class="fw-semibold">Queue Dashboard</div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Queue</th>
+            <th>Type</th>
+            <th>Queued</th>
+            <th>Running</th>
+            <th>Failed</th>
+            <th>Retry</th>
+            <th>Oldest age</th>
+            <th>Oldest at</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in queue_dashboard_rows %}
+            <tr>
+              <td>
+                <div class="fw-semibold">{{ item.name }}</div>
+                {% if item.detail %}
+                  <div class="small text-muted">{{ item.detail }}</div>
+                {% endif %}
+              </td>
+              <td><span class="badge bg-light text-dark border">{{ item.kind }}</span></td>
+              <td>{{ item.queued }}</td>
+              <td>{{ item.running }}</td>
+              <td>
+                <span class="{{ 'text-danger fw-semibold' if item.failed else '' }}">{{ item.failed }}</span>
+              </td>
+              <td>{{ item.retry }}</td>
+              <td>
+                {% if item.oldest_age_minutes is not none %}
+                  {{ item.oldest_age_minutes }} min
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if item.oldest_at %}
+                  {{ item.oldest_at|local_dt }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if queue_summary.top_queues %}
+<div class="card mb-3">
+  <div class="card-header bg-white py-3">
+    <div class="fw-semibold">Top Queues</div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th>Queue</th>
+            <th>Queued</th>
+            <th>Running</th>
+            <th>Failed</th>
+            <th>Open</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in queue_summary.top_queues %}
+            <tr>
+              <td>{{ item.queue }}</td>
+              <td>{{ item.queued }}</td>
+              <td>{{ item.running }}</td>
+              <td>{{ item.failed }}</td>
+              <td>{{ item.open }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Queue</th>
+            <th>Task</th>
+            <th>Status</th>
+            <th>Attempts</th>
+            <th>Retry Cause</th>
+            <th>Run At</th>
+            <th>Updated</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for j in jobs %}
+          <tr>
+            <td>{{ j.id }}</td>
+            <td>{{ j.queue }}</td>
+            <td>
+              <div><b>{{ j.task }}</b></div>
+              {% if j.last_error %}
+                <div style="max-width:560px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                  <small>{{ j.last_error }}</small>
+                </div>
+              {% endif %}
+            </td>
+            <td>{{ j.status }}</td>
+            <td>{{ j.attempts }} / {{ j.max_attempts }}</td>
+            <td style="min-width:220px; max-width:340px;">
+              {% if j.retry_cause %}
+                {% if j.retry_state_label %}
+                  <span class="badge {{ 'bg-danger' if j.retry_state in ['retry_exhausted', 'failed'] else 'bg-warning text-dark' }}">
+                    {{ j.retry_state_label }}
+                  </span>
+                {% endif %}
+                <div class="small text-muted text-truncate mt-1" title="{{ j.retry_cause }}">
+                  {{ j.retry_cause }}
+                </div>
+                {% if j.next_retry_at and j.retry_due_label %}
+                  <div class="small text-muted">
+                    next {{ j.next_retry_at|local_dt }} ({{ j.retry_due_label }})
+                  </div>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>{{ j.run_at }}</td>
+            <td>{{ j.updated_at|local_dt }}</td>
+            <td>
+              {% if j.status in ["failed","cancelled","queued"] %}
+                <form
+                  method="post"
+                  action="{{ url_for('ops_admin.queue_retry', job_id=j.id, status=status) }}"
+                  data-show-loading="true"
+                  data-loading-text="Retrying queue action..."
+                  data-loading-detail="Moving the selected job back to queued status."
+                >
+                  <button class="btn btn-sm btn-outline-primary" type="submit">Retry</button>
+                </form>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

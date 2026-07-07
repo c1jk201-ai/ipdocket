@@ -1,0 +1,241 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div
+  id="app-page-meta"
+  class="d-none"
+  data-type="lead"
+  data-id="{{ lead.id }}"
+  data-title="{{ lead.name }}"
+  data-subtitle="{{ lead.company_name or '' }}"
+  data-url="{{ request.path }}"
+></div>
+<div class="container mt-4 fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="{{ url_for('customers.clients') }}">CRM</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('customers.lead_list') }}"></a></li>
+          <li class="breadcrumb-item active">{{ lead.name }}</li>
+        </ol>
+      </nav>
+      <h3 class="fw-bold text-dark mb-0">{{ lead.name }}</h3>
+      {% if lead.company_name %}
+      <p class="text-muted mb-0">{{ lead.company_name }}</p>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('customers.lead_edit', lead_id=lead.id) }}" class="btn btn-outline-primary">
+        <i class="bi bi-pencil"></i> Edit
+      </a>
+      {% if lead.status != 'converted' %}
+      <form action="{{ url_for('customers.lead_convert', lead_id=lead.id) }}" method="post" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-success"
+                data-confirm="  Clientto ?">
+          <i class="bi bi-arrow-right-circle"></i> Clientto 
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Lead Details -->
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0 fw-semibold"> </h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted">Status</dt>
+            <dd class="col-sm-8">
+              <span class="badge
+                {% if lead.status == 'new' %}bg-primary
+                {% elif lead.status == 'contacted' %}bg-info
+                {% elif lead.status == 'qualified' %}bg-warning text-dark
+                {% elif lead.status == 'converted' %}bg-success
+                {% else %}bg-secondary{% endif %}">
+                {{ dict(lead.STATUS_CHOICES).get(lead.status, lead.status) }}
+              </span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Email</dt>
+            <dd class="col-sm-8">
+              {% if lead.email %}
+              <a href="mailto:{{ lead.email }}">{{ lead.email }}</a>
+              {% else %}-{% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Phone</dt>
+            <dd class="col-sm-8">
+              {% if lead.phone %}
+              <a href="tel:{{ lead.phone }}">{{ lead.phone }}</a>
+              {% else %}-{% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted"></dt>
+            <dd class="col-sm-8">
+              {{ dict([('website', ''), ('referral', ''), ('cold_call', ''),
+                       ('advertisement', ''), ('trade_show', ''), ('other', 'Other')]).get(lead.source, lead.source or '-') }}
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Contact</dt>
+            <dd class="col-sm-8">
+              {{ lead.assignee.display_name or lead.assignee.username if lead.assignee else '-' }}
+            </dd>
+
+            <dt class="col-sm-4 text-muted">Registration date</dt>
+            <dd class="col-sm-8">
+              {{ lead.created_at|local_dt_min if lead.created_at else '-' }}
+            </dd>
+
+            {% if lead.converted_client %}
+            <dt class="col-sm-4 text-muted"> Client</dt>
+            <dd class="col-sm-8">
+              <a href="{{ url_for('customers.client_view', client_id=lead.converted_client.id) }}">
+                {{ lead.converted_client.name }}
+              </a>
+            </dd>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+
+      {% if lead.notes %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+          <h5 class="mb-0 fw-semibold">Notes</h5>
+        </div>
+        <div class="card-body">
+          <div class="text-muted" style="white-space: pre-wrap;">{{ lead.notes }}</div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Activities -->
+    <div class="col-md-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+          <h5 class="mb-0 fw-semibold"> Log</h5>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#activityModal">
+            <i class="bi bi-plus-lg"></i>  Add
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            {% for activity in activities %}
+            <li class="list-group-item px-4 py-3">
+              <div class="d-flex align-items-start">
+                <div class="me-3 mt-1">
+                  {% if activity.type == 'call' %}
+                  <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+                    <i class="bi bi-telephone text-primary"></i>
+                  </div>
+                  {% elif activity.type == 'email' %}
+                  <div class="rounded-circle bg-info bg-opacity-10 p-2">
+                    <i class="bi bi-envelope text-info"></i>
+                  </div>
+                  {% elif activity.type == 'meeting' %}
+                  <div class="rounded-circle bg-success bg-opacity-10 p-2">
+                    <i class="bi bi-calendar-event text-success"></i>
+                  </div>
+                  {% else %}
+                  <div class="rounded-circle bg-warning bg-opacity-10 p-2">
+                    <i class="bi bi-sticky text-warning"></i>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div class="fw-semibold">{{ activity.summary }}</div>
+                      {% if activity.description %}
+                      <div class="text-muted small mt-1" style="white-space: pre-wrap;">{{ activity.description }}</div>
+                      {% endif %}
+                    </div>
+                    <div class="text-end">
+                      <div class="small text-muted">
+                        {{ activity.activity_date|local_dt_min if activity.activity_date else '-' }}
+                      </div>
+                      {% if activity.user %}
+                      <div class="small text-muted">{{ activity.user.display_name or activity.user.username }}</div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+                <div class="ms-2">
+                  <form action="{{ url_for('customers.activity_delete', activity_id=activity.id) }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger border-0"
+                            data-confirm="  Delete?">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </li>
+            {% else %}
+            <li class="list-group-item text-center py-5 text-muted">
+              <i class="bi bi-clock-history fs-1 d-block mb-3 opacity-50"></i>
+              Log  none.
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Activity Modal -->
+<div class="modal fade" id="activityModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('customers.activity_create') }}" method="post">
+        {{ activity_form.hidden_tag() }}
+        <input type="hidden" name="lead_id" value="{{ lead.id }}">
+        <div class="modal-header">
+          <h5 class="modal-title"> Log</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Type</label>
+            {{ activity_form.type(class="form-select") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label"> <span class="text-danger">*</span></label>
+            {{ activity_form.summary(class="form-control", placeholder=" ") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Details Content</label>
+            {{ activity_form.description(class="form-control", rows="3", placeholder="Details Content Input...") }}
+          </div>
+          <div class="mb-3">
+            <label class="form-label"></label>
+            {{ activity_form.activity_date(class="form-control", type="datetime-local") }}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}

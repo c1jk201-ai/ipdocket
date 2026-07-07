@@ -1,0 +1,248 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h3 class="fw-semibold mb-3"> </h3>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="startDate" class="form-label">Start Date</label>
+            <input type="date" id="startDate" class="form-control">
+        </div>
+        <div class="col-md-6">
+            <label for="endDate" class="form-label">Closed</label>
+            <input type="date" id="endDate" class="form-control">
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-12 text-end">
+            <button class="btn btn-primary" id="applyDateFilter">Filter Apply</button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Total Matter </h5>
+                    <p class="card-text fs-4" id="totalCases">-</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Total  </h5>
+                    <p class="card-text fs-4" id="totalClients">-</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Issued Invoice </h5>
+                    <p class="card-text fs-4" id="totalInvoices">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="invoiceCards">
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Revenue(Service, Sales tax )</h5>
+                        <p class="card-text fs-4" id="serviceRevenue">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title"> Revenue(Service, Sales tax )</h5>
+                        <p class="card-text fs-4" id="estimatedServiceRevenue">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Outstanding balance(Service, Sales tax )</h5>
+                        <p class="card-text fs-4" id="outstandingServiceRevenue">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <a id="invoiceDashboardLink" class="btn btn-sm btn-outline-primary" href="{{ url_for('business.index') }}">Invoice </a>
+            <a id="invoiceOutstandingLink" class="btn btn-sm btn-outline-secondary" href="/accounting/invoice-system/invoices?status=sent_unpaid_or_pending">Outstanding balance View</a>
+            <a id="invoiceTaxIssueLink" class="btn btn-sm btn-outline-secondary" href="/accounting/invoice-system/invoices?status=paid_no_tax">TaxIssued(DepositDone)</a>
+            <a id="invoiceAgingLink" class="btn btn-sm btn-outline-secondary" href="/accounting/invoice-system/aging/aging">Aging View</a>
+        </div>
+    </div>
+
+    <div id="invoiceLocked" class="row d-none">
+        <div class="col-12 mb-4">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">🔒 Invoice Permissions Required</h5>
+                    <p class="text-muted mb-2">  Invoice Permissions    exists.</p>
+                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('business.index') }}">Invoice  Open</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        const applyFilterBtn = document.getElementById('applyDateFilter');
+
+        const totalCasesElem = document.getElementById('totalCases');
+        const totalClientsElem = document.getElementById('totalClients');
+        const totalInvoicesElem = document.getElementById('totalInvoices');
+        const serviceRevenueElem = document.getElementById('serviceRevenue');
+        const estimatedServiceRevenueElem = document.getElementById('estimatedServiceRevenue');
+        const outstandingServiceRevenueElem = document.getElementById('outstandingServiceRevenue');
+        const invoiceCards = document.getElementById('invoiceCards');
+        const invoiceLocked = document.getElementById('invoiceLocked');
+        const invoiceDashboardLink = document.getElementById('invoiceDashboardLink');
+        const invoiceOutstandingLink = document.getElementById('invoiceOutstandingLink');
+        const invoiceTaxIssueLink = document.getElementById('invoiceTaxIssueLink');
+        const invoiceAgingLink = document.getElementById('invoiceAgingLink');
+
+        function formatNumber(value, currency, suffix) {
+            const decimals = (currency === 'USD' || currency === 'JPY') ? 0 : 2;
+            const formatted = new Intl.NumberFormat('en-US', {
+                maximumFractionDigits: decimals
+            }).format(Number(value || 0));
+            return suffix ? `${formatted}${suffix}` : formatted;
+        }
+
+        function renderCurrencyLines(map, options = {}) {
+            const entries = Object.entries(map || {});
+            if (!entries.length) {
+                return '-';
+            }
+            const escapeHtml = (value) => String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
+            return entries.map(([currency, value]) => {
+                const suffix = options.suffix || '';
+                const decimals = options.decimals;
+                let formatted = formatNumber(value, currency, suffix);
+                if (typeof decimals === 'number') {
+                    formatted = new Intl.NumberFormat('en-US', {
+                        minimumFractionDigits: decimals,
+                        maximumFractionDigits: decimals
+                    }).format(Number(value || 0)) + suffix;
+                }
+                return `${escapeHtml(currency)} ${formatted}`;
+            }).join('<br>');
+        }
+
+        function setInvoiceLocked() {
+            invoiceCards.classList.add('d-none');
+            invoiceLocked.classList.remove('d-none');
+            totalInvoicesElem.textContent = '🔒';
+        }
+
+        async function fetchKpiData() {
+            let url = "{{ url_for('business.api_kpi') }}";
+            const params = new URLSearchParams();
+
+            if (startDateInput.value) {
+                params.append('start', startDateInput.value);
+            }
+            if (endDateInput.value) {
+                params.append('end', endDateInput.value);
+            }
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data && data.metrics) {
+                    totalCasesElem.textContent = data.metrics.total_cases;
+                    totalClientsElem.textContent = data.metrics.total_clients;
+                } else {
+                    console.error('Invalid KPI data format:', data);
+                    // Optionally display an error message on the dashboard
+                }
+            } catch (error) {
+                console.error('Error fetching KPI data:', error);
+                // Optionally display an error message on the dashboard
+            }
+        }
+
+        async function fetchInvoiceSummary() {
+            let url = "{{ url_for('billing_invoices.core.api_summary') }}";
+            const params = new URLSearchParams();
+
+            if (startDateInput.value && endDateInput.value) {
+                params.append('start_date', startDateInput.value);
+                params.append('end_date', endDateInput.value);
+            }
+
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+
+            try {
+                const response = await fetch(url);
+                if (response.status === 401 || response.status === 403) {
+                    setInvoiceLocked();
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Summary fetch failed: ${response.status}`);
+                }
+                const data = await response.json();
+                if (!data || !data.ok || !data.value) {
+                    throw new Error('Invalid summary payload');
+                }
+                const summary = data.value;
+                totalInvoicesElem.innerHTML = renderCurrencyLines(summary.counts.issued_invoices_by_currency, { suffix: 'items', decimals: 0 });
+                serviceRevenueElem.innerHTML = renderCurrencyLines(summary.revenue.service_revenue_by_currency);
+                estimatedServiceRevenueElem.innerHTML = renderCurrencyLines(summary.revenue.estimated_service_revenue_by_currency);
+                outstandingServiceRevenueElem.innerHTML = renderCurrencyLines(summary.revenue.outstanding_service_revenue_by_currency);
+
+                if (summary.links) {
+                    if (summary.links.invoices_outstanding) {
+                        invoiceOutstandingLink.href = summary.links.invoices_outstanding;
+                    }
+                    if (summary.links.tax_issue) {
+                        invoiceTaxIssueLink.href = summary.links.tax_issue;
+                    }
+                    if (summary.links.aging) {
+                        invoiceAgingLink.href = summary.links.aging;
+                    }
+                }
+
+                invoiceLocked.classList.add('d-none');
+                invoiceCards.classList.remove('d-none');
+            } catch (error) {
+                console.error('Error fetching invoice summary:', error);
+            }
+        }
+
+        applyFilterBtn.addEventListener('click', fetchKpiData);
+        applyFilterBtn.addEventListener('click', fetchInvoiceSummary);
+
+        // Initial fetch
+        fetchKpiData();
+        fetchInvoiceSummary();
+    });
+</script>
+{% endblock %}

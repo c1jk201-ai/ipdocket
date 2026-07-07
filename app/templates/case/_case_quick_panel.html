@@ -1,0 +1,175 @@
+{# Case Quick Panel: Sticky summary bar + quick create modals + quick edit tables #}
+
+<meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+
+{% set _can_edit_case = can_edit_case if can_edit_case is defined else False %}
+{% set _can_invoice = can_invoice if can_invoice is defined else False %}
+
+{% set _dockets = docket_due if docket_due is defined else [] %}
+{% set _next = (next_docket if next_docket is defined else (_dockets[0] if _dockets else None)) %}
+{% set _wf = workflows if workflows is defined else [] %}
+{% set _wf_count = (_wf|length) if _wf else 0 %}
+
+
+
+
+
+{# Task Log → Invoice shortcut (checkbox submit) #}
+{% if _can_invoice and worklogs is defined and worklogs %}
+<div class="container-fluid mb-4">
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <div class="fw-semibold">Task Log → Invoice</div>
+      <form method="post" action="/case/{{ matter.matter_id }}/quick/invoice/from-worklogs" class="d-inline">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <button class="btn btn-sm btn-success" type="submit">SelectItem Invoice Create</button>
+      </form>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th style="width:32px;"></th>
+              <th>ID</th>
+              <th>Content</th>
+              <th>Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for w in worklogs %}
+              <tr>
+                <td>
+                  <form method="post" action="/case/{{ matter.matter_id }}/quick/invoice/from-worklogs" class="m-0">
+                    {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <input type="checkbox" name="worklog_id" value="{{ w.id }}">
+                  </form>
+                </td>
+                <td>{{ w.id }}</td>
+                <td>{{ w.memo if w.memo is defined else w.title if w.title is defined else '' }}</td>
+                <td>{{ w.amount if w.amount is defined else w.tc if w.tc is defined else '' }}</td>
+                <td>{{ w.date|local_date if w.date is defined else (w.created_at|local_date if w.created_at is defined else '') }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="p-3 small text-muted">
+        Selected worklog IDs are passed to invoice creation with worklog_ids=....
+        Invoice links are created automatically when possible.
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Modals #}
+{% if _can_edit_case %}
+<div class="modal fade" id="qeModalWorkflow" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/case/{{ matter.matter_id }}/quick/workflow">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <div class="modal-header">
+          <h5 class="modal-title">Task Add(Auto TaskDeadline Create)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label class="form-label small">Task</label>
+            <input class="form-control form-control-sm" name="code" placeholder=": OA-RESP">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Title</label>
+            <input class="form-control form-control-sm" name="title" placeholder=": OA ">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Final Due date(Statutory deadline)</label>
+            <input class="form-control form-control-sm" type="date" data-ipm-date-input="1" name="legal_due_date" placeholder="YYYY-MM-DD">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Internal Deadline Template</label>
+            <select class="form-select form-select-sm" name="template_key">
+              <option value="DEFAULT">Default(Internal D-7)</option>
+              <option value="OA">OA (Internal D-10)</option>
+              <option value="FILING">Filing(Internal D-5)</option>
+              <option value="APPEAL">/(Internal D-14)</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">ContactID(Select)</label>
+            <input class="form-control form-control-sm" name="assignee_id" placeholder=" ID">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Responsible attorneyID(Select)</label>
+            <input class="form-control form-control-sm" name="attorney_assignee_id" placeholder=" ID">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">ManagerID(Select)</label>
+            <input class="form-control form-control-sm" name="inspector_id" placeholder=" ID">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Priority</label>
+            <select class="form-select form-select-sm" name="priority">
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM" selected>MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="URGENT">URGENT</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-sm btn-primary" type="submit">Create</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="qeModalDocket" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/case/{{ matter.matter_id }}/quick/docket">
+        {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <div class="modal-header">
+          <h5 class="modal-title">TaskDeadline Add</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label class="form-label small">TaskDeadline</label>
+            <input class="form-control form-control-sm" name="name" placeholder=": OA Statutory deadline">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Due date</label>
+            <input class="form-control form-control-sm" type="date" data-ipm-date-input="1" name="due_date" placeholder="YYYY-MM-DD">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Task (Select)</label>
+            <input class="form-control form-control-sm" type="date" data-ipm-date-input="1" name="visible_from_date" placeholder="YYYY-MM-DD">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">ContactID(Select)</label>
+            <input class="form-control form-control-sm" name="assignee_id" placeholder=" ID">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Priority</label>
+            <select class="form-select form-select-sm" name="priority">
+              <option value="LOW">LOW</option>
+              <option value="MEDIUM" selected>MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="URGENT">URGENT</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-sm btn-primary" type="submit">Create</button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}

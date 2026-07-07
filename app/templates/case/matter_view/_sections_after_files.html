@@ -1,0 +1,1299 @@
+{% set _mid = matter.matter_id %}
+{% set _editmode_skip_custom_namespaces = ('license', 'transfer') %}
+
+{% for ns, label in (custom_text_namespaces or []) %}
+      {% set sec_id = 'sec-' ~ (ns|replace('_','-')) %}
+      <div id="{{ sec_id }}" class="custom-text-section top-panel">
+        <div class="legacy-section-header mb-2">
+          <div class="legacy-title">{{ label }}</div>
+          {% if can_edit_case %}
+            <div class="case-section-actions">
+              {% if ns in _editmode_skip_custom_namespaces %}
+                <button form="customForm-{{ ns }}" class="btnBlue" data-editmode-skip="1">Save</button>
+              {% else %}
+                <button form="customForm-{{ ns }}" class="btnBlue edit-only">Save</button>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+        {% if ns == 'priority' %}
+          <form
+            method="post"
+            action="{{ url_for('case_work.add_priority', case_id=matter.matter_id) }}"
+            class="border rounded p-2 mb-2 bg-light"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="row g-2 align-items-end">
+              <div class="col-md-6">
+                <label class="form-label small mb-1">Priority </label>
+                <input
+                  type="text"
+                  name="priority_no"
+                  class="form-control form-control-sm"
+                  placeholder=": 10-2024-1234567 ( items table Type)"
+                  {% if not can_edit_case %}disabled{% endif %}
+                />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small mb-1">Priority</label>
+                <input
+                  type="date"
+                  name="claim_date"
+                  class="form-control form-control-sm"
+                  {% if not can_edit_case %}disabled{% endif %}
+                />
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small mb-1">Country</label>
+                <input
+                  type="text"
+                  name="country"
+                  class="form-control form-control-sm"
+                  placeholder="Local"
+                  maxlength="8"
+                  {% if not can_edit_case %}disabled{% endif %}
+                />
+              </div>
+              <div class="col-md-2 d-grid">
+                <button type="submit" class="btn btn-sm btn-outline-primary" {% if not can_edit_case %}disabled{% endif %}>Priority Save</button>
+              </div>
+            </div>
+            {% if not can_edit_case %}
+              <div class="small text-muted mt-2">Priority Input/Save  Permissions required.</div>
+            {% endif %}
+          </form>
+          <div class="legacy-grid-wrap mb-2">
+            <table class="legacy-grid small">
+              <thead>
+                <tr>
+                  <th style="width: 70px;">No.</th>
+                  <th style="width: 120px;">Entry date</th>
+                  <th style="width: 140px;">Country</th>
+                  <th style="width: 140px;">Priority</th>
+                  <th style="width: 180px;">Priority </th>
+                  <th style="width: 140px;">Due date</th>
+                  <th style="width: 140px;"></th>
+                  <th style="width: 140px;">Publication</th>
+                  <th>Other</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in (priority_rows or []) %}
+                  <tr class="legacy-row-hover">
+                    <td align="center">{{ r.no or loop.index }}</td>
+                    <td align="center">{{ (r.input_date or '')|us_date }}</td>
+                    <td align="center">{{ r.country or '' }}</td>
+                    <td align="center">{{ (r.claim_date or '')|us_date }}</td>
+                    <td align="center">
+                      {% if r.linked_case_id %}
+                        <a href="{{ url_for('case_work.case_detail', case_id=r.linked_case_id) }}">{{ r.priority_no }}</a>
+                      {% else %}
+                        {{ r.priority_no }}
+                      {% endif %}
+                    </td>
+                    <td align="center">{{ (r.doc_deadline or '')|us_date }}</td>
+                    <td align="center">{{ (r.doc_submitted_date or '')|us_date }}</td>
+                    <td align="center">{{ (r.announcement_date or '')|us_date }}</td>
+                    <td style="text-align:left;">
+                      {% if r.linked_case_id %}
+                        <span class="text-muted">{{ r.linked_our_ref or '' }}</span>
+                        {% if r.linked_title %} — {{ r.linked_title }}{% endif %}
+                      {% else %}
+                        {{ r.note or '' }}
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="9" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-flag"></i><span>Priority Data none.</span></div></td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <form id="customForm-{{ ns }}" method="post" action="{{ url_for('case_work.save_custom_text', case_id=matter.matter_id, namespace=ns) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <textarea class="form-control form-control-sm" name="text" rows="3" placeholder="Priority Notes" {% if not can_edit_case %}readonly{% endif %}>{{ (custom_text_data.get(ns, {}) or {}).get('text','') }}</textarea>
+          </form>
+        {% else %}
+          {% if ns in _editmode_skip_custom_namespaces %}
+            <form
+              id="customForm-{{ ns }}"
+              method="post"
+              action="{{ url_for('case_work.save_custom_text', case_id=matter.matter_id, namespace=ns) }}"
+              class="border rounded p-2 bg-light"
+              data-editmode-skip="1"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <textarea
+                class="form-control form-control-sm"
+                name="text"
+                rows="4"
+                placeholder="{{ label }} Content Input"
+                {% if not can_edit_case %}readonly{% endif %}
+              >{{ (custom_text_data.get(ns, {}) or {}).get('text','') }}</textarea>
+              {% if not can_edit_case %}
+                <div class="small text-muted mt-2">{{ label }} Input/Save  Permissions required.</div>
+              {% endif %}
+            </form>
+          {% else %}
+            <form id="customForm-{{ ns }}" method="post" action="{{ url_for('case_work.save_custom_text', case_id=matter.matter_id, namespace=ns) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <textarea class="form-control form-control-sm" name="text" rows="4" placeholder="{{ label }} Content Input" {% if not can_edit_case %}readonly{% endif %}>{{ (custom_text_data.get(ns, {}) or {}).get('text','') }}</textarea>
+            </form>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {# Unified Progress Status Panel (replaces progress_misc, progress, old_workflow) #}
+    <div id="sec-progress" class="top-panel case-progress-panel">
+      {% set _progress_entries = progress_entries or [] %}
+      {% set _oa_citation_groups = oa_citation_groups or [] %}
+      {% set _oa_citation_total = namespace(count=0) %}
+      {% for _g in _oa_citation_groups %}
+        {% set _oa_citation_total.count = _oa_citation_total.count + (_g.count or 0) %}
+      {% endfor %}
+
+      <div class="legacy-section-header mb-2 case-progress-header">
+        <div class="legacy-title">
+          Progress
+          <span class="case-progress-stat">
+            <span class="case-progress-stat__label">Open Notes</span>
+            <span class="case-progress-stat__value">{{ _progress_entries|length }}</span>
+          </span>
+          {% if _oa_citation_groups %}
+            <span class="case-progress-stat">
+              <span class="case-progress-stat__label">OA </span>
+              <span class="case-progress-stat__value">{{ _oa_citation_total.count }}</span>
+            </span>
+          {% endif %}
+        </div>
+        {% if can_edit_case %}
+          <div class="case-section-actions">
+            <button type="button" class="btnGreen" onclick="toggleBlock('progressAddForm')">
+              <i class="bi bi-plus-lg"></i>
+              <span>Open Add</span>
+            </button>
+          </div>
+        {% endif %}
+      </div>
+
+      {% if can_edit_case %}
+        <div id="progressAddForm" class="progress-composer" style="display:none;">
+          <form method="POST" action="{{ url_for('case_work.add_progress', case_id=matter.matter_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="progress-composer__head">
+              <div>
+                <div class="progress-composer__title"><i class="bi bi-bar-chart-steps"></i> Progress Registration</div>
+              </div>
+              <button class="progress-icon-btn" type="button" onclick="toggleBlock('progressAddForm')" title="Close" aria-label="Progress Registration Close">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="progress-composer__grid">
+              <div>
+                <label class="form-label small mb-1 fw-bold text-muted">category</label>
+                <select name="category" class="form-select form-select-sm bg-white">
+                  <option value="general">General</option>
+                  <option value="misc">Other</option>
+                  <option value="legacy_staff">TaskResponsible</option>
+                </select>
+              </div>
+              <div class="progress-composer__content">
+                <label class="form-label small mb-1 fw-bold text-muted">Content</label>
+                <textarea class="form-control form-control-sm bg-white" name="content" rows="3" placeholder="Open  Input" required></textarea>
+              </div>
+              <div class="progress-composer__actions">
+                <button class="btnGreen px-3" type="submit"><i class="bi bi-check2"></i><span>Save</span></button>
+                <button class="btnConv px-3" type="button" onclick="toggleBlock('progressAddForm')">Close</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      {% endif %}
+
+      <div class="progress-board{% if not _oa_citation_groups %} progress-board--timeline-only{% endif %}">
+        <section class="progress-card progress-card--timeline" aria-labelledby="progressTimelineTitle">
+          <div class="progress-card__head">
+            <div>
+              <h3 id="progressTimelineTitle">Open Notes</h3>
+              <p>{{ _progress_entries|length }}items</p>
+            </div>
+          </div>
+
+          {% if _progress_entries %}
+            <div class="progress-timeline">
+              {% for p in _progress_entries %}
+                {% set _progress_category = p.category or 'general' %}
+                {% if _progress_category == 'misc' %}
+                  {% set _progress_category_label = 'Other' %}
+                  {% set _progress_category_class = 'misc' %}
+                {% elif _progress_category == 'legacy_staff' %}
+                  {% set _progress_category_label = 'TaskResponsible' %}
+                  {% set _progress_category_class = 'staff' %}
+                {% else %}
+                  {% set _progress_category_label = 'General' %}
+                  {% set _progress_category_class = 'general' %}
+                {% endif %}
+                <article class="progress-entry progress-entry--{{ _progress_category_class }}">
+                  <div class="progress-entry__rail" aria-hidden="true">
+                    <span></span>
+                  </div>
+                  <div class="progress-entry__body">
+                    <div class="progress-entry__meta">
+                      <span class="progress-category progress-category--{{ _progress_category_class }}">{{ _progress_category_label }}</span>
+                      <time>{{ p.created_at|local_dt_min if p.created_at else '' }}</time>
+                      {% set _progress_author = (p.created_by.username if p.created_by else '') or (p.created_by_name or '') %}
+                      {% if _progress_author %}
+                        <span class="progress-entry__author"><i class="bi bi-person"></i>{{ _progress_author }}</span>
+                      {% endif %}
+                      {% if can_edit_case %}
+                        <form method="POST" action="{{ url_for('case_work.delete_progress', case_id=matter.matter_id, progress_id=p.id) }}" class="edit-only progress-entry__delete" data-confirm="Open  Delete">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <button type="submit" class="progress-icon-btn progress-icon-btn--danger" title="Delete" aria-label="Open  Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                      {% endif %}
+                    </div>
+                    <div class="progress-entry__content">{{ p.content }}</div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="progress-empty">
+              <i class="bi bi-bar-chart-steps"></i>
+              <strong>Open Notes none.</strong>
+              {% if can_edit_case %}
+                <button type="button" class="btnWhite" onclick="toggleBlock('progressAddForm')">
+                  <i class="bi bi-plus-lg"></i>
+                  <span> Notes Add</span>
+                </button>
+              {% endif %}
+            </div>
+          {% endif %}
+        </section>
+
+        {% if _oa_citation_groups %}
+        <section class="progress-card progress-card--citations" aria-labelledby="progressCitationsTitle">
+          <div class="progress-card__head">
+            <div>
+              <h3 id="progressCitationsTitle">OA </h3>
+              <p>{{ _oa_citation_groups|length }}items OA · {{ _oa_citation_total.count }}items</p>
+            </div>
+          </div>
+
+          <div class="progress-oa-list">
+            {% for group in _oa_citation_groups %}
+                {% set _group_rows = group.rows or [] %}
+                {% set _group_count = group.count or (_group_rows|length) %}
+                <article class="progress-oa-group">
+                  <div class="progress-oa-group__head">
+                    <div class="progress-oa-group__title">
+                      <h4>{{ group.doc_name or 'Notice' }}</h4>
+                      <div class="progress-oa-group__meta">
+                        {% if group.notified_date %}<span><i class="bi bi-bell"></i>Notice {{ (group.notified_date or '')|us_date }}</span>{% endif %}
+                        {% if group.due_date %}<span><i class="bi bi-calendar-check"></i>Deadline {{ (group.due_date or '')|us_date }}</span>{% endif %}
+                        {% if group.extended_due_date %}<span><i class="bi bi-calendar-plus"></i> {{ (group.extended_due_date or '')|us_date }}</span>{% endif %}
+                        <span><i class="bi bi-journal-bookmark"></i>{{ _group_count }}items</span>
+                      </div>
+                    </div>
+                    <div class="progress-oa-group__actions">
+                      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.history_notice_view', case_id=matter.matter_id, oa_id=group.oa_id) }}" title="Office correspondence View">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Office correspondence</span>
+                      </a>
+                      {% if can_edit_case %}
+                        <form method="post" action="{{ url_for('case_work.history_notice_reparse_citations', case_id=matter.matter_id, oa_id=group.oa_id) }}">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="next" value="progress">
+                          <button type="submit" class="btn btn-sm btn-outline-primary" title="AI ">
+                            <i class="bi bi-stars"></i>
+                            <span>AI </span>
+                          </button>
+                        </form>
+                        <form method="post" action="{{ url_for('case_work.history_notice_reparse_citations', case_id=matter.matter_id, oa_id=group.oa_id) }}" onsubmit="return confirm('Manual Input  ?');">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="next" value="progress">
+                          <input type="hidden" name="overwrite_manual" value="1">
+                          <button type="submit" class="btn btn-sm btn-outline-danger" title="Manual Input ">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span></span>
+                          </button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </div>
+
+                  {% if _group_rows %}
+                    <div class="progress-citation-list">
+                      {% for ref in _group_rows %}
+                        <div class="progress-citation-item">
+                          <div class="progress-citation-item__meta">
+                            <span>{{ ref.label or (' ' ~ loop.index) }}</span>
+                            {% if ref.ref_type %}<span>{{ ref.ref_type }}</span>{% endif %}
+                            {% if ref.country %}<span>{{ ref.country }}</span>{% endif %}
+                            {% if ref.published_date %}<span>{{ ref.published_date }}</span>{% endif %}
+                          </div>
+                          <div class="progress-citation-item__text">{{ ref.raw_text }}</div>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  {% else %}
+                    <div class="progress-empty progress-empty--compact">
+                      <i class="bi bi-journal-bookmark"></i>
+                      <span> None</span>
+                    </div>
+                  {% endif %}
+
+                  {% if can_edit_case %}
+                    <details class="progress-disclosure progress-disclosure--edit">
+                      <summary>
+                        <i class="bi bi-pencil-square"></i>
+                        <span> Edit</span>
+                      </summary>
+                      <form method="post" action="{{ url_for('case_work.save_oa_citations', case_id=matter.matter_id) }}" class="progress-citation-form progress-citation-form--edit">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="oa_id" value="{{ group.oa_id }}">
+                        <textarea class="form-control form-control-sm" name="cited_references" rows="4" placeholder=": Invention 1: US2019/0373976 (2019.12.12.)">{{ group.text or '' }}</textarea>
+                        <div class="progress-citation-form__actions">
+                          <button type="submit" class="btnGreen px-3"><i class="bi bi-check2"></i><span>Save</span></button>
+                        </div>
+                      </form>
+                    </details>
+                  {% endif %}
+                </article>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+      </div>
+    </div>
+
+    <div
+      id="sec-cost"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='cost') }}"
+      hx-trigger="revealed once"
+      hx-target="this"
+      hx-swap="outerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span>Expense management Section Loading...</span>
+      </div>
+    </div>
+
+    <div id="sec-due" class="top-panel">
+      <div class="case-panel-header mb-2">
+        <div class="fw-bold">Notice DUE</div>
+        <div class="case-section-actions">
+          <span class="badge bg-light text-secondary">Total {{ due_total_count if due_total_count is defined else ((due_rows or [])|length) }}items</span>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.all_notices', q=matter.our_ref) }}">Show all</a>
+        </div>
+      </div>
+      {% if due_truncated is defined and due_truncated %}
+        <div class="small text-muted mb-2">   {{ (due_rows or [])|length }}items Display.</div>
+      {% endif %}
+      <div class="legacy-grid-wrap">
+      <table class="legacy-grid small">
+        <thead>
+          <tr>
+            <th>Document name</th>
+            <th style="width: 100px;">Notice/</th>
+            <th style="width: 100px;">Due date</th>
+            <th style="width: 100px;">Due date</th>
+            <th style="width: 100px;">Process</th>
+            <th style="width: 90px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for d in (due_rows or []) %}
+          <tr>
+            <td class="legacy-doc" style="text-align:left;" data-label="Document name">{{ d.doc_name or '' }}</td>
+            <td data-label="Notice/">{{ d.notified_date or '' }}</td>
+            <td data-label="Due date">
+              {% if (d.done_date or '') and (d.due_date or '') %}
+                <span class="legacy-muted" title="Process: {{ d.done_date }}">{{ d.due_date }}</span>
+              {% else %}
+                {{ d.due_date or '' }}
+              {% endif %}
+            </td>
+            <td data-label="Due date">{{ d.extended_due_date or '' }}</td>
+            <td data-label="Process">{{ d.done_date or '' }}</td>
+            <td data-label="">
+              {% if d.id %}
+                {% if can_edit_case %}
+                  <a
+                    href="{{ url_for('case_work.history_notice_edit', case_id=matter.matter_id, oa_id=d.id, popup=1) }}"
+                    onclick="window.open(this.href,'noticeEdit','width=1100,height=800'); return false;"
+                    class="text-decoration-none"
+                    >Edit</a
+                  >
+                  <form
+                    method="POST"
+                    action="{{ url_for('case_work.history_notice_delete', case_id=matter.matter_id, oa_id=d.id) }}"
+                    style="display:inline;"
+                    data-confirm="Delete?"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button type="submit" class="btn btn-sm btn-link p-0 text-danger">Delete</button>
+                  </form>
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center py-4">No notice due/history.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+
+    <div
+      id="alarm"
+      class="top-panel"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='alarm') }}"
+      hx-trigger="revealed once, case-panel-show once"
+      hx-target="this"
+      hx-swap="outerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span>  Loading...</span>
+      </div>
+    </div>
+
+    <div
+      id="sec-history"
+      class="top-panel"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='history') }}"
+      hx-trigger="revealed once, case-panel-show once"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span> Section Loading...</span>
+      </div>
+    </div>
+
+    <div id="sec-workflow" class="workflow-shell">
+      {% set _tc = namespace(total=0.0) %}
+      {% set _wf = namespace(overdue=0, urgent=0, pending=0, progress=0, completed=0, abandoned=0, mgmt=0, work=0, hybrid=0) %}
+      {% for wf in (workflows or []) %}
+        {% if wf.work_hours is not none and (wf.work_hours or 0) > 0 %}
+          {% set _tc.total = _tc.total + (wf.work_hours or 0) %}
+        {% endif %}
+
+        {% set _type = (wf.category_type or 'work')|lower %}
+        {% if _type in ['hybrid', 'mgmt_work', 'work_mgmt'] %}
+          {% set _wf.hybrid = _wf.hybrid + 1 %}
+        {% elif _type == 'mgmt' %}
+          {% set _wf.mgmt = _wf.mgmt + 1 %}
+        {% else %}
+          {% set _wf.work = _wf.work + 1 %}
+        {% endif %}
+
+        {% if (wf._list_status or '') == 'overdue' %}
+          {% set _wf.overdue = _wf.overdue + 1 %}
+        {% elif (wf._list_status or '') == 'urgent' %}
+          {% set _wf.urgent = _wf.urgent + 1 %}
+        {% endif %}
+
+        {% if (wf.status or '') == 'Pending' %}
+          {% set _wf.pending = _wf.pending + 1 %}
+        {% elif (wf.status or '') == 'In Progress' %}
+          {% set _wf.progress = _wf.progress + 1 %}
+        {% elif (wf.status or '') == 'Completed' %}
+          {% set _wf.completed = _wf.completed + 1 %}
+        {% elif (wf.status or '') == 'Abandoned' %}
+          {% set _wf.abandoned = _wf.abandoned + 1 %}
+        {% endif %}
+      {% endfor %}
+
+      <div class="legacy-section-header workflow-header mb-2">
+        <div class="legacy-title workflow-header-title">
+          <span class="workflow-title-main">Task</span>
+          <span class="badge bg-light text-secondary">Total {{ (workflows or [])|length }}items</span>
+          <span class="badge bg-light text-secondary">TC {{ "%.1f"|format(_tc.total) }}h</span>
+        </div>
+        <div class="workflow-header-actions case-section-actions">
+          <select id="wfFilterType" class="form-select form-select-sm" data-editmode-skip="1" onchange="applyWorkflowFilter()">
+            <option value="all" selected>All</option>
+            <option value="mgmt"></option>
+            <option value="work"></option>
+            <option value="hybrid"></option>
+          </select>
+          {% if (_wf.completed + _wf.abandoned) > 0 %}
+            <button type="button" class="btnConv" id="wfClosedToggleAll" data-editmode-skip="1">Done/Abandoned Task Expand</button>
+          {% endif %}
+          {% if can_assign_staff %}
+            <div class="btn-group btn-group-sm" role="group" aria-label="Task Registration ">
+              <button type="button" class="btn btn-outline-primary" onclick="openWorkflowAssign('self')"> TaskRegistration</button>
+              <button type="button" class="btn btn-primary" onclick="openWorkflowAssign('distribution')">Matter</button>
+            </div>
+          {% elif can_edit_case %}
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openWorkflowAssign('self')"> TaskRegistration</button>
+          {% endif %}
+          <a class="btnOrange text-decoration-none" href="{{ url_for('workflow.tc_report_view', case_id=matter.matter_id) }}">TC</a>
+          {% if can_edit_case or can_invoice %}
+            <button type="button" class="btnConv" id="toggleEditModeWorkflow"></button>
+          {% endif %}
+          <span class="small workflow-header-note">* <span class="legacy-doc-notice"></span> Notice Document name.</span>
+        </div>
+      </div>
+
+      <div class="workflow-kpi-grid mb-2">
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label">DeadlineOverdue</div>
+          <div class="workflow-kpi-value text-danger">{{ _wf.overdue }}</div>
+        </div>
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label"></div>
+          <div class="workflow-kpi-value text-warning">{{ _wf.urgent }}</div>
+        </div>
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label">OpenIn Progress</div>
+          <div class="workflow-kpi-value text-primary">{{ _wf.progress }}</div>
+        </div>
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label">Done</div>
+          <div class="workflow-kpi-value text-success">{{ _wf.completed }}</div>
+        </div>
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label">Task Abandoned</div>
+          <div class="workflow-kpi-value text-muted">{{ _wf.abandoned }}</div>
+        </div>
+        <div class="workflow-kpi-card">
+          <div class="workflow-kpi-label"> /  / </div>
+          <div class="workflow-kpi-value">{{ _wf.mgmt }} / {{ _wf.work }} / {{ _wf.hybrid }}</div>
+        </div>
+      </div>
+
+      {% if can_edit_case or can_assign_staff %}
+      <div id="wfAssign" class="workflow-entry-panel mb-2" style="display:none;">
+        <div class="workflow-entry-panel-title">
+          <i class="bi bi-diagram-3"></i>
+          <span id="wfAssignTitleLabel">Matter  Registration</span>
+        </div>
+        <form method="POST" action="{{ url_for('workflow.create') }}" id="wfAssignForm" data-current-user-id="{{ current_user.id or '' }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <input type="hidden" name="matter_id" value="{{ matter.matter_id }}" />
+          <input type="hidden" name="assignment_mode" id="wfAssignModeInput" value="{{ 'distribution' if can_assign_staff else 'self' }}" />
+          <input type="hidden" name="category_manual" id="wfAssignCategoryManual" value="0" />
+          <input type="hidden" id="wfAssignCurrentUserId" value="{{ current_user.id or '' }}" />
+          {% set staff_all = (staff_users_all or []) %}
+          {% set staff_mgmt = (staff_users_management or staff_all) %}
+          {% set staff_attorney = (staff_users_attorney or staff_users_professional or staff_all) %}
+          {% set staff_proc = (staff_users_processing or staff_all) %}
+
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+            <span class="small fw-bold text-muted">Registration </span>
+            <button
+              type="button"
+              id="wfAssignModeSelfBtn"
+              class="btn btn-sm btn-outline-primary"
+              onclick="setWorkflowAssignMode('self')"
+            >
+               TaskRegistration
+            </button>
+            {% if can_assign_staff %}
+              <button
+                type="button"
+                id="wfAssignModeDistributionBtn"
+                class="btn btn-sm btn-primary"
+                onclick="setWorkflowAssignMode('distribution')"
+              >
+                Matter
+              </button>
+            {% endif %}
+          </div>
+          <div id="wfAssignModeHintSelf" class="small text-primary fw-semibold mb-2" style="display:none;">
+             TaskRegistration: Current User  .  Contact Auto  Process.
+          </div>
+          {% if can_assign_staff %}
+            <div id="wfAssignModeHintDistribution" class="small text-muted mb-2">
+              Matter: Handler/Responsible attorney/Manager   Task category to Select.
+            </div>
+          {% endif %}
+
+          <div class="p-3 bg-light rounded mb-3 border">
+            <div class="row g-3">
+              <!--   -->
+              <div class="col-md-5">
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label class="form-label small mb-1 fw-bold text-muted"></label>
+                    <input class="form-control form-control-sm bg-white" value="{{ current_user.username }}" disabled />
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small mb-1 fw-bold text-muted"> </label>
+                    <input class="form-control form-control-sm bg-white" value="{{ current_user.department or '' }}" disabled />
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <label class="form-label small mb-1 fw-bold text-muted"> Notes</label>
+                  <textarea class="form-control form-control-sm" name="send_memo" rows="4" placeholder=" Notes Input (Select)"></textarea>
+                </div>
+              </div>
+
+              <!-- Contact  -->
+              <div class="col-md-7 border-start ps-md-4">
+                <div class="d-flex justify-content-between align-items-end mb-3">
+                  <label class="form-label small mb-0 fw-bold text-muted">Task Contact </label>
+                  <span
+                    id="wfAssignDistributionBadge"
+                    class="badge bg-white text-primary border border-primary-subtle fw-normal wf-assign-distribution-only"
+                  >3Role   (Process//)</span>
+                  <span
+                    id="wfAssignSelfBadge"
+                    class="badge bg-primary-subtle text-primary fw-normal wf-assign-self-only"
+                    style="display:none;"
+                  >  </span>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                  <!-- Handler -->
+                  <div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="small fw-semibold text-secondary" style="width: 85px;">Handler</span>
+                      <select id="wfAssignAssignee" class="form-select form-select-sm flex-grow-1" name="assignee_id">
+                        <option value="">-    -</option>
+                        {% for u in (staff_proc or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}{% if u.department %} ({{ u.department }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary wf-assign-distribution-only"
+                        onclick="toggleBlock('wfAssignAssigneeMore')"
+                        title="Search all users"
+                      ><i class="bi bi-search"></i> All</button>
+                    </div>
+                    <div
+                      id="wfAssignAssigneeMore"
+                      class="p-2 bg-white border rounded mt-2"
+                      style="display:none; margin-left: 93px;"
+                    >
+                      <div class="small text-muted mb-1"><i class="bi bi-people"></i> Select from all users</div>
+                      <select class="form-select form-select-sm" onchange="copySelectValue('wfAssignAssignee', this)">
+                        <option value="">-- Select --</option>
+                        {% for u in (staff_all or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}{% if u.department %} ({{ u.department }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="small text-primary mt-2 fw-semibold wf-assign-self-only" style="display:none; margin-left: 93px;">
+                       TaskRegistration from Handler {{ current_user.username }}to .
+                    </div>
+                  </div>
+
+                  <!-- Responsible attorney -->
+                  <div class="wf-assign-distribution-only">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="small fw-semibold text-secondary" style="width: 85px;">Responsible attorney</span>
+                      <select id="wfAssignAttorney" class="form-select form-select-sm flex-grow-1" name="attorney_assignee_id">
+                        <option value="">-    -</option>
+                        {% for u in (staff_attorney or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}{% if u.department %} ({{ u.department }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBlock('wfAssignAttorneyMore')" title="Search all users"><i class="bi bi-search"></i> All</button>
+                    </div>
+                    <div id="wfAssignAttorneyMore" class="p-2 bg-white border rounded mt-2" style="display:none; margin-left: 93px;">
+                      <div class="small text-muted mb-1"><i class="bi bi-people"></i> Select from all users</div>
+                      <select class="form-select form-select-sm" onchange="copySelectValue('wfAssignAttorney', this)">
+                        <option value="">-- Select --</option>
+                        {% for u in (staff_all or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}{% if u.department %} ({{ u.department }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Manager -->
+                  <div class="wf-assign-distribution-only">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="small fw-semibold text-secondary" style="width: 85px;">Manager</span>
+                      <select id="wfAssignInspector" class="form-select form-select-sm flex-grow-1" name="inspector_id">
+                        <option value="">-    -</option>
+                        {% for u in (staff_mgmt or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBlock('wfAssignInspectorMore')" title="Search all users"><i class="bi bi-search"></i> All</button>
+                    </div>
+                    <div id="wfAssignInspectorMore" class="p-2 bg-white border rounded mt-2" style="display:none; margin-left: 93px;">
+                      <div class="small text-muted mb-1"><i class="bi bi-people"></i> Select from all users</div>
+                      <select class="form-select form-select-sm" onchange="copySelectValue('wfAssignInspector', this)">
+                        <option value="">-- Select --</option>
+                        {% for u in (staff_all or []) %}
+                          <option value="{{ u.id }}">{{ u.username }}{% if u.department %} ({{ u.department }}){% endif %}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-9">
+              <div class="p-3 bg-white rounded border h-100">
+                <h6 class="fw-bold mb-3"><i class="bi bi-card-text text-primary"></i> Task </h6>
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label small mb-1 fw-bold text-muted">Task/Task <span class="text-danger">*</span></label>
+                    <input class="form-control form-control-sm" name="name" placeholder=": [OA] Office action " required />
+                    <input type="hidden" name="business_code" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small mb-1 fw-bold text-muted">Task category</label>
+                    <select
+                      class="form-select form-select-sm"
+                      id="wfAssignCategory"
+                      name="category"
+                      data-workflow-category-select="1"
+                    >
+                      <option value="WORK" selected></option>
+                      <option value="MGMT"></option>
+                      <option value="MGMT_WORK"></option>
+                    </select>
+                    <div class="small text-muted mt-1">Matter view  </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small mb-1 fw-bold text-muted">TC (Estimated, Select)</label>
+                    <div class="input-group input-group-sm">
+                      <input class="form-control form-control-sm text-end" name="work_hours" inputmode="decimal" placeholder=": 1.5" />
+                      <span class="input-group-text bg-light text-muted">h</span>
+                    </div>
+                  </div>
+                  <div class="col-12 mt-2">
+                    <label class="form-label small mb-1 fw-bold text-muted">/Details Content</label>
+                    <textarea class="form-control form-control-sm" name="note" rows="3" placeholder=" Content Details  Input"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="p-3 bg-white rounded border h-100">
+                <h6 class="fw-bold mb-3"><i class="bi bi-calendar-event text-danger"></i> Deadline Settings</h6>
+                <div class="d-flex flex-column gap-2 mb-2">
+                  <div>
+                    <label class="form-label small mb-1 fw-bold text-muted">Task  <span class="text-danger">*</span></label>
+                    <input class="form-control form-control-sm" type="date" name="request_start_date" id="request_start_date_input" value="{{ today }}" required />
+                  </div>
+                  <div>
+                    <label class="form-label small mb-1 fw-bold text-danger">Final Due date(Statutory deadline)</label>
+                    <input class="form-control form-control-sm border-danger" type="date" name="legal_due_date" title="Statutory/ Due date" />
+                  </div>
+                  <div>
+                    <label class="form-label small mb-1 fw-bold text-muted">Internal Due date</label>
+                    <input class="form-control form-control-sm border-primary-subtle" type="date" name="internal_due_date" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-2">
+            <button class="btnGreen" type="submit">Registration</button>
+            <button class="btnConv" type="button" onclick="toggleBlock('wfAssign')">Close</button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      {% set due_doc_names = (due_rows or [])|map(attribute='doc_name')|list %}
+      <div class="legacy-grid-wrap workflow-grid-wrap">
+        <table class="legacy-grid small workflow-redesign-table">
+          <thead>
+            <tr>
+              <th>Task </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for wf in (workflows or []) %}
+              {% set form_id = 'wfForm' ~ wf.id %}
+              {% set _ls = (wf._list_status or '') %}
+              {% set _wf_type = (wf.category_type or 'work')|lower %}
+              {% set _is_hybrid = _wf_type in ['mgmt_work', 'work_mgmt', 'hybrid'] %}
+              {% set _wf_category_raw = (wf.category or '')|upper %}
+              {% set _wf_category_value = 'WORK' %}
+              {% if _wf_category_raw in ['HYBRID', 'MGMT_WORK', 'WORK_MGMT'] or _is_hybrid %}
+                {% set _wf_category_value = 'MGMT_WORK' %}
+              {% elif _wf_category_raw == 'MGMT' or _wf_type == 'mgmt' %}
+                {% set _wf_category_value = 'MGMT' %}
+              {% endif %}
+              {% set _status_raw = (wf.status or 'Pending') %}
+              {% set _is_closed = _status_raw in ['Completed', 'Abandoned'] %}
+              {% set _status_key = 'pending' %}
+              {% set _display_name = (wf._display_name or wf.name or '') %}
+              {% set _legal_due = (wf._display_legal_due_date or wf.legal_due_date or wf.due_date) %}
+              {% set _effective_due = (wf._display_due_date or wf.due_date or wf.legal_due_date) %}
+              {% set _internal_due = (wf._display_internal_due_date if wf._display_internal_due_date is defined else none) %}
+              {% set _is_docket_linked = wf._linked_docket_id %}
+              {% set _note_display = (wf.note or '')|replace('Auto Create: DocketItem ', '')|trim %}
+              {% set _assignee_id = '' %}
+              {% set _assignee_name = '' %}
+              {% if wf.assignee %}
+                {% set _assignee_id = (wf.assignee.staff_party_id if wf.assignee.staff_party_id else (wf.assignee_id|string)) %}
+                {% set _assignee_name = (wf.assignee.display_name or wf.assignee.username or _assignee_id) %}
+              {% endif %}
+              {% set _attorney_id = '' %}
+              {% set _attorney_name = '' %}
+              {% if wf.attorney_assignee %}
+                {% set _attorney_id = (wf.attorney_assignee.staff_party_id if wf.attorney_assignee.staff_party_id else (wf.attorney_assignee_id|string)) %}
+                {% set _attorney_name = (wf.attorney_assignee.display_name or wf.attorney_assignee.username or _attorney_id) %}
+              {% endif %}
+              {% set _inspector_id = '' %}
+              {% set _inspector_name = '' %}
+              {% if wf.inspector %}
+                {% set _inspector_id = (wf.inspector.staff_party_id if wf.inspector.staff_party_id else (wf.inspector_id|string)) %}
+                {% set _inspector_name = (wf.inspector.display_name or wf.inspector.username or _inspector_id) %}
+              {% endif %}
+              {% set _flow_role_codes = (wf._flow_role_codes or ()) %}
+              {% set _collapsed_assignee_label = '' %}
+              {% if _attorney_name %}
+                {% set _collapsed_assignee_label = ' ' ~ _attorney_name %}
+              {% elif _inspector_name %}
+                {% set _collapsed_assignee_label = ' ' ~ _inspector_name %}
+              {% elif _assignee_name %}
+                {% set _collapsed_assignee_label = 'Process ' ~ _assignee_name %}
+              {% endif %}
+              {% if _status_raw == 'In Progress' %}
+                {% set _status_key = 'progress' %}
+              {% elif _status_raw == 'Completed' %}
+                {% set _status_key = 'completed' %}
+              {% elif _status_raw == 'Abandoned' %}
+                {% set _status_key = 'abandoned' %}
+              {% endif %}
+              <tr
+                class="workflow-card-row legacy-row-hover {% if _ls == 'overdue' %}table-danger{% elif _ls == 'urgent' %}table-warning{% endif %}"
+                data-workflow-type="{{ _wf_type }}"
+                data-workflow-id="wf_{{ wf.id }}"
+                data-workflow-closed="{{ '1' if _is_closed else '0' }}"
+              >
+                <td>
+                  <article class="workflow-card{% if _is_closed %} workflow-card--closed is-collapsed{% endif %}">
+                    <form id="{{ form_id }}" method="POST" action="{{ url_for('workflow.update_status', workflow_id=wf.id) }}" class="workflow-card-main-form" data-editmode-skip="1">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <input type="hidden" name="matter_id" value="{{ matter.matter_id }}" />
+                      <input type="hidden" name="category_manual" value="0" />
+                    </form>
+
+                    <div class="workflow-card-head">
+                      <div class="workflow-card-head-main">
+                        <div class="workflow-card-no">{{ loop.index }}</div>
+                        <div class="workflow-card-title-wrap">
+                          <a href="{{ url_for('workflow.detail', workflow_id=wf.id) }}" class="workflow-card-title text-decoration-none">
+                            <span class="{% if _display_name in due_doc_names %}legacy-doc-notice{% endif %}">{{ _display_name }}</span>
+                          </a>
+                          <div class="workflow-card-tags">
+                            <span class="workflow-chip {% if _is_hybrid %}workflow-chip--hybrid{% elif _wf_type == 'mgmt' %}workflow-chip--mgmt{% else %}workflow-chip--work{% endif %}">
+                              {% if _is_hybrid %}{% elif _wf_type == 'mgmt' %}{% else %}{% endif %}
+                            </span>
+                            <span class="wf-status-badge wf-status-badge--{{ _status_key }}">
+                              {{ _status_raw if _status_raw != 'Abandoned' else 'Abandoned' }}
+                            </span>
+                            {% if _ls == 'overdue' %}
+                              <span class="workflow-chip workflow-chip--overdue">DeadlineOverdue</span>
+                            {% elif _ls == 'urgent' %}
+                              <span class="workflow-chip workflow-chip--urgent"></span>
+                            {% endif %}
+                            {% if wf._linked_docket_id %}
+                              <span class="workflow-chip workflow-chip--linked">Deadline </span>
+                            {% endif %}
+                            <a
+                              href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, workflow_id='wf_' ~ wf.id, _anchor='sec-workflow') }}"
+                              class="link-muted"
+                              title="Matter from "
+                            ><i class="bi bi-link-45deg"></i></a>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="workflow-card-head-controls">
+                        <div class="workflow-inline-field">
+                          <label class="small text-muted mb-1">In Progress</label>
+                          {% if (current_user.role or '')|lower == 'admin' or current_user.is_mgmt_role() %}
+                            <select class="form-select form-select-sm" name="priority" form="{{ form_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %}>
+                              <option value="" {% if not wf.priority %}selected{% endif %}>-</option>
+                              <option value="normal" {% if (wf.priority or '') == 'normal' %}selected{% endif %}></option>
+                              <option value="important" {% if (wf.priority or '') == 'important' %}selected{% endif %}>In Progress</option>
+                              <option value="urgent" {% if (wf.priority or '') == 'urgent' %}selected{% endif %}></option>
+                            </select>
+                          {% else %}
+                            <div class="workflow-readonly-field">
+                              {% if (wf.priority or '') == 'urgent' %}<span class="text-danger fw-semibold"></span>
+                              {% elif (wf.priority or '') == 'important' %}<span class="fw-semibold">In Progress</span>
+                              {% elif (wf.priority or '') == 'normal' %}
+                              {% else %}-{% endif %}
+                            </div>
+                          {% endif %}
+                        </div>
+                        <div class="workflow-inline-field">
+                          <label class="small text-muted mb-1">OpenStatus</label>
+                          <select class="form-select form-select-sm" name="status" form="{{ form_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %}>
+                            <option value="Pending" {% if (wf.status or '') == 'Pending' %}selected{% endif %}>Pending</option>
+                            <option value="In Progress" {% if (wf.status or '') == 'In Progress' %}selected{% endif %}>In Progress</option>
+                            <option value="Completed" {% if (wf.status or '') == 'Completed' %}selected{% endif %}>Completed</option>
+                            <option value="Abandoned" {% if (wf.status or '') == 'Abandoned' %}selected{% endif %}>Task Abandoned</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {% if _is_closed %}
+                      <div class="workflow-card-summary" data-workflow-closed-summary="1">
+                        <div class="workflow-card-summary-main">
+                          <span class="workflow-summary-inline">
+                            <span class="workflow-summary-inline-label">Final Due date</span>
+                            <span class="workflow-summary-inline-value">{{ _legal_due or '-' }}</span>
+                          </span>
+                          <span class="workflow-summary-inline">
+                            <span class="workflow-summary-inline-label">Process</span>
+                            <span class="workflow-summary-inline-value">{{ wf.completed_date or '-' }}</span>
+                          </span>
+                          <span class="workflow-summary-inline">
+                            <span class="workflow-summary-inline-label">TC</span>
+                            <span class="workflow-summary-inline-value">
+                              {% if wf.work_hours is not none %}
+                                {{ "%.1f"|format((wf.work_hours or 0)|float) }}h
+                              {% else %}
+                                -
+                              {% endif %}
+                            </span>
+                          </span>
+                          {% if _collapsed_assignee_label %}
+                            <span class="workflow-summary-inline">
+                              <span class="workflow-summary-inline-label"></span>
+                              <span class="workflow-summary-inline-value">{{ _collapsed_assignee_label }}</span>
+                            </span>
+                          {% endif %}
+                          {% if not _collapsed_assignee_label %}
+                            <span class="workflow-summary-inline workflow-summary-inline--muted">
+                              <span class="workflow-summary-inline-label"></span>
+                              <span class="workflow-summary-inline-value">None</span>
+                            </span>
+                          {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary workflow-card-summary-toggle" data-workflow-toggle-closed-details="1" aria-expanded="false">Open</button>
+                      </div>
+                    {% endif %}
+
+                    <div class="workflow-card-body"{% if _is_closed %} data-workflow-closed-body="1" hidden{% endif %}>
+                      <div class="workflow-card-grid">
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">Final Due date(Statutory deadline)</label>
+                          <div class="workflow-input-inline">
+                            <input class="form-control form-control-sm" type="date" name="legal_due_date" value="{{ _legal_due or '' }}" form="{{ form_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %} />
+                            {% if _legal_due %}
+                              <a href="{{ url_for('deadlines.calendar_month', date=_legal_due) }}" class="link-muted" title="to View"><i class="bi bi-calendar3"></i></a>
+                            {% endif %}
+                            {% if _is_docket_linked %}
+                              <a href="{{ url_for('deadlines.docket_detail', docket_id=_is_docket_linked) }}" class="link-muted" title=" TaskDeadline View"><i class="bi bi-calendar-check"></i></a>
+                            {% endif %}
+                          </div>
+                          {% if _effective_due and _legal_due and _effective_due != _legal_due %}
+                            <div class="text-muted small mt-1">Current Internal Due date: {{ _effective_due }}</div>
+                          {% endif %}
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">Internal Due date</label>
+                          <div class="workflow-input-inline">
+                            <input class="form-control form-control-sm" type="date" name="internal_due_date" value="{{ _internal_due or '' }}" form="{{ form_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %} />
+                            {% if _effective_due %}
+                              <a href="{{ url_for('deadlines.calendar_month', date=_effective_due) }}" class="link-muted" title="to View"><i class="bi bi-calendar3"></i></a>
+                            {% endif %}
+                          </div>
+                          <div class="text-muted small mt-1">
+                            {% if _is_docket_linked %}
+                               Deadline  Task Due date   exists.
+                            {% elif _legal_due and not _internal_due %}
+                              Current Final Due date .
+                            {% else %}
+                               Final Due date  .
+                            {% endif %}
+                          </div>
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">Create</label>
+                          <div class="workflow-readonly-field">
+                            {% if wf.created_by %}
+                              {% set _creator_id = (wf.created_by.staff_party_id if wf.created_by.staff_party_id else (wf.created_by.id|string)) %}
+                              {% set _creator_name = (wf.created_by.display_name or wf.created_by.username or _creator_id) %}
+                              <a href="{{ url_for('worklog.index', owner=_creator_id, owner_name=_creator_name, filter='all') }}" class="text-decoration-none" title="Task(User)">{{ _creator_name }}</a>
+                            {% else %}
+                              -
+                            {% endif %}
+                          </div>
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">Task category</label>
+                          <select class="form-select form-select-sm" name="category" form="{{ form_id }}" data-workflow-category-select="1" {% if not (can_edit_case or can_assign_staff) %}disabled title="Permission denied"{% endif %}>
+                            <option value="WORK" {% if _wf_category_value == 'WORK' %}selected{% endif %}></option>
+                            <option value="MGMT" {% if _wf_category_value == 'MGMT' %}selected{% endif %}></option>
+                            <option value="MGMT_WORK" {% if _wf_category_value == 'MGMT_WORK' %}selected{% endif %}></option>
+                          </select>
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">
+                            Responsible attorney Task
+                          </label>
+                          {% if staff_users_all and can_assign_staff %}
+                            <div class="workflow-input-inline">
+                              <select class="form-select form-select-sm" name="attorney_assignee_id" form="{{ form_id }}" {% if not can_assign_staff %}disabled title="Permission denied"{% endif %}>
+                                <option value="">-</option>
+                                {% for u in staff_users_all %}
+                                  <option value="{{ u.id }}" {% if wf.attorney_assignee_id == u.id %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                              </select>
+                              {% if wf.attorney_assignee %}
+                                <a href="{{ url_for('worklog.index', owner_role='attorney', owner=_attorney_id, owner_name=_attorney_name, filter='todo') }}" class="link-muted" title="Responsible attorney Task"><i class="bi bi-kanban"></i></a>
+                              {% endif %}
+                            </div>
+                          {% else %}
+                            <div class="workflow-readonly-field">
+                              {% if wf.attorney_assignee %}
+                                <a href="{{ url_for('worklog.index', owner_role='attorney', owner=_attorney_id, owner_name=_attorney_name, filter='todo') }}" class="text-decoration-none" title="Responsible attorney Task">{{ _attorney_name }}</a>
+                              {% else %}
+                                -
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">
+                            Manager Task
+                          </label>
+                          {% if staff_users_all and can_assign_staff %}
+                            <div class="workflow-input-inline">
+                              <select class="form-select form-select-sm" name="inspector_id" form="{{ form_id }}" {% if not can_assign_staff %}disabled title="Permission denied"{% endif %}>
+                                <option value="">-</option>
+                                {% for u in staff_users_all %}
+                                  <option value="{{ u.id }}" {% if wf.inspector_id == u.id %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                              </select>
+                              {% if wf.inspector %}
+                                <a href="{{ url_for('worklog.index', owner_role='manager', owner=_inspector_id, owner_name=_inspector_name, filter='todo') }}" class="link-muted" title="Manager Task"><i class="bi bi-kanban"></i></a>
+                              {% endif %}
+                            </div>
+                          {% else %}
+                            <div class="workflow-readonly-field">
+                              {% if wf.inspector %}
+                                <a href="{{ url_for('worklog.index', owner_role='manager', owner=_inspector_id, owner_name=_inspector_name, filter='todo') }}" class="text-decoration-none" title="Manager Task">{{ _inspector_name }}</a>
+                              {% else %}
+                                -
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">
+                            Handler Task
+                          </label>
+                          {% if staff_users_all and can_assign_staff %}
+                            <div class="workflow-input-inline">
+                              <select class="form-select form-select-sm" name="assignee_id" form="{{ form_id }}" {% if not can_assign_staff %}disabled title="Permission denied"{% endif %}>
+                                <option value="">-</option>
+                                {% for u in staff_users_all %}
+                                  <option value="{{ u.id }}" {% if wf.assignee_id == u.id %}selected{% endif %}>{{ u.username }}</option>
+                                {% endfor %}
+                              </select>
+                              {% if wf.assignee %}
+                                <a href="{{ url_for('worklog.index', owner_role='handler', owner=_assignee_id, owner_name=_assignee_name, filter='todo') }}" class="link-muted" title="Handler Task"><i class="bi bi-kanban"></i></a>
+                              {% endif %}
+                            </div>
+                          {% else %}
+                            <div class="workflow-readonly-field">
+                              {% if wf.assignee %}
+                                <a href="{{ url_for('worklog.index', owner_role='handler', owner=_assignee_id, owner_name=_assignee_name, filter='todo') }}" class="text-decoration-none" title="Handler Task">{{ _assignee_name }}</a>
+                              {% else %}
+                                -
+                              {% endif %}
+                            </div>
+                          {% endif %}
+                        </div>
+
+                        <div class="workflow-field workflow-field--wide">
+                          <label class="small text-muted mb-1">/Details Content</label>
+                          <input class="form-control form-control-sm" name="note" value="{{ _note_display }}" form="{{ form_id }}" {% if not can_edit_case %}disabled title="Permission denied"{% endif %} />
+                          {% if wf._linked_docket_id %}
+                            <div class="text-muted small mt-1">Deadline </div>
+                          {% endif %}
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1">TC()</label>
+                          <input class="form-control form-control-sm" name="work_hours" value="{{ wf.work_hours or '' }}" form="{{ form_id }}" inputmode="decimal" placeholder="Select" {% if not can_edit_case %}disabled title="Permission denied"{% endif %} />
+                        </div>
+
+                        <div class="workflow-field">
+                          <label class="small text-muted mb-1"></label>
+                          <div class="workflow-readonly-field">
+                            {% if wf.completed_date %}
+                              <a href="{{ url_for('workflow.detail', workflow_id=wf.id) }}" class="text-decoration-none">{{ wf.completed_date }}</a>
+                            {% else %}
+                              -
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="workflow-card-footer">
+                        {% if can_edit_case %}
+                          <button type="submit" form="{{ form_id }}" class="btnConv edit-only">Save</button>
+                          <form method="POST" action="{{ url_for('workflow.update_status', workflow_id=wf.id) }}" class="d-inline edit-only" data-editmode-skip="1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <input type="hidden" name="matter_id" value="{{ matter.matter_id }}" />
+                            <input type="hidden" name="status" value="Completed" />
+                            <button type="submit" class="btnGreen">Done</button>
+                          </form>
+                          <form method="POST" action="{{ url_for('workflow.update_status', workflow_id=wf.id) }}" class="d-inline edit-only" data-editmode-skip="1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <input type="hidden" name="matter_id" value="{{ matter.matter_id }}" />
+                            <input type="hidden" name="status" value="Abandoned" />
+                            <button type="submit" class="btnOrange">Task Abandoned</button>
+                          </form>
+                          {% if wf._linked_docket_id %}
+                            <a href="{{ url_for('deadlines.docket_detail', docket_id=wf._linked_docket_id) }}" class="btnConv edit-only text-decoration-none" data-editmode-skip="1" title=" Deadline Go">Deadline</a>
+                          {% endif %}
+                          <form method="POST" action="{{ url_for('workflow.delete_workflow', workflow_id=wf.id) }}" class="d-inline edit-only" data-editmode-skip="1" data-confirm="Task Delete">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <button type="submit" class="btnRed">Delete</button>
+                          </form>
+                        {% elif can_assign_staff %}
+                          <button type="submit" form="{{ form_id }}" class="btnConv">Save</button>
+                        {% else %}
+                          <span class="text-muted small"> Permissions None</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </article>
+                </td>
+              </tr>
+            {% else %}
+              <tr data-empty="1">
+                <td class="text-center py-4">
+                  <div class="app-empty-state"><i class="bi bi-kanban"></i><span>Registration Task none.</span></div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div
+      id="sec-annuity"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='annuity') }}"
+      hx-trigger="revealed once"
+      hx-target="this"
+      hx-swap="outerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span>Renewal  Section Loading...</span>
+      </div>
+    </div>
+
+    <div
+      id="sec-deadlines"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='deadlines') }}"
+      hx-trigger="revealed once"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span>TaskDeadline Section Loading...</span>
+      </div>
+    </div>
+
+    <div
+      id="sec-memo"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='memo') }}"
+      hx-trigger="revealed once"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span>Notes Section Loading...</span>
+      </div>
+    </div>
+
+    <div id="sec-audits" data-default-collapsed="1">
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title">
+
+          <span class="badge bg-light text-secondary" id="caseAuditCount">Recent {{ (case_audit_rows or [])|length }}items</span>
+        </div>
+        <div class="audit-header-actions">
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="refreshAuditBtn">New</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="resetAuditFiltersBtn">Filter Reset</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-section-toggle="sec-audits" aria-expanded="false">Expand</button>
+        </div>
+      </div>
+      <div class="audit-toolbar">
+        <div class="audit-chips" id="caseAuditChips"></div>
+        <div class="audit-filters">
+          <select class="form-select form-select-sm audit-filter" id="caseAuditActionFilter">
+            <option value="all">All Actions</option>
+          </select>
+          <select class="form-select form-select-sm audit-filter" id="caseAuditFieldFilter">
+            <option value="all">All Item</option>
+          </select>
+          <input
+            type="search"
+            class="form-control form-control-sm audit-filter-input"
+            id="caseAuditSearch"
+            placeholder="Search: User//Content"
+          />
+          <select class="form-select form-select-sm audit-filter" id="caseAuditLimit">
+            <option value="5">Recent 5items</option>
+            <option value="50">Recent 50 items</option>
+            <option value="100">Recent 100 items</option>
+            <option value="200">Recent 200 items</option>
+          </select>
+        </div>
+      </div>
+      <div class="small text-muted mb-2" id="caseAuditMeta"></div>
+      <div class="legacy-grid-wrap">
+        <table class="legacy-grid small case-audit-table">
+          <thead>
+            <tr>
+              <th style="width: 160px;"></th>
+              <th style="width: 120px;">User</th>
+              <th style="width: 160px;">Type</th>
+              <th>Content</th>
+              <th style="width: 110px;">Undo</th>
+            </tr>
+          </thead>
+          <tbody id="caseAuditList">
+            <tr data-empty="1">
+              <td colspan="5" class="text-center py-4">Change history Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

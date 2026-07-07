@@ -1,0 +1,1332 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<style>
+  .recommended-field-highlight {
+      background-color: #fff3cd !important;
+      border: 2px solid #ffc107 !important;
+  }
+  .recommended-label-highlight {
+      color: #856404;
+      background-color: #fff3cd !important;
+      position: relative;
+  }
+  .recommended-label-highlight::after {
+      content: "★";
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      font-size: 0.7em;
+      color: #856404;
+  }
+</style>
+{% set staff_fields = ['manager','attorney','handler','drawing_handler','assignee1','assignee2'] %}
+{% set basic_staff_fields = ['manager','attorney','handler'] %}
+{% macro render_staff_input(field_name, value, staff_kind, staff_assignment, staff_picker, required=False, suffix='edit') %}
+  {% set input_id = 'staff-' ~ field_name ~ '-' ~ suffix %}
+  {% set more_id = input_id ~ '-more' %}
+  {% if staff_kind == 'management' %}
+    {% set staff_list = staff_assignment.management_users if staff_assignment else [] %}
+    {% set local_staff_list = staff_picker.management_local_users if staff_picker else [] %}
+  {% elif staff_kind == 'professional' %}
+    {% set staff_list = staff_assignment.professional_users if staff_assignment else [] %}
+    {% set local_staff_list = ((staff_picker.attorney_local_users if staff_picker else []) or []) %}
+  {% elif staff_kind == 'processing' %}
+    {% set staff_list = staff_assignment.processing_users if staff_assignment else [] %}
+    {% set local_staff_list = ((staff_picker.processing_local_users if staff_picker else []) or []) %}
+  {% else %}
+    {% set staff_list = staff_assignment.all_users if staff_assignment else [] %}
+    {% set local_staff_list = staff_picker.local_users if staff_picker else [] %}
+  {% endif %}
+  {% set ns = namespace(items=[], seen=[]) %}
+  {% for u in (staff_list or []) %}
+    {% if u.value and u.value not in ns.seen %}
+      {% set _ = ns.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept, "scope": "group"}) %}
+      {% set _ = ns.seen.append(u.value) %}
+    {% endif %}
+  {% endfor %}
+  {% if local_staff_list %}
+    {% for u in local_staff_list %}
+      {% if u.value and u.value not in ns.seen %}
+        {% set _ = ns.items.append({"id": u.id, "value": u.value, "label": u.label, "email": u.email, "dept": u.dept, "scope": "all"}) %}
+        {% set _ = ns.seen.append(u.value) %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+  {% set staff_search_items = ns.items %}
+  <div class="position-relative">
+    <div class="input-group input-group-sm staff-picker-group">
+      <select class="form-select form-select-sm staff-picker-select" onchange="pickStaffValue('{{ input_id }}', this)">
+      {% if staff_kind == 'management' %}
+        <option value="">--   User Select --</option>
+      {% elif staff_kind == 'professional' %}
+        <option value="">-- Attorney  User Select --</option>
+      {% else %}
+        <option value="">-- User Select --</option>
+      {% endif %}
+      {% for u in (staff_list or []) %}
+        <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+      {% endfor %}
+      </select>
+      <button type="button" class="btn btn-outline-secondary staff-picker-more" onclick="toggleStaffMore('{{ more_id }}')">View</button>
+      <input
+        id="{{ input_id }}"
+        class="form-control form-control-sm staff-picker-input"
+        type="text"
+        name="{{ field_name }}"
+        value="{{ value }}"
+        placeholder=" Input  Search"
+        autocomplete="off"
+        data-staff-search="1"
+        data-staff-menu="{{ input_id }}-staff-menu"
+        data-staff-items='{{ staff_search_items | tojson }}'
+        {% if required %}required{% endif %}
+      />
+    </div>
+    <div
+      id="{{ input_id }}-staff-menu"
+      class="list-group position-absolute w-100 shadow-sm"
+      style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px; max-height:240px; overflow:auto;"
+    ></div>
+  </div>
+  <div id="{{ more_id }}" class="mt-1" style="display:none;">
+    <select class="form-select form-select-sm staff-picker-more-select" onchange="pickStaffValue('{{ input_id }}', this)">
+      <option value="">-- All (View) --</option>
+      {% if local_staff_list %}
+        <optgroup label="Login accounts">
+          {% for u in local_staff_list %}
+            <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+          {% endfor %}
+        </optgroup>
+      {% endif %}
+      {% if staff_picker and staff_picker.groups %}
+        {% for g in staff_picker.groups %}
+          {% if g.members %}
+            <optgroup label=": {{ g.label }}">
+              {% for m in g.members %}
+                <option value="{{ m.value }}">{{ m.label }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if staff_picker and staff_picker.org_units %}
+        {% for ou in staff_picker.org_units %}
+          {% if ou.members %}
+            <optgroup label=": {{ ou.label }}">
+              {% for m in ou.members %}
+                <option value="{{ m.value }}">{{ m.label }}</option>
+              {% endfor %}
+            </optgroup>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </select>
+  </div>
+{% endmacro %}
+{% set matter_type_upper = (matter.matter_type or '')|upper %}
+{% set display_case_type_upper = (display_case_type or matter.matter_type or '')|upper %}
+{% set is_pct = (is_pct or False) or matter_type_upper == 'PCT' %}
+{% set is_copyright = (is_copyright or False) if is_copyright is defined else False %}
+{% set is_copyright = is_copyright or display_case_type_upper == 'COPYRIGHT' %}
+{% set is_misc = (is_misc or False) or matter_type_upper == 'MISC' or is_copyright %}
+{% set staff_required = is_domestic_patent or is_domestic_design or is_domestic_trademark or is_incoming_patent or is_incoming_design or is_incoming_trademark or is_outgoing_patent or is_outgoing_design or is_outgoing_trademark or is_pct or is_litigation or is_misc %}
+{% set is_utility = matter_type_upper == 'UTILITY' %}
+{% set patent_label = 'Utility' if is_utility else 'Patent' %}
+{% set ref_mid_code = 'UD' if is_utility and is_domestic_patent else 'PD' %}
+
+{% set filing_type_options = ['Filing','Filing','In ProgressFiling','Divisional application','ChangeFiling','Filing','Filing','OtherFiling','Priority Filing','Patent Period RegistrationFiling','Patent 34  Filing','Separate application'] %}
+{% set app_route_options = ['PCT','PCT-NP','EP','EP-Validation','items','','CTM(OHIM)','HAGUE'] %}
+{% set application_language_options = ['',''] %}
+{% set invention_grade_options = ['S','A','B','C','D'] %}
+{% set department_options = (department_options or ['0-1','0','1-1','1','2-1','2','3','4','']) %}
+{% set stand_reason_options = ['','ApplicantWaiting','DraftIn Progress','Deposit','Patent officeExamination','FilingIn Progress','In Progress'] %}
+{% set tm_filing_type_options = ['TrademarkRegistrationFiling','TrademarkRegistrationDivisional application','TrademarkRegistrationRegistrationPreviousFiling','TrademarkRegistrationChangeFiling','AddRegistrationFiling','Parent application','PeriodUpdatedRegistration','categoryRegistration','PeriodUpdatedRegistration','categoryRegistration','PeriodRegistration  categoryRegistration','PeriodUpdatedRegistration  categoryRegistration'] %}
+{% set litigation_right_type_options = ['Patent','','Design','Trademark','Servicetable','table','Tasktable','Trademark/Servicetable',''] %}
+{% set litigation_case_name_options = ['Patent ','Patent Void',' Confirm','',' Void','PatentCancel ','Patent Period Registration Void','Patent Registration ','Utility modelRegistration ','Utility modelRegistration Void','Utility modelRegistrationCancel ','Utility modelRegistrationFiling ','DesignRegistration','DesignRegistration Void','DesignRegistrationCancel','Design ExaminationRegistration ','  DesignExaminationRegistration ','TrademarkRegistration ',' AddRegistration ','TrademarkRegistration Void','TrademarkRegistration Cancel','Registration Cancel','Trademark Period UpdatedRegistration Void','categoryRegistration Void','Trademark Period UpdatedRegistration ','categoryRegistration ','TrademarkRegistration ',' ',' ','','Matter Billing','Cancel Litigation'] %}
+{% set litigation_court_options = ['Patent','Patent','','Patent office','Other'] %}
+{% set litigation_decision_options = ['','','Withdrawn',''] %}
+{% set tm_right_type_options = ['Trademark','Servicetable','table','Tasktable','Trademark/Servicetable','Display table'] %}
+{% set tm_type_options = ['GeneralTrademark','Trademark','Trademark','Trademark','Trademark','  Trademark'] %}
+{% set tm_registration_payment_term_options = ['10','5'] %}
+{% set design_filing_type_options = ['DesignExaminationRegistrationFiling','DesignExaminationRegistrationFiling','DesignExaminationRegistrationDivisional application','DesignExaminationRegistrationDivisional application','  DesignExaminationRegistrationFiling','  Design ExaminationRegistrationFiling'] %}
+{% set design_filing_kind_options = ['',''] %}
+  <div class="container-fluid mt-2" style="max-width: 1200px;">
+    {% set custom_fields = (dom_patent_fields if is_domestic_patent else (dom_design_fields if is_domestic_design else (dom_trademark_fields if is_domestic_trademark else (inc_patent_fields if is_incoming_patent else (inc_design_fields if is_incoming_design else (inc_trademark_fields if is_incoming_trademark else (out_patent_fields if is_outgoing_patent else (out_design_fields if is_outgoing_design else (out_trademark_fields if is_outgoing_trademark else (pct_fields if is_pct else (litigation_fields if is_litigation else misc_fields))))))))))) %}
+    {% set custom_data = (dom_patent if is_domestic_patent else (dom_design if is_domestic_design else (dom_trademark if is_domestic_trademark else (inc_patent if is_incoming_patent else (inc_design if is_incoming_design else (inc_trademark if is_incoming_trademark else (out_patent if is_outgoing_patent else (out_design if is_outgoing_design else (out_trademark if is_outgoing_trademark else (pct if is_pct else (litigation if is_litigation else misc))))))))))) %}
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+    <div>
+      <div class="small text-muted">Matter management</div>
+      <h4 class="mb-0 fw-bold text-primary">
+        {% set _badge_label = (matter.right_group or '') ~ ' ' ~ (matter.matter_type or '') %}
+        {% set _badge_class = 'badge bg-secondary' %}
+
+        {# Badge Logic: Domestic=Solid, Incoming/Outgoing=Outline #}
+        {% if is_domestic_patent %}
+          {% set _badge_label = 'US · ' ~ patent_label %}
+          {% set _badge_class = 'badge bg-secondary' %}
+        {% elif is_domestic_design %}
+          {% set _badge_label = 'US · Design' %}
+          {% set _badge_class = 'badge bg-secondary' %}
+        {% elif is_domestic_trademark %}
+          {% set _badge_label = 'US · Trademark' %}
+          {% set _badge_class = 'badge bg-secondary' %}
+
+        {% elif is_incoming_patent %}
+          {% set _badge_label = 'Inbound US · ' ~ patent_label %}
+          {% set _badge_class = 'badge border border-primary text-primary bg-transparent' %}
+        {% elif is_incoming_design %}
+          {% set _badge_label = 'Inbound US · Design' %}
+          {% set _badge_class = 'badge border border-primary text-primary bg-transparent' %}
+        {% elif is_incoming_trademark %}
+          {% set _badge_label = 'Inbound US · Trademark' %}
+          {% set _badge_class = 'badge border border-primary text-primary bg-transparent' %}
+
+        {% elif is_outgoing_patent %}
+          {% set _badge_label = 'Foreign · ' ~ patent_label %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+        {% elif is_outgoing_design and is_hague %}
+          {% set _badge_label = 'Hague · Design' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+        {% elif is_outgoing_design %}
+          {% set _badge_label = 'Foreign · Design' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+        {% elif is_outgoing_trademark and is_madrid %}
+          {% set _badge_label = 'Madrid · Trademark' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+        {% elif is_outgoing_trademark %}
+          {% set _badge_label = 'Foreign · Trademark' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+        {% elif matter.right_group == 'OUT' and matter.matter_type == 'TRADEMARK' %}
+          {% set _badge_label = 'Foreign · Trademark' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+
+        {% elif is_pct %}
+          {% set _badge_label = 'PCT' %}
+          {% set _badge_class = 'badge border border-dark text-dark bg-transparent' %}
+
+        {% elif is_litigation %}
+           {% set _badge_label = 'Proceedings / Litigation' %}
+           {% set _badge_class = 'badge bg-danger' %}
+        {% elif is_copyright %}
+           {% set _badge_label = 'Copyright' %}
+           {% set _badge_class = 'badge bg-warning text-dark' %}
+        {% elif is_misc %}
+           {% set _badge_label = 'Other' %}
+           {% set _badge_class = 'badge bg-secondary' %}
+        {% else %}
+           {# Fallback: If OUT or INC but not caught above, force Outline style #}
+           {% if matter.right_group in ['OUT', 'INC'] %}
+              {% set _badge_class = 'badge border border-secondary text-secondary bg-transparent' %}
+           {% endif %}
+        {% endif %}
+
+        <span class="{{ _badge_class }} me-2">{{ _badge_label }}</span>
+        {{ matter.our_ref }}
+        <span class="text-muted fs-6 ms-2">({{ (custom_data.get('proposal_title') or '') or (matter.right_name or '') or (overview.right_name if overview else '') or '' }})</span>
+      </h4>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}"></a>
+  </div>
+
+  <form
+    method="post"
+    class="card p-3"
+    enctype="multipart/form-data"
+    data-disable-submit="1"
+    data-show-loading="true"
+    data-loading-text="Matter Edit Content Save In Progress..."
+    data-loading-detail="Change Default/ ."
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="idempotency_key" value="{{ (idempotency_key or '')|e }}">
+    {% set _staff_ids = staff_id_map or {} %}
+    <input type="hidden" name="manager_id" value="{{ _staff_ids.get('manager_id', '') }}">
+    <input type="hidden" name="attorney_id" value="{{ _staff_ids.get('attorney_id', '') }}">
+    <input type="hidden" name="handler_id" value="{{ _staff_ids.get('handler_id', '') }}">
+    <div class="d-flex justify-content-end gap-2 mb-3">
+      <button type="submit" class="btn btn-sm btn-primary">Save</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">Cancel</a>
+    </div>
+
+    <div class="alert alert-light border small mb-3">
+      <div><b>Our Ref.</b> is required.</div>
+      {% if is_domestic_patent %}
+      <div>US {{ patent_label }} matters update the registry and management fields together.</div>
+      {% elif is_incoming_patent %}
+      <div>Inbound US {{ patent_label }} matters update the registry fields together.</div>
+      {% elif is_incoming_design %}
+      <div>Inbound US design matters update the registry fields together.</div>
+      {% elif is_incoming_trademark %}
+      <div>Inbound US trademark matters update the registry fields together.</div>
+      {% elif is_outgoing_patent %}
+      <div>Foreign {{ patent_label }} matters update the registry fields together.</div>
+      {% elif is_outgoing_design %}
+      <div>Foreign design matters update the registry fields together.</div>
+      {% elif is_outgoing_trademark %}
+      <div>Foreign trademark matters update the registry fields together.</div>
+      {% elif is_pct %}
+      <div>PCT matters update registry fields together.</div>
+      {% elif is_copyright %}
+      <div>Copyright matters update registry fields together.</div>
+      {% elif is_domestic_design %}
+      <div>US design matters update registry fields together.</div>
+      {% elif is_domestic_trademark %}
+      <div>US trademark matters update registry fields together.</div>
+      {% elif is_misc %}
+      <div>Other matters update registry fields together.</div>
+    {% endif %}
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h5 class="mb-0">Basic Information</h5>
+      <span class="small text-muted">Our Ref. required</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Our Ref. *</label>
+        {% if false %}
+          <div class="input-group mb-1">
+            <span class="input-group-text">{{ ref_mid_code }}</span>
+            <span class="input-group-text">US</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-auto-our-ref="1"
+              data-division="{{ matter.right_group or '' }}"
+              data-type="{{ matter.matter_type or '' }}"
+              data-target-id="ourRefInput"
+              title="Auto-number Our Ref"
+            >
+              ╋
+            </button>
+          </div>
+        {% endif %}
+        <input id="ourRefInput" class="form-control" name="our_ref" required value="{{ matter.our_ref or '' }}" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Your Ref</label>
+        <input class="form-control" name="your_ref" value="{{ matter.your_ref or '' }}" />
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Matter title</label>
+        <input class="form-control" name="right_name" value="{{ matter.right_name or '' }}" />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Intake date</label>
+        <div class="input-group">
+          <input class="form-control" type="date" name="retained_at" value="{{ matter.retained_at or '' }}" />
+          <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Entry date</label>
+        <div class="input-group">
+          <input class="form-control" type="date" name="entered_at" value="{{ matter.entered_at or '' }}" />
+          <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Internal status</label>
+        <input class="form-control" name="inhouse_status" value="{{ matter.inhouse_status or '' }}" />
+      </div>
+      <div class="w-100"></div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Responsible attorney {% if staff_required %}*{% endif %}</label>
+        {{ render_staff_input(
+            'attorney',
+            custom_data.get('attorney', ''),
+            'professional',
+            staff_assignment,
+            staff_picker,
+            required=staff_required,
+            suffix='edit-basic'
+          )
+        }}
+      </div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Docketing owner {% if staff_required %}*{% endif %}</label>
+        {{ render_staff_input(
+            'manager',
+            custom_data.get('manager', ''),
+            'management',
+            staff_assignment,
+            staff_picker,
+            required=staff_required,
+            suffix='edit-basic'
+          )
+        }}
+      </div>
+      <div class="col-lg-4 col-md-4">
+        <label class="form-label">Paralegal / handler</label>
+        {{ render_staff_input(
+            'handler',
+            custom_data.get('handler', ''),
+            'processing',
+            staff_assignment,
+            staff_picker,
+            suffix='edit-basic'
+          )
+        }}
+        <div class="form-text">Optional</div>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Memo</label>
+        <textarea class="form-control" name="memo" rows="3">{{ matter.memo or '' }}</textarea>
+      </div>
+    </div>
+
+    {% set has_custom_matter_section = (custom_fields or [])|length > 0 %}
+    {% if has_custom_matter_section %}
+
+    <hr class="my-4" />
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      {% if is_domestic_patent %}
+        <h5 class="mb-0">US {{ patent_label }} Management</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_incoming_patent %}
+        <h5 class="mb-0">Inbound US {{ patent_label }} Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_incoming_design %}
+        <h5 class="mb-0">Inbound US Design Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_incoming_trademark %}
+        <h5 class="mb-0">Inbound US Trademark Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_outgoing_patent %}
+        <h5 class="mb-0">Foreign {{ patent_label }} Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_outgoing_design %}
+        <h5 class="mb-0">Foreign Design Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_outgoing_trademark %}
+        <h5 class="mb-0">Foreign Trademark Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_domestic_design %}
+        <h5 class="mb-0">US Design Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_pct %}
+        <h5 class="mb-0">PCT Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_litigation %}
+        <h5 class="mb-0">Proceedings / Litigation Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_copyright %}
+        <h5 class="mb-0">Copyright Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% elif is_misc %}
+        <h5 class="mb-0">Other Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% else %}
+        <h5 class="mb-0">US Trademark Registry</h5>
+        <span class="small text-muted">Supplemental registry and docketing fields</span>
+      {% endif %}
+    </div>
+    {% if staff_picker and staff_picker.has_any %}
+      <div class="alert alert-light border small mb-2">
+        Contact// Item <b>Login account user</b>from Select  Input  exists.
+        <div class="text-muted mt-1"> Input <b>(;)</b>to Type. Select  Existing value Add.</div>
+      </div>
+    {% endif %}
+
+    {% set custom_sections = [('Registry', custom_fields)] %}
+    {% if is_domestic_patent %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('Invention/Title', (custom_fields or [])[8:10]),
+        ('Filing/Publication', (custom_fields or [])[10:12]),
+        ('Billing//', (custom_fields or [])[12:15]),
+        ('Priority/', (custom_fields or [])[15:21]),
+        ('Examination/Publication', (custom_fields or [])[21:28]),
+        ('Registration/', (custom_fields or [])[28:32]),
+        ('//', (custom_fields or [])[32:40]),
+        ('Other/Closed', (custom_fields or [])[40:]),
+      ] %}
+    {% elif is_domestic_design %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('Filing/Publication/Notice', (custom_fields or [])[8:13]),
+        ('DefaultDesign/', (custom_fields or [])[13:16]),
+        ('Applicant/Title', (custom_fields or [])[16:19]),
+        ('Priority/', (custom_fields or [])[19:24]),
+        ('Registration/', (custom_fields or [])[24:28]),
+        ('//', (custom_fields or [])[28:34]),
+        ('Foreign/Abandoned', (custom_fields or [])[34:36]),
+        ('Other/Closed', (custom_fields or [])[36:]),
+      ] %}
+    {% elif is_domestic_trademark %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('Filing/Publication/Notice', (custom_fields or [])[8:15]),
+        ('Applicant/Trademark', (custom_fields or [])[15:19]),
+        ('Priority/Parent application', (custom_fields or [])[19:23]),
+        ('Registration/', (custom_fields or [])[23:28]),
+        ('///Foreign', (custom_fields or [])[28:36]),
+        ('Abandoned/Other/Closed', (custom_fields or [])[36:]),
+      ] %}
+    {% elif is_incoming_design %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('EP/Filing/Publication', (custom_fields or [])[8:16]),
+        ('/Applicant/Title', (custom_fields or [])[16:20]),
+        ('Priority/', (custom_fields or [])[20:25]),
+        ('Billing/Registration', (custom_fields or [])[25:30]),
+        ('//', (custom_fields or [])[30:36]),
+        ('Abandoned/Other', (custom_fields or [])[36:38]),
+        ('Done/', (custom_fields or [])[38:]),
+      ] %}
+    {% elif is_incoming_trademark %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('Filing/Publication', (custom_fields or [])[8:15]),
+        ('Applicant/Trademark', (custom_fields or [])[15:19]),
+        ('Priority/Parent application', (custom_fields or [])[19:23]),
+        ('/CTM', (custom_fields or [])[23:25]),
+        ('Registration/', (custom_fields or [])[25:30]),
+        ('//', (custom_fields or [])[30:35]),
+        ('Abandoned/', (custom_fields or [])[35:]),
+      ] %}
+    {% elif is_incoming_patent %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:6]),
+        ('PCT/EP', (custom_fields or [])[6:8]),
+        ('Filing/Publication', (custom_fields or [])[8:16]),
+        ('Applicant/Title', (custom_fields or [])[16:19]),
+        ('Priority/', (custom_fields or [])[19:24]),
+        ('Billing//', (custom_fields or [])[24:27]),
+        ('Registration/', (custom_fields or [])[27:31]),
+        ('//', (custom_fields or [])[31:39]),
+        ('Examination/Other', (custom_fields or [])[39:43]),
+        ('Done/', (custom_fields or [])[43:]),
+      ] %}
+    {% elif is_outgoing_patent %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:8]),
+        ('PCT/EP', (custom_fields or [])[8:10]),
+        ('Filing/Publication/Examination', (custom_fields or [])[10:14]),
+        ('Applicant/Title', (custom_fields or [])[14:18]),
+        ('Priority/', (custom_fields or [])[18:23]),
+        ('Billing//', (custom_fields or [])[23:26]),
+        ('Registration/', (custom_fields or [])[26:32]),
+        ('//', (custom_fields or [])[32:38]),
+        ('Other/Done/', (custom_fields or [])[38:]),
+      ] %}
+    {% elif is_outgoing_design %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:9]),
+        ('Image/Filing', (custom_fields or [])[9:14]),
+        ('Applicant/Title', (custom_fields or [])[14:18]),
+        ('Priority/', (custom_fields or [])[18:23]),
+        ('Registration/', (custom_fields or [])[23:27]),
+        ('//', (custom_fields or [])[27:33]),
+        ('Abandoned/Other/Done', (custom_fields or [])[33:]),
+      ] %}
+    {% elif is_outgoing_trademark %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:9]),
+        ('Image/Filing', (custom_fields or [])[9:15]),
+        ('Applicant/Trademark', (custom_fields or [])[15:19]),
+        ('Priority/Parent application', (custom_fields or [])[19:24]),
+        ('Registration/', (custom_fields or [])[24:29]),
+        ('//', (custom_fields or [])[29:36]),
+        ('Abandoned/Other/Done/', (custom_fields or [])[36:]),
+      ] %}
+    {% elif is_pct %}
+      {% set custom_sections = [
+        ('Default/Responsible', (custom_fields or [])[0:6]),
+        ('Filing/Publication/Preliminary examination', (custom_fields or [])[6:10]),
+        ('Applicant/Title', (custom_fields or [])[10:13]),
+        ('Priority//', (custom_fields or [])[13:17]),
+        ('Domestic/', (custom_fields or [])[17:20]),
+        ('Abandoned/Other/Closed', (custom_fields or [])[20:]),
+      ] %}
+    {% elif is_litigation %}
+      {% set custom_sections = [
+        ('Default/Client', (custom_fields or [])[0:6]),
+        ('Responsible/', (custom_fields or [])[6:10]),
+        ('/', (custom_fields or [])[10:17]),
+        ('/Closed', (custom_fields or [])[17:]),
+      ] %}
+    {% endif %}
+    {% set custom_sections = custom_fields|case_field_sections(custom_sections) %}
+
+    {% for section in custom_sections %}
+      {% if custom_sections|length > 1 %}
+      <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <div class="fw-bold">{{ section[0] }}</div>
+        <div></div>
+      </div>
+      {% endif %}
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-sm small align-middle mb-0" style="table-layout: fixed; min-width: 980px;">
+          <colgroup>
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+          </colgroup>
+          <tbody>
+            {% for pair in (section[1] or []) %}
+              {% set left = pair[0] %}
+              {% set right = pair[1] %}
+              <tr>
+                {% set left_is_basic = left[1] in basic_staff_fields %}
+                {% set left_is_rec = recommended_fields and left[1] in recommended_fields %}
+                <th class="text-center{% if left_is_basic %} d-none{% endif %} {{ 'recommended-label-highlight' if left_is_rec else '' }}">{{ '' if left_is_basic else left[0] }}</th>
+                <td class="{% if left_is_basic %}d-none{% endif %} {{ 'recommended-field-highlight' if left_is_rec else '' }}">
+                  {% if left_is_basic %}
+                    {# Hidden: managed in Default #}
+                  {% elif left[1] == 'client_name' %}
+                    <div class="position-relative">
+                      <input
+                        id="clientNameInput"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="client_name"
+                        value="{{ custom_data.get('client_name', '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="clientIdInput"
+                        data-client-menu="clientMenu"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input
+                        id="clientIdInput"
+                        type="hidden"
+                        name="client_id"
+                        value="{{ custom_data.get('client_id', '') }}"
+                      />
+                      <div
+                        id="clientMenu"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                      <span class="text-muted small">Name/Email/Registration No. Search</span>
+                    </div>
+                  </div>
+                  {% elif left[2] == 'client_search' %}
+                    {% set _client_id = 'clientSearch-' ~ left[1] ~ '-L-' ~ loop.index %}
+                    {% set _client_hidden = _client_id ~ '-id' %}
+                    {% set _client_menu = _client_id ~ '-menu' %}
+                    <div class="position-relative">
+                      <input
+                        id="{{ _client_id }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="{{ left[1] }}"
+                        value="{{ custom_data.get(left[1], '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _client_hidden }}"
+                        data-client-menu="{{ _client_menu }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _client_hidden }}" type="hidden" name="{{ left[1] }}_id" value="{{ custom_data.get(left[1] ~ '_id', '') }}" />
+                      <div
+                        id="{{ _client_menu }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif left[1] == 'applicant_name' %}
+                    {% set _applicant_id = 'applicantNameInputL-' ~ loop.index %}
+                    {% set _applicant_hidden = _applicant_id ~ '-id' %}
+                    {% set _applicant_menu = _applicant_id ~ '-menu' %}
+                    <div class="form-check mb-1">
+                      <input class="form-check-input" type="checkbox" id="{{ _applicant_id }}-same" data-same-client="1" data-target-id="{{ _applicant_id }}">
+                      <label class="form-check-label small text-muted" for="{{ _applicant_id }}-same">Client </label>
+                    </div>
+                    <div class="position-relative">
+                      <input
+                        id="{{ _applicant_id }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="applicant_name"
+                        value="{{ custom_data.get('applicant_name', '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _applicant_hidden }}"
+                        data-client-menu="{{ _applicant_menu }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _applicant_hidden }}" type="hidden" value="" />
+                      <div
+                        id="{{ _applicant_menu }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif left[1] == 'inhouse_status' %}
+                    <span class="text-muted">{{ matter.inhouse_status or '' }}</span>
+                  {% elif left[1] == 'image' %}
+                    {% set image_value = (custom_data.get('image', '') or '') %}
+                    <div class="image-dropzone border rounded p-2 text-center small" data-image-dropzone="1">
+                      <input type="hidden" name="image" value="{{ image_value }}" data-image-value="1" />
+                      <input type="file" name="image_file" accept="image/*" class="d-none" data-image-file="1" />
+                      <div class="image-preview mb-2" data-image-preview="1">
+                        {% if image_asset and (image_asset.file_asset_id or '') == image_value %}
+                          {% set _mime = (image_asset.mime_type or '') %}
+                          <div class="d-flex flex-column gap-1">
+                            <a href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=image_asset.file_asset_id) }}">
+                              {{ image_asset.original_name or image_value }}
+                            </a>
+                            {% if _mime.startswith('image/') %}
+                              <img class="img-fluid rounded border" style="max-height: 180px;" src="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=image_asset.file_asset_id, inline=1) }}" alt="/Image" loading="lazy" decoding="async" />
+                            {% endif %}
+                          </div>
+                        {% elif image_value %}
+                          <div class="text-muted small">Current value: {{ image_value }}</div>
+                        {% else %}
+                          <div class="text-muted small">Drag and drop here or click</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-image-select="1">Select file</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-image-clear="1">Delete</button>
+                      </div>
+                    </div>
+                  {% elif left[2] == 'date' %}
+                    {% set _is_filing_deadline = left[1] == 'filing_deadline' %}
+                    {% set _filing_deadline_type = (custom_data.get('filing_deadline_type', '') or '')|upper %}
+                    <div class="input-group input-group-sm">
+                      <input class="form-control form-control-sm" type="date" name="{{ left[1] }}" value="{{ custom_data.get(left[1], '') }}"/>
+                      {% if _is_filing_deadline %}
+                        <select class="form-select form-select-sm" name="filing_deadline_type" style="max-width: 150px;">
+                          <option value="" {% if not _filing_deadline_type %}selected{% endif %}>Select type</option>
+                          <option value="INTERNAL" {% if _filing_deadline_type == 'INTERNAL' %}selected{% endif %}>Internal deadline</option>
+                          <option value="LEGAL" {% if _filing_deadline_type == 'LEGAL' %}selected{% endif %}>Statutory deadline</option>
+                        </select>
+                      {% endif %}
+                      <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Today  Input">Today</button>
+                    </div>
+                  {% elif left[2] == 'select_filing_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in filing_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_app_route' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in app_route_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_application_language' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in application_language_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_tm_filing_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_filing_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_tm_right_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_right_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_tm_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_tm_registration_payment_term' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_registration_payment_term_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_design_filing_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in design_filing_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_design_filing_kind' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in design_filing_kind_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_litigation_right_type' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_right_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_litigation_case' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_case_name_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_litigation_court' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_court_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_litigation_result' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_decision_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_invention_grade' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in invention_grade_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_department' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::::Select:::::</option>
+                      {% for opt in department_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_stand_reason' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}></option>
+                      {% for opt in stand_reason_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left[2] == 'select_yn' %}
+                    {% set v = (custom_data.get(left[1], '') or '') %}
+                    {% set vl = v.lower() %}
+                    <div class="d-flex gap-3">
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left[1] }}" id="{{ left[1] }}-n" value="" {% if not v %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left[1] }}-n">Select</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left[1] }}" id="{{ left[1] }}-y" value="Yes" {% if vl in ['yes','y','1','true'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left[1] }}-y">Yes</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left[1] }}" id="{{ left[1] }}-no" value="No" {% if vl in ['no','n','0','false'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left[1] }}-no">No</label>
+                      </div>
+                    </div>
+                  {% elif left[2] == 'textarea' %}
+                    <textarea class="form-control form-control-sm" name="{{ left[1] }}" rows="2">{{ custom_data.get(left[1], '') }}</textarea>
+                  {% elif left[2] == 'blank' or left[1] == '__blank__' %}
+                    &nbsp;
+                  {% elif left[1] in staff_fields %}
+                    {% set _id = 'staff-' ~ left[1] ~ '-L-' ~ loop.index %}
+                    {% set _more_id = _id ~ '-more' %}
+                    {% set staff_kind = 'all' %}
+                    {% if left[1] == 'manager' %}{% set staff_kind = 'management' %}{% endif %}
+                    {% if left[1] in ['handler','attorney','drawing_handler'] %}{% set staff_kind = 'professional' %}{% endif %}
+                    {% set staff_list = (staff_assignment.management_users if staff_kind == 'management' else (staff_assignment.professional_users if staff_kind == 'professional' else staff_assignment.all_users)) if staff_assignment else [] %}
+                    <div class="input-group input-group-sm">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id }}', this)">
+                        {% if staff_kind == 'management' %}
+                          <option value="">--   User Select --</option>
+                        {% elif staff_kind == 'professional' %}
+                          <option value="">-- Attorney  User Select --</option>
+                        {% else %}
+                          <option value="">-- User Select --</option>
+                        {% endif %}
+                        {% for u in (staff_list or []) %}
+                          <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-outline-secondary" onclick="toggleStaffMore('{{ _more_id }}')">View</button>
+                      <input id="{{ _id }}" class="form-control form-control-sm" type="text" name="{{ left[1] }}" value="{{ custom_data.get(left[1], '') }}" placeholder=" Input " />
+                    </div>
+                    <div id="{{ _more_id }}" class="mt-1" style="display:none;">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id }}', this)">
+                        <option value="">-- All (View) --</option>
+                        {% if staff_picker and staff_picker.local_users %}
+                          <optgroup label="Login accounts">
+                            {% for u in staff_picker.local_users %}
+                              <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                            {% endfor %}
+                          </optgroup>
+                        {% endif %}
+                        {% if staff_picker and staff_picker.groups %}
+                          {% for g in staff_picker.groups %}
+                            {% if g.members %}
+                              <optgroup label=": {{ g.label }}">
+                                {% for m in g.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        {% if staff_picker and staff_picker.org_units %}
+                          {% for ou in staff_picker.org_units %}
+                            {% if ou.members %}
+                              <optgroup label=": {{ ou.label }}">
+                                {% for m in ou.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      </select>
+                    </div>
+                  {% else %}
+                    <input class="form-control form-control-sm" type="text" name="{{ left[1] }}" value="{{ custom_data.get(left[1], '') }}"/>
+                  {% endif %}
+                </td>
+
+                {% set right_is_basic = right[1] in basic_staff_fields %}
+                {% set right_is_rec = recommended_fields and right[1] in recommended_fields %}
+                <th class="text-center{% if right_is_basic %} d-none{% endif %} {{ 'recommended-label-highlight' if right_is_rec else '' }}">{{ '' if right_is_basic else right[0] }}</th>
+                <td class="{% if right_is_basic %}d-none{% endif %} {{ 'recommended-field-highlight' if right_is_rec else '' }}">
+                  {% if right_is_basic %}
+                    {# Hidden: managed in Default #}
+                  {% elif right[1] == 'client_name' %}
+                    <div class="position-relative">
+                      <input
+                        id="clientNameInputR"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="client_name"
+                        value="{{ custom_data.get('client_name', '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="clientIdInputR"
+                        data-client-menu="clientMenuR"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input
+                        id="clientIdInputR"
+                        type="hidden"
+                        name="client_id"
+                        value="{{ custom_data.get('client_id', '') }}"
+                      />
+                      <div
+                        id="clientMenuR"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                      <span class="text-muted small">Name/Email/Registration No. Search</span>
+                    </div>
+                  </div>
+                  {% elif right[2] == 'client_search' %}
+                    {% set _client_id = 'clientSearch-' ~ right[1] ~ '-R-' ~ loop.index %}
+                    {% set _client_hidden = _client_id ~ '-id' %}
+                    {% set _client_menu = _client_id ~ '-menu' %}
+                    <div class="position-relative">
+                      <input
+                        id="{{ _client_id }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="{{ right[1] }}"
+                        value="{{ custom_data.get(right[1], '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _client_hidden }}"
+                        data-client-menu="{{ _client_menu }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _client_hidden }}" type="hidden" name="{{ right[1] }}_id" value="{{ custom_data.get(right[1] ~ '_id', '') }}" />
+                      <div
+                        id="{{ _client_menu }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif right[1] == 'applicant_name' %}
+                    {% set _applicant_id = 'applicantNameInputR-' ~ loop.index %}
+                    {% set _applicant_hidden = _applicant_id ~ '-id' %}
+                    {% set _applicant_menu = _applicant_id ~ '-menu' %}
+                    <div class="form-check mb-1">
+                      <input class="form-check-input" type="checkbox" id="{{ _applicant_id }}-same" data-same-client="1" data-target-id="{{ _applicant_id }}">
+                      <label class="form-check-label small text-muted" for="{{ _applicant_id }}-same">Client </label>
+                    </div>
+                    <div class="position-relative">
+                      <input
+                        id="{{ _applicant_id }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="applicant_name"
+                        value="{{ custom_data.get('applicant_name', '') }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _applicant_hidden }}"
+                        data-client-menu="{{ _applicant_menu }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _applicant_hidden }}" type="hidden" value="" />
+                      <div
+                        id="{{ _applicant_menu }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif right[1] == 'image' %}
+                    {% set image_value = (custom_data.get('image', '') or '') %}
+                    <div class="image-dropzone border rounded p-2 text-center small" data-image-dropzone="1">
+                      <input type="hidden" name="image" value="{{ image_value }}" data-image-value="1" />
+                      <input type="file" name="image_file" accept="image/*" class="d-none" data-image-file="1" />
+                      <div class="image-preview mb-2" data-image-preview="1">
+                        {% if image_asset and (image_asset.file_asset_id or '') == image_value %}
+                          {% set _mime = (image_asset.mime_type or '') %}
+                          <div class="d-flex flex-column gap-1">
+                            <a href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=image_asset.file_asset_id) }}">
+                              {{ image_asset.original_name or image_value }}
+                            </a>
+                            {% if _mime.startswith('image/') %}
+                              <img class="img-fluid rounded border" style="max-height: 180px;" src="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=image_asset.file_asset_id, inline=1) }}" alt="/Image" loading="lazy" decoding="async" />
+                            {% endif %}
+                          </div>
+                        {% elif image_value %}
+                          <div class="text-muted small">Current value: {{ image_value }}</div>
+                        {% else %}
+                          <div class="text-muted small">Drag and drop here or click</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-image-select="1">Select file</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-image-clear="1">Delete</button>
+                      </div>
+                    </div>
+                  {% elif right[2] == 'date' %}
+                    {% set _is_filing_deadline2 = right[1] == 'filing_deadline' %}
+                    {% set _filing_deadline_type2 = (custom_data.get('filing_deadline_type', '') or '')|upper %}
+                    <div class="input-group input-group-sm">
+                      <input class="form-control form-control-sm" type="date" name="{{ right[1] }}" value="{{ custom_data.get(right[1], '') }}"/>
+                      {% if _is_filing_deadline2 %}
+                        <select class="form-select form-select-sm" name="filing_deadline_type" style="max-width: 150px;">
+                          <option value="" {% if not _filing_deadline_type2 %}selected{% endif %}>Select type</option>
+                          <option value="INTERNAL" {% if _filing_deadline_type2 == 'INTERNAL' %}selected{% endif %}>Internal deadline</option>
+                          <option value="LEGAL" {% if _filing_deadline_type2 == 'LEGAL' %}selected{% endif %}>Statutory deadline</option>
+                        </select>
+                      {% endif %}
+                      <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Today  Input">Today</button>
+                    </div>
+                {% elif right[2] == 'select_filing_type' %}
+                  {% set v2 = (custom_data.get(right[1], '') or '') %}
+                  <select class="form-select form-select-sm" name="{{ right[1] }}">
+                    <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                    {% for opt in filing_type_options %}
+                      <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                  </select>
+                {% elif right[2] == 'select_app_route' %}
+                  {% set v2 = (custom_data.get(right[1], '') or '') %}
+                  <select class="form-select form-select-sm" name="{{ right[1] }}">
+                    <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                    {% for opt in app_route_options %}
+                      <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                  </select>
+                {% elif right[2] == 'select_application_language' %}
+                  {% set v = (custom_data.get(right[1], '') or '') %}
+                  <select class="form-select form-select-sm" name="{{ right[1] }}">
+                    <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                    {% for opt in application_language_options %}
+                      <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                  </select>
+                {% elif right[2] == 'select_tm_filing_type' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_filing_type_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_tm_right_type' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_right_type_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_tm_type' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_type_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_tm_registration_payment_term' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in tm_registration_payment_term_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_design_filing_type' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in design_filing_type_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_design_filing_kind' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in design_filing_kind_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_litigation_right_type' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_right_type_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_litigation_case' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_case_name_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_litigation_court' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_court_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_litigation_result' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_decision_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_invention_grade' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in invention_grade_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_department' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}>:::::Select:::::</option>
+                      {% for opt in department_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_stand_reason' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right[1] }}">
+                      <option value="" {% if not v2 %}selected{% endif %}></option>
+                      {% for opt in stand_reason_options %}
+                        <option value="{{ opt }}" {% if v2 == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right[2] == 'select_yn' %}
+                    {% set v2 = (custom_data.get(right[1], '') or '') %}
+                    {% set v2l = v2.lower() %}
+                    <div class="d-flex gap-3">
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right[1] }}" id="{{ right[1] }}-n" value="" {% if not v2 %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right[1] }}-n">Select</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right[1] }}" id="{{ right[1] }}-y" value="Yes" {% if v2l in ['yes','y','1','true'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right[1] }}-y">Yes</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right[1] }}" id="{{ right[1] }}-no" value="No" {% if v2l in ['no','n','0','false'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right[1] }}-no">No</label>
+                      </div>
+                    </div>
+                  {% elif right[2] == 'textarea' %}
+                    <textarea class="form-control form-control-sm" name="{{ right[1] }}" rows="2">{{ custom_data.get(right[1], '') }}</textarea>
+                  {% elif right[2] == 'blank' or right[1] == '__blank__' %}
+                    &nbsp;
+                  {% elif right[1] in staff_fields %}
+                    {% set _id2 = 'staff-' ~ right[1] ~ '-R-' ~ loop.index %}
+                    {% set _more_id2 = _id2 ~ '-more' %}
+                    {% set staff_kind2 = 'all' %}
+                    {% if right[1] == 'manager' %}{% set staff_kind2 = 'management' %}{% endif %}
+                    {% if right[1] in ['handler','attorney','drawing_handler'] %}{% set staff_kind2 = 'professional' %}{% endif %}
+                    {% set staff_list2 = (staff_assignment.management_users if staff_kind2 == 'management' else (staff_assignment.professional_users if staff_kind2 == 'professional' else staff_assignment.all_users)) if staff_assignment else [] %}
+                    <div class="input-group input-group-sm">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id2 }}', this)">
+                        {% if staff_kind2 == 'management' %}
+                          <option value="">--   User Select --</option>
+                        {% elif staff_kind2 == 'professional' %}
+                          <option value="">-- Attorney  User Select --</option>
+                        {% else %}
+                          <option value="">-- User Select --</option>
+                        {% endif %}
+                        {% for u in (staff_list2 or []) %}
+                          <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-outline-secondary" onclick="toggleStaffMore('{{ _more_id2 }}')">View</button>
+                      <input id="{{ _id2 }}" class="form-control form-control-sm" type="text" name="{{ right[1] }}" value="{{ custom_data.get(right[1], '') }}" placeholder=" Input " />
+                    </div>
+                    <div id="{{ _more_id2 }}" class="mt-1" style="display:none;">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id2 }}', this)">
+                        <option value="">-- All (View) --</option>
+                        {% if staff_picker and staff_picker.local_users %}
+                          <optgroup label="Login accounts">
+                            {% for u in staff_picker.local_users %}
+                              <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                            {% endfor %}
+                          </optgroup>
+                        {% endif %}
+                        {% if staff_picker and staff_picker.groups %}
+                          {% for g in staff_picker.groups %}
+                            {% if g.members %}
+                              <optgroup label=": {{ g.label }}">
+                                {% for m in g.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        {% if staff_picker and staff_picker.org_units %}
+                          {% for ou in staff_picker.org_units %}
+                            {% if ou.members %}
+                              <optgroup label=": {{ ou.label }}">
+                                {% for m in ou.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      </select>
+                    </div>
+                  {% else %}
+                    <input class="form-control form-control-sm" type="text" name="{{ right[1] }}" value="{{ custom_data.get(right[1], '') }}"/>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button type="submit" class="btn btn-sm btn-primary">Confirm</button>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% include "case/_client_search_modal.html" %}
+<script>
+  window.CASE_FORM_MISSING_FIELDS = {{ (missing_fields or [])|tojson }};
+  window.CASE_FORM_FIELD_META = {{ (field_meta or {})|tojson }};
+</script>
+<script src="{{ static_asset_url('js/case_form.js') }}"></script>
+<script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+<script>
+  function pickStaffValue(inputId, selectEl) {
+    const input = document.getElementById(inputId);
+    if (!input || !selectEl) return;
+    const v = (selectEl.value || '').toString().trim();
+    if (!v) {
+      selectEl.selectedIndex = 0;
+      if (window.AppStaff && typeof window.AppStaff.setStaffIdForInput === 'function') {
+        window.AppStaff.setStaffIdForInput(input, '');
+      }
+      return;
+    }
+    const selected = selectEl.options[selectEl.selectedIndex];
+    const staffId = selected ? selected.getAttribute('data-staff-id') : '';
+    const existing = (input.value || '')
+      .split(/[;,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const vLower = v.toLowerCase();
+    const hasValue = existing.some((item) => item.toLowerCase() === vLower);
+    if (!hasValue) {
+      existing.push(v);
+    }
+    input.value = existing.join("; ");
+    if (window.AppStaff && typeof window.AppStaff.setStaffIdForInput === 'function') {
+      if (existing.length === 1 && staffId) {
+        window.AppStaff.setStaffIdForInput(input, staffId);
+      } else {
+        window.AppStaff.setStaffIdForInput(input, '');
+      }
+    }
+    selectEl.selectedIndex = 0;
+  }
+
+  function toggleStaffMore(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+  }
+</script>
+{% endblock %}

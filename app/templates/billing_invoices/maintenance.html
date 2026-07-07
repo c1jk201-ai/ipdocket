@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title> </title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Noto Sans', 'Segoe UI', Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 48px;
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    .icon {
+      font-size: 80px;
+      margin-bottom: 24px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    h1 {
+      color: #2d3748;
+      font-size: 32px;
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+    .reason {
+      color: #4a5568;
+      font-size: 18px;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .info {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      text-align: left;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .info-row:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      color: #718096;
+      font-weight: 600;
+    }
+    .info-value {
+      color: #2d3748;
+    }
+    .message {
+      color: #718096;
+      font-size: 14px;
+      margin-top: 24px;
+    }
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 480px) {
+      body {
+        min-height: 100dvh;
+        padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      }
+      .container {
+        padding: 28px 20px;
+        border-radius: 12px;
+      }
+      .icon {
+        font-size: 56px;
+        margin-bottom: 18px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      .reason {
+        font-size: 16px;
+        margin-bottom: 24px;
+      }
+      .info-row {
+        display: block;
+      }
+      .info-value {
+        display: block;
+        margin-top: 4px;
+        overflow-wrap: anywhere;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔧</div>
+    <h1> </h1>
+    <p class="reason">
+      {% if info and info.reason %}
+        {{ info.reason }}
+      {% else %}
+        Current  Actions In progress.
+      {% endif %}
+    </p>
+
+    {% if info %}
+    <div class="info">
+      {% if info.started_by %}
+      <div class="info-row">
+        <span class="info-label">Actions</span>
+        <span class="info-value">{{ info.started_by }}</span>
+      </div>
+      {% endif %}
+
+      {% if info.started_at %}
+      <div class="info-row">
+        <span class="info-label"> </span>
+        <span class="info-value">{{ info.started_at[:19] }}</span>
+      </div>
+      {% endif %}
+
+      {% if info.estimated_end %}
+      <div class="info-row">
+        <span class="info-label">Estimated Done </span>
+        <span class="info-value"> 1 </span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <p class="message">
+      <span class="spinner"></span>
+       Actions are completed automatically when possible.
+    </p>
+  </div>
+
+  <script>
+    // 10 page ? ( Done Confirm)
+    setTimeout(function() {
+      location.reload();
+    }, 10000);
+  </script>
+</body>
+</html>

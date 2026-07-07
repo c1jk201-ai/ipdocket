@@ -1,0 +1,78 @@
+{% extends 'invoice_base.html' %}
+{% from "_entity_links.html" import case_detail, case_list_search %}
+{% block title %}Logs · {{ invoice['number'] }}{% endblock %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">📝 Invoice </h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice['id']) }}">← Invoice</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <div class="row" style="gap:8px; align-items:center;">
+   <div class="muted">Invoice:</div>
+   <div style="font-weight:700;">
+    <a class="text-decoration-none" href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice['id']) }}">{{ invoice['number'] }}</a>
+   </div>
+   {% if invoice['client_name'] %}
+    <div class="muted">Client:</div>
+    <div>
+     <a class="text-decoration-none" href="{{ url_for('billing_invoices.clients.view_client', client_id=invoice['client_id']) }}">{{ invoice['client_name'] }}</a>
+     <span class="mx-1">·</span>
+     <a class="text-decoration-none text-muted" href="{{ url_for('customers.clients', q=invoice['client_name']) }}">CRM</a>
+    </div>
+   {% endif %}
+   {% if invoice['ipm_case_id'] or invoice['ipm_case_ref'] %}
+    <div class="muted">Matter:</div>
+    <div>
+     {% if invoice['ipm_case_id'] %}
+      {{ case_detail(invoice['ipm_case_id'], label=invoice['ipm_case_ref'] or invoice['ipm_case_id'], invoice_id=invoice['id'], anchor='sec-cost', classes='text-decoration-none') }}
+     {% else %}
+      {{ case_list_search(invoice['ipm_case_ref'], label=invoice['ipm_case_ref'], classes='text-decoration-none') }}
+     {% endif %}
+    </div>
+   {% endif %}
+   <div class="spacer"></div>
+   <a class="btn {{ 'btn-primary' if scope=='all' else 'btn-ghost' }}" href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='all') }}">All</a>
+   <a class="btn {{ 'btn-primary' if scope=='payment' else 'btn-ghost' }}" href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='payment') }}">Payment</a>
+   <a class="btn {{ 'btn-primary' if scope=='billing' else 'btn-ghost' }}" href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=invoice['id'], scope='billing') }}">Billing</a>
+  </div>
+  <div class="table-card" style="margin-top:8px;">
+   <table class="responsive table-compact">
+    <thead>
+     <tr>
+      <th style="width:200px;">days</th>
+      <th>row</th>
+      <th style="width:180px;">User</th>
+      <th>Details</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for log in logs %}
+     <tr>
+      <td data-label="days" class="muted">{{ log['created_at']|local_dt }}</td>
+      <td data-label="row">
+       {% if log['action']=='invoice.payment.verify' %}Payment verification
+       {% elif log['action']=='invoice.payment_meta.save' %}Payment saved
+       {% elif log['action']=='invoice.payment.force_paid' %}Administrator marked paid
+       {% elif log['action']=='invoice.payment.unverify' %}Payment verification reopened
+       {% elif log['action']=='invoice.mark_paid' %}Marked paid
+       {% elif log['action']=='invoice.status_change' %}status change
+       {% elif log['action']=='invoice.tax_issued' %}Tax documentation recorded
+       {% elif log['action']=='invoice.publish' %}Issued(sent)
+       {% elif log['action']=='invoice.create' %}Draft
+       {% elif log['action']=='invoice.bulk_status_change' %}Bulk status update
+       {% else %}{{ log['action'] }}{% endif %}
+      </td>
+      <td data-label="User" class="muted">{{ log['username'] or '-' }}</td>
+      <td data-label="Details"><div style="white-space:pre-wrap;">{{ log['pretty_meta'] or log['meta'] or '' }}</div></td>
+     </tr>
+     {% else %}
+     <tr><td colspan="4" class="muted"> none.</td></tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

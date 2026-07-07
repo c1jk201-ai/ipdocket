@@ -1,0 +1,150 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="container mt-4 fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold text-dark mb-1">
+        {% if edit_mode %} Edit{% else %} Registration{% endif %}
+      </h3>
+      <p class="text-muted small mb-0">  Input.</p>
+    </div>
+    <a href="{{ url_for('customers.opportunity_list') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Listto
+    </a>
+  </div>
+
+  <form method="GET" class="mb-3">
+    <div class="input-group input-group-sm">
+      <span class="input-group-text">Client Search</span>
+      <input
+        type="text"
+        name="client_q"
+        class="form-control"
+        value="{{ client_q|default('') }}"
+        placeholder="Client name/Registration No./Email"
+      >
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </div>
+    {% if preselect_client_id %}
+    <input type="hidden" name="client_id" value="{{ preselect_client_id }}">
+    {% endif %}
+    <div class="form-text text-muted">Displays up to 200 clients.</div>
+  </form>
+
+  <form method="POST" class="needs-validation" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light fw-semibold">Default </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.client_id.label.text }} <span class="text-danger">*</span></label>
+            {{ form.client_id(class="form-select") }}
+            {% if form.client_id.errors %}
+            <div class="invalid-feedback d-block">{{ form.client_id.errors[0] }}</div>
+            {% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+            {{ form.name(class="form-control", placeholder=": TrademarkFiling - ABC") }}
+            {% if form.name.errors %}
+            <div class="invalid-feedback d-block">{{ form.name.errors[0] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light fw-semibold"> </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">{{ form.stage.label.text }}</label>
+            {{ form.stage(class="form-select", id="stageSelect") }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.amount.label.text }}</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              {{ form.amount(class="form-control", placeholder="0") }}
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.probability.label.text }}</label>
+            <div class="input-group">
+              {{ form.probability(class="form-control", id="probabilityInput") }}
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.expected_close_date.label.text }}</label>
+            {{ form.expected_close_date(class="form-control", type="date") }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-light fw-semibold">Notes</div>
+      <div class="card-body">
+        {{ form.notes(class="form-control", rows="4", placeholder="  Notes Input...") }}
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <div>
+        {% if edit_mode and opportunity %}
+        <form action="{{ url_for('customers.opportunity_delete', opportunity_id=opportunity.id) }}" method="post" class="d-inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-outline-danger"
+                  data-confirm="   Delete?">
+            <i class="bi bi-trash"></i> Delete
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      <div class="d-flex gap-2">
+        <a href="{{ url_for('customers.opportunity_list') }}" class="btn btn-secondary">Cancel</a>
+        {{ form.submit(class="btn btn-primary") }}
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const stageSelect = document.getElementById('stageSelect');
+  const probabilityInput = document.getElementById('probabilityInput');
+
+  const stageProbability = {
+    'prospecting': 10,
+    'proposal': 30,
+    'negotiation': 60,
+    'closed_won': 100,
+    'closed_lost': 0
+  };
+
+  if (stageSelect && probabilityInput) {
+    stageSelect.addEventListener('change', function() {
+      const stage = this.value;
+      if (stageProbability.hasOwnProperty(stage)) {
+        probabilityInput.value = stageProbability[stage];
+      }
+    });
+  }
+});
+</script>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+{% endblock %}

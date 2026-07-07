@@ -1,0 +1,1485 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container-fluid mt-3">
+  <h3 class="fw-semibold mb-3">Task</h3>
+
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link {% if page == 'index' %}active{% endif %}" href="{{ url_for('stats.index') }}">items</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if page == 'clients' %}active{% endif %}" href="{{ url_for('stats.by_clients') }}">Client </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if page == 'costs' %}active{% endif %}" href="{{ url_for('stats.by_costs') }}"> </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if page == 'tc' %}active{% endif %}" href="{{ url_for('stats.tc_stats') }}">TC </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {% if page == 'performance' %}active{% endif %}" href="{{ url_for('stats.performance') }}"> analysis</a>
+    </li>
+  </ul>
+
+  <script>
+    window.AppDate = window.AppDate || {};
+    if (typeof window.AppDate.formatYmd !== "function") {
+      window.AppDate.formatYmd = function(value) {
+        const d = value instanceof Date ? value : new Date(value);
+        if (Number.isNaN(d.getTime())) return "";
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+    }
+  </script>
+  <script src="{{ static_asset_url('vendor/chart/chart.umd.min.js') }}"></script>
+
+  {% if page == 'index' %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-2 align-items-center">
+        <div class="col-auto"><input id="ov-start" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto">~</div>
+        <div class="col-auto"><input id="ov-end" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto"><button id="ov-apply" class="btn btn-sm btn-outline-secondary">Apply</button></div>
+      </div>
+      <div class="small text-muted mt-2">items Client//  Data   KPI Immediate .</div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Total billed</div>
+        <div class="fw-semibold"><span id="ov-billed">-</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Total </div>
+        <div class="fw-semibold"><span id="ov-paid">-</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Outstanding balance</div>
+        <div class="fw-semibold"><span id="ov-outstanding">-</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small"></div>
+        <div class="fw-semibold"><span id="ov-collection">-</span>%</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Done Task</div>
+        <div class="fw-semibold"><span id="ov-completed">-</span>items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">TC Log</div>
+        <div class="fw-semibold"><span id="ov-tc-coverage">-</span>%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header"><div class="fw-semibold"> Billing//outstanding </div></div>
+        <div class="card-body">
+          <canvas id="chartOverviewMonthly" height="120"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header"><div class="fw-semibold">Outstanding balance Top Client</div></div>
+        <div class="card-body">
+          <table class="table table-sm table-striped mb-0" id="tableOverviewRisk">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th class="text-end">Outstanding balance</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title">Client </h5>
+          <p class="text-muted small">Client Billing//outstanding </p>
+          <a href="{{ url_for('stats.by_clients') }}" class="btn btn-outline-primary btn-sm"> →</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title"> </h5>
+          <p class="text-muted small">    outstanding</p>
+          <a href="{{ url_for('stats.by_costs') }}" class="btn btn-outline-primary btn-sm"> →</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title">TC </h5>
+          <p class="text-muted small">Task/Input/In Progress </p>
+          <a href="{{ url_for('stats.tc_stats') }}" class="btn btn-outline-primary btn-sm"> →</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+      <div class="card h-100">
+        <div class="card-body text-center">
+          <h5 class="card-title"> analysis</h5>
+          <p class="text-muted small">Done, TC , Revenue KPI</p>
+          <a href="{{ url_for('stats.performance') }}" class="btn btn-outline-primary btn-sm"> →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function toNum(v) {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    const startEl = document.getElementById('ov-start');
+    const endEl = document.getElementById('ov-end');
+    const applyBtn = document.getElementById('ov-apply');
+    const billedEl = document.getElementById('ov-billed');
+    const paidEl = document.getElementById('ov-paid');
+    const outstandingEl = document.getElementById('ov-outstanding');
+    const collectionEl = document.getElementById('ov-collection');
+    const completedEl = document.getElementById('ov-completed');
+    const tcCoverageEl = document.getElementById('ov-tc-coverage');
+    let chart;
+
+    const today = new Date();
+    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    startEl.value = window.AppDate.formatYmd(yearAgo);
+    endEl.value = window.AppDate.formatYmd(today);
+
+    function buildUrl(base) {
+      const params = [];
+      if (startEl.value) params.push("start=" + encodeURIComponent(startEl.value));
+      if (endEl.value) params.push("end=" + encodeURIComponent(endEl.value));
+      if (!params.length) return base;
+      return `${base}?${params.join("&")}`;
+    }
+
+    async function loadOverview() {
+      const [clientsResp, costsResp, perfResp] = await Promise.all([
+        fetch(buildUrl("{{ url_for('stats.api_clients') }}")),
+        fetch(buildUrl("{{ url_for('stats.api_costs') }}")),
+        fetch(buildUrl("{{ url_for('stats.api_performance') }}")),
+      ]);
+      const clients = await clientsResp.json();
+      const costs = await costsResp.json();
+      const perf = await perfResp.json();
+
+      if (!Array.isArray(clients) || !Array.isArray(costs) || !perf || perf.error) return;
+
+      const billed = costs.reduce((s, x) => s + toNum(x.billed), 0);
+      const paid = costs.reduce((s, x) => s + toNum(x.paid), 0);
+      const outstanding = billed - paid;
+      const collectionRate = billed > 0 ? (paid / billed) * 100 : 0;
+
+      const completedTotal = toNum(perf.summary && perf.summary.completed_total);
+      const tcCoverage = toNum(perf.summary && perf.summary.tc_coverage_rate);
+
+      billedEl.textContent = Math.round(billed).toLocaleString();
+      paidEl.textContent = Math.round(paid).toLocaleString();
+      outstandingEl.textContent = Math.round(outstanding).toLocaleString();
+      collectionEl.textContent = collectionRate.toFixed(1);
+      completedEl.textContent = Math.round(completedTotal).toLocaleString();
+      tcCoverageEl.textContent = tcCoverage.toFixed(1);
+
+      const recent = costs.slice(-12);
+      const labels = recent.map(x => x.month || "");
+      const billedData = recent.map(x => toNum(x.billed));
+      const paidData = recent.map(x => toNum(x.paid));
+      const outstandingData = recent.map(x => toNum(x.outstanding));
+
+      if (typeof window.Chart === 'function') {
+        const canvas = document.getElementById('chartOverviewMonthly');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            data: {
+              labels,
+              datasets: [
+                { type: 'bar', label: 'Billing', data: billedData, backgroundColor: 'rgba(54, 162, 235, 0.70)' },
+                { type: 'bar', label: '', data: paidData, backgroundColor: 'rgba(75, 192, 192, 0.70)' },
+                { type: 'line', label: 'outstanding', data: outstandingData, borderColor: 'rgba(255, 99, 132, 0.95)', yAxisID: 'y' }
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { callback: v => Number(v || 0).toLocaleString() + '' } }
+              }
+            }
+          });
+        }
+      }
+
+      const riskRows = clients
+        .filter(x => toNum(x.outstanding) > 0)
+        .sort((a, b) => toNum(b.outstanding) - toNum(a.outstanding))
+        .slice(0, 8);
+      const tbody = document.querySelector('#tableOverviewRisk tbody');
+      tbody.innerHTML = riskRows.map(x => `
+        <tr>
+          <td>${escapeHtml(x.client_name || '-')}</td>
+          <td class="text-end">${Math.round(toNum(x.outstanding)).toLocaleString()}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="2" class="text-center text-muted">Data None</td></tr>';
+    }
+
+    applyBtn.addEventListener('click', e => { e.preventDefault(); loadOverview(); });
+    loadOverview();
+  })();
+  </script>
+
+  {% elif page == 'clients' %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="fw-semibold">Client Billing/ </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-auto"><input id="clients-start" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto">~</div>
+        <div class="col-auto"><input id="clients-end" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto">
+          <input id="clients-q" class="form-control form-control-sm" placeholder="Client name/ID Search" />
+        </div>
+        <div class="col-auto">
+          <select id="clients-sort" class="form-select form-select-sm">
+            <option value="billed" selected>: Invoice amount</option>
+            <option value="paid">: Amount</option>
+            <option value="outstanding">: Outstanding balance</option>
+            <option value="collection_rate">: </option>
+            <option value="client_name">: Client name</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <select id="clients-limit" class="form-select form-select-sm">
+            <option value="10">Top 10</option>
+            <option value="30" selected>Top 30</option>
+            <option value="50">Top 50</option>
+            <option value="100">Top 100</option>
+          </select>
+        </div>
+        <div class="col-auto"><button id="clients-apply" class="btn btn-sm btn-outline-secondary">Apply</button></div>
+        <div class="col-auto ms-auto desktop-preferred-action"><a id="clients-export" class="btn btn-sm btn-outline-secondary" href="#" target="_blank" rel="noopener">CSV</a></div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total billed</div>
+            <div class="fw-semibold"><span id="clients-kpi-billed">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total </div>
+            <div class="fw-semibold"><span id="clients-kpi-paid">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total outstanding</div>
+            <div class="fw-semibold"><span id="clients-kpi-outstanding">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small"></div>
+            <div class="fw-semibold"><span id="clients-kpi-collection">-</span>%</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small"> Client</div>
+            <div class="fw-semibold"><span id="clients-kpi-risk">-</span></div>
+          </div>
+        </div>
+      </div>
+
+      <canvas id="chartClients" height="120"></canvas>
+      <div class="mt-3">
+        <table class="table table-sm table-striped" id="tableClients">
+          <thead>
+            <tr>
+              <th>Client name</th>
+              <th class="text-end">Invoice amount</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Outstanding balance</th>
+              <th class="text-end"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function toNum(v) {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    const startEl = document.getElementById('clients-start');
+    const endEl = document.getElementById('clients-end');
+    const qEl = document.getElementById('clients-q');
+    const sortEl = document.getElementById('clients-sort');
+    const limitEl = document.getElementById('clients-limit');
+    const applyBtn = document.getElementById('clients-apply');
+    const kpiBilledEl = document.getElementById('clients-kpi-billed');
+    const kpiPaidEl = document.getElementById('clients-kpi-paid');
+    const kpiOutstandingEl = document.getElementById('clients-kpi-outstanding');
+    const kpiCollectionEl = document.getElementById('clients-kpi-collection');
+    const kpiRiskEl = document.getElementById('clients-kpi-risk');
+    let chart;
+
+    // Set default dates (last 12 months)
+    const today = new Date();
+    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    startEl.value = window.AppDate.formatYmd(yearAgo);
+    endEl.value = window.AppDate.formatYmd(today);
+
+    const exportEl = document.getElementById('clients-export');
+
+    function buildUrl(base) {
+      const params = [];
+      if (startEl.value) params.push("start=" + encodeURIComponent(startEl.value));
+      if (endEl.value) params.push("end=" + encodeURIComponent(endEl.value));
+      if (qEl.value && qEl.value.trim()) {
+        params.push("client_q=" + encodeURIComponent(qEl.value.trim()));
+      }
+      if (limitEl.value) params.push("limit=" + encodeURIComponent(limitEl.value));
+      if (sortEl.value) {
+        params.push("sort=" + encodeURIComponent(sortEl.value));
+        params.push("order=" + encodeURIComponent(sortEl.value === "client_name" ? "asc" : "desc"));
+      }
+      let url = base || "{{ url_for('stats.api_clients') }}";
+      if (params.length) url += "?" + params.join("&");
+      return url;
+    }
+
+    function refreshExport() {
+      if (exportEl) exportEl.href = buildUrl("{{ url_for('stats.api_clients_export_csv') }}");
+    }
+
+
+    async function loadClients(){
+      const url = buildUrl();
+
+      const r = await fetch(url);
+      const d = await r.json();
+
+      if (d.error || !Array.isArray(d)) {
+        console.error(d.error);
+        return;
+      }
+
+      const billedTotal = d.reduce((s, x) => s + toNum(x.total_billed), 0);
+      const paidTotal = d.reduce((s, x) => s + toNum(x.total_paid), 0);
+      const outstandingTotal = billedTotal - paidTotal;
+      const collectionRate = billedTotal > 0 ? (paidTotal / billedTotal) * 100 : 0;
+      const riskCount = d.filter(x => toNum(x.outstanding) > 0 && toNum(x.collection_rate) < 70).length;
+
+      kpiBilledEl.textContent = Math.round(billedTotal).toLocaleString();
+      kpiPaidEl.textContent = Math.round(paidTotal).toLocaleString();
+      kpiOutstandingEl.textContent = Math.round(outstandingTotal).toLocaleString();
+      kpiCollectionEl.textContent = collectionRate.toFixed(1);
+      kpiRiskEl.textContent = String(riskCount);
+
+      const chartRows = d.slice(0, 15);
+      const labels = chartRows.map(x => x.client_name);
+      const billed = chartRows.map(x => toNum(x.total_billed));
+      const paid = chartRows.map(x => toNum(x.total_paid));
+      const outstanding = chartRows.map(x => toNum(x.outstanding));
+
+      if (typeof window.Chart === 'function') {
+        const canvas = document.getElementById('chartClients');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            data: {
+              labels,
+              datasets: [
+                {type: 'bar', label: 'Invoice amount', data: billed, backgroundColor: 'rgba(54, 162, 235, 0.7)'},
+                {type: 'bar', label: 'Amount', data: paid, backgroundColor: 'rgba(75, 192, 192, 0.7)'},
+                {type: 'line', label: 'Outstanding balance', data: outstanding, borderColor: 'rgba(255, 99, 132, 0.95)', yAxisID: 'y'}
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() + '' } }
+              }
+            }
+          });
+        }
+      }
+
+      // Update table
+      const tbody = document.querySelector('#tableClients tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>
+            ${x.client_id
+              ? `<a href="/crm/clients/${encodeURIComponent(x.client_id)}" class="text-decoration-none">${escapeHtml(x.client_name)}</a>`
+              : escapeHtml(x.client_name)}
+          </td>
+          <td class="text-end">
+            ${x.client_id
+              ? `<a href="/accounting/invoice-system/clients/${encodeURIComponent(x.client_id)}" class="text-decoration-none">${Number(x.total_billed || 0).toLocaleString()}</a>`
+              : `${Number(x.total_billed || 0).toLocaleString()}`}
+          </td>
+          <td class="text-end">
+            ${x.client_id
+              ? `<a href="/accounting/invoice-system/clients/${encodeURIComponent(x.client_id)}" class="text-decoration-none">${Number(x.total_paid || 0).toLocaleString()}</a>`
+              : `${Number(x.total_paid || 0).toLocaleString()}`}
+          </td>
+          <td class="text-end">
+            ${x.client_id
+              ? `<a href="/accounting/invoice-system/clients/${encodeURIComponent(x.client_id)}" class="text-decoration-none">${Number(x.outstanding || 0).toLocaleString()}</a>`
+              : `${Number(x.outstanding || 0).toLocaleString()}`}
+          </td>
+          <td class="text-end">${Number(x.collection_rate || 0).toFixed(1)}%</td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" class="text-center text-muted">Data None</td></tr>';
+    }
+
+    applyBtn.addEventListener('click', e => { e.preventDefault(); refreshExport(); loadClients(); });
+    sortEl.addEventListener('change', () => { refreshExport(); loadClients(); });
+    limitEl.addEventListener('change', () => { refreshExport(); loadClients(); });
+    qEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        refreshExport();
+        loadClients();
+      }
+    });
+    refreshExport();
+    loadClients();
+  })();
+  </script>
+
+  {% elif page == 'costs' %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="fw-semibold"> Billing/ </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-auto"><input id="costs-start" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto">~</div>
+        <div class="col-auto"><input id="costs-end" type="date" class="form-control form-control-sm" /></div>
+        <div class="col-auto"><button id="costs-apply" class="btn btn-sm btn-outline-secondary">Apply</button></div>
+        <div class="col-auto ms-auto desktop-preferred-action"><a id="costs-export" class="btn btn-sm btn-outline-secondary" href="#" target="_blank" rel="noopener">CSV</a></div>
+      </div>
+      <div class="small text-muted mb-3">
+          Invoice Client Billing to  Billing/(Service + Official fee/Foreign expense + including sales tax) .
+        `/business` Default Settlement  Service Taxable amount  Period    exists.
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total billed</div>
+            <div class="fw-semibold"><span id="costs-kpi-billed">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total </div>
+            <div class="fw-semibold"><span id="costs-kpi-paid">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total outstanding</div>
+            <div class="fw-semibold"><span id="costs-kpi-outstanding">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small"></div>
+            <div class="fw-semibold"><span id="costs-kpi-collection">-</span>%</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small"> outstanding</div>
+            <div class="fw-semibold"><span id="costs-kpi-running">-</span></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-2">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Recent Billing </div>
+            <div class="fw-semibold"><span id="costs-kpi-mom">-</span>%</div>
+          </div>
+        </div>
+      </div>
+      <canvas id="chartCosts" height="100"></canvas>
+      <div class="mt-3">
+        <table class="table table-sm table-striped mb-0" id="tableCosts">
+          <thead>
+            <tr>
+              <th></th>
+              <th class="text-end">Invoice amount</th>
+              <th class="text-end">Amount</th>
+              <th class="text-end">Outstanding balance</th>
+              <th class="text-end"></th>
+              <th class="text-end"> outstanding</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    function toNum(v) {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    const startEl = document.getElementById('costs-start');
+    const endEl = document.getElementById('costs-end');
+    const applyBtn = document.getElementById('costs-apply');
+    const kpiBilledEl = document.getElementById('costs-kpi-billed');
+    const kpiPaidEl = document.getElementById('costs-kpi-paid');
+    const kpiOutstandingEl = document.getElementById('costs-kpi-outstanding');
+    const kpiCollectionEl = document.getElementById('costs-kpi-collection');
+    const kpiRunningEl = document.getElementById('costs-kpi-running');
+    const kpiMomEl = document.getElementById('costs-kpi-mom');
+    const exportEl = document.getElementById('costs-export');
+    let chart;
+
+    const today = new Date();
+    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    startEl.value = window.AppDate.formatYmd(yearAgo);
+    endEl.value = window.AppDate.formatYmd(today);
+
+    function buildUrl(base) {
+      let url = base || "{{ url_for('stats.api_costs') }}";
+      const params = [];
+      if (startEl.value) params.push("start=" + encodeURIComponent(startEl.value));
+      if (endEl.value) params.push("end=" + encodeURIComponent(endEl.value));
+      if (params.length) url += "?" + params.join("&");
+      return url;
+    }
+
+    function refreshExport() {
+      if (exportEl) exportEl.href = buildUrl("{{ url_for('stats.api_costs_export_csv') }}");
+    }
+
+    async function loadCosts(){
+      const url = buildUrl();
+
+      const r = await fetch(url);
+      const d = await r.json();
+
+      if (d.error) {
+        console.error(d.error);
+        return;
+      }
+
+      const billedTotal = d.reduce((s, x) => s + toNum(x.billed), 0);
+      const paidTotal = d.reduce((s, x) => s + toNum(x.paid), 0);
+      const outstandingTotal = billedTotal - paidTotal;
+      const collectionRate = billedTotal > 0 ? (paidTotal / billedTotal) * 100 : 0;
+      const last = d.length ? d[d.length - 1] : null;
+      const prev = d.length > 1 ? d[d.length - 2] : null;
+      const mom = last && prev && toNum(prev.billed) > 0
+        ? ((toNum(last.billed) - toNum(prev.billed)) / toNum(prev.billed)) * 100
+        : 0;
+
+      kpiBilledEl.textContent = Math.round(billedTotal).toLocaleString();
+      kpiPaidEl.textContent = Math.round(paidTotal).toLocaleString();
+      kpiOutstandingEl.textContent = Math.round(outstandingTotal).toLocaleString();
+      kpiCollectionEl.textContent = collectionRate.toFixed(1);
+      kpiRunningEl.textContent = Math.round(toNum(last && last.running_outstanding)).toLocaleString();
+      kpiMomEl.textContent = mom.toFixed(1);
+
+      const labels = d.map(x => x.month);
+      const billed = d.map(x => toNum(x.billed));
+      const paid = d.map(x => toNum(x.paid));
+      const outstanding = d.map(x => toNum(x.outstanding));
+
+      if (typeof window.Chart === 'function') {
+        const canvas = document.getElementById('chartCosts');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (chart) chart.destroy();
+          chart = new Chart(ctx, {
+            data: {
+              labels,
+              datasets: [
+                {type: 'bar', label: 'Invoice amount', data: billed, backgroundColor: 'rgba(54, 162, 235, 0.65)'},
+                {type: 'bar', label: 'Amount', data: paid, backgroundColor: 'rgba(75, 192, 192, 0.65)'},
+                {type: 'line', label: 'Outstanding balance', data: outstanding, borderColor: 'rgba(255, 99, 132, 0.95)', yAxisID: 'y'}
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() + '' } }
+              }
+            }
+          });
+        }
+      }
+
+      const tbody = document.querySelector('#tableCosts tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>${x.month || '-'}</td>
+          <td class="text-end">${Math.round(toNum(x.billed)).toLocaleString()}</td>
+          <td class="text-end">${Math.round(toNum(x.paid)).toLocaleString()}</td>
+          <td class="text-end">${Math.round(toNum(x.outstanding)).toLocaleString()}</td>
+          <td class="text-end">${toNum(x.collection_rate).toFixed(1)}%</td>
+          <td class="text-end">${Math.round(toNum(x.running_outstanding)).toLocaleString()}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="text-center text-muted">Data None</td></tr>';
+    }
+
+    applyBtn.addEventListener('click', e => { e.preventDefault(); refreshExport(); loadCosts(); });
+    refreshExport();
+    loadCosts();
+  })();
+  </script>
+
+  {% elif page == 'tc' %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <div class="fw-semibold">TC </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+          <label class="form-label small mb-1"></label>
+          <select id="tc-basis" class="form-select form-select-sm">
+            <option value="created" selected>Registration date</option>
+            <option value="completed"></option>
+            <option value="due">Due date</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Start</label>
+          <input id="tc-start" type="date" class="form-control form-control-sm" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Closed</label>
+          <input id="tc-end" type="date" class="form-control form-control-sm" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Status</label>
+          <select id="tc-status" class="form-select form-select-sm">
+            <option value="all" selected>All</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Abandoned">Task </option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">TC target</label>
+          <select id="tc-scope" class="form-select form-select-sm">
+            <option value="candidate" selected>target(Default)</option>
+            <option value="work">WORK</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Contact</label>
+          <select id="tc-assignee" class="form-select form-select-sm">
+            <option value="" selected>All</option>
+          </select>
+        </div>
+        <div class="col">
+          <label class="form-label small mb-1">Matter(Our Ref/ID)</label>
+          <input id="tc-case-q" class="form-control form-control-sm" placeholder=": TEST-0001  matter_id" />
+        </div>
+        <div class="col-auto d-flex gap-2">
+          <button id="tc-apply" class="btn btn-sm btn-outline-secondary">Apply</button>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Total TC</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-hours">-</span>h</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">TC Input items</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-count">-</span>items</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small"></div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-avg">-</span>h/items</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Missing(Done)</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-missing">-</span>items</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Done items</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-completed">-</span>items</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">TC Log</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-coverage">-</span>%</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small">Matter  TC</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-case-avg">-</span>h</div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <div class="border rounded p-2">
+            <div class="text-muted small"> Responsible In Progress</div>
+            <div class="fw-semibold fs-5"><span id="tc-sum-top-share">-</span>%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-lg-6">
+          <div class="border rounded p-2 h-100">
+            <div class="text-muted small mb-2">Contact TC(h)</div>
+            <canvas id="chartTCByAssignee" height="140"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="border rounded p-2 h-100">
+            <div class="text-muted small mb-2"> TC(h)</div>
+            <canvas id="chartTCMonthly" height="140"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <div class="fw-semibold">Contact TC</div>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm table-striped" id="tableTC">
+            <thead>
+              <tr>
+                <th>Contact</th>
+                <th class="text-end">Total Task</th>
+                <th class="text-end">Task items</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <div class="fw-semibold">Top Matter(TC)</div>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm table-striped" id="tableTCCases">
+            <thead>
+              <tr>
+                <th>Matter reference</th>
+                <th class="text-end">(h)</th>
+                <th class="text-end">items</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">TC Details</div>
+      <div class="d-flex gap-2">
+        <select id="tc-detail-limit" class="form-select form-select-sm" style="width: 110px;">
+          <option value="100" selected>100 items</option>
+          <option value="300">300 items</option>
+          <option value="1000">1000 items</option>
+        </select>
+        <a id="tc-export-tc" class="btn btn-sm btn-outline-secondary desktop-preferred-action" href="#" target="_blank" rel="noopener">CSV</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="table table-sm table-striped" id="tableTCDetail">
+        <thead>
+          <tr>
+            <th>Matter reference</th>
+            <th>Task</th>
+            <th class="text-end">(h)</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">TC Missing(Done) <span class="text-muted fw-normal ms-2" style="font-size: 0.85rem;">* top Status Filter   Done Task </span></div>
+      <div class="d-flex gap-2">
+        <select id="tc-missing-limit" class="form-select form-select-sm" style="width: 110px;">
+          <option value="100" selected>100 items</option>
+          <option value="300">300 items</option>
+          <option value="1000">1000 items</option>
+        </select>
+        <a id="tc-export-missing" class="btn btn-sm btn-outline-secondary desktop-preferred-action" href="#" target="_blank" rel="noopener">CSV</a>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="table table-sm table-striped" id="tableTCMissing">
+        <thead>
+          <tr>
+            <th>Matter reference</th>
+            <th>Task</th>
+            <th>Contact</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script>
+  (function(){
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    const basisEl = document.getElementById('tc-basis');
+    const startEl = document.getElementById('tc-start');
+    const endEl = document.getElementById('tc-end');
+    const statusEl = document.getElementById('tc-status');
+    const scopeEl = document.getElementById('tc-scope');
+    const assigneeEl = document.getElementById('tc-assignee');
+    const caseEl = document.getElementById('tc-case-q');
+    const applyBtn = document.getElementById('tc-apply');
+    const detailLimitEl = document.getElementById('tc-detail-limit');
+    const missingLimitEl = document.getElementById('tc-missing-limit');
+    const exportTcEl = document.getElementById('tc-export-tc');
+    const exportMissingEl = document.getElementById('tc-export-missing');
+
+    const sumHoursEl = document.getElementById('tc-sum-hours');
+    const sumCountEl = document.getElementById('tc-sum-count');
+    const sumAvgEl = document.getElementById('tc-sum-avg');
+    const sumMissingEl = document.getElementById('tc-sum-missing');
+    const sumCompletedEl = document.getElementById('tc-sum-completed');
+    const sumCoverageEl = document.getElementById('tc-sum-coverage');
+    const sumCaseAvgEl = document.getElementById('tc-sum-case-avg');
+    const sumTopShareEl = document.getElementById('tc-sum-top-share');
+
+    let chartAssignee;
+    let chartMonthly;
+
+    const today = new Date();
+    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    startEl.value = window.AppDate.formatYmd(yearAgo);
+    endEl.value = window.AppDate.formatYmd(today);
+
+    function buildUrl(base, params) {
+      const qs = new URLSearchParams();
+      Object.entries(params || {}).forEach(([k, v]) => {
+        if (v === null || v === undefined) return;
+        const s = String(v).trim();
+        if (!s) return;
+        qs.set(k, s);
+      });
+      const q = qs.toString();
+      return q ? `${base}?${q}` : base;
+    }
+
+    function baseParams(includeAssignee=true) {
+      const p = {};
+      p.basis = basisEl.value || 'created';
+      if (startEl.value) p.start = startEl.value;
+      if (endEl.value) p.end = endEl.value;
+      if (statusEl.value && statusEl.value !== 'all') p.status = statusEl.value;
+      if (scopeEl.value) p.tc_scope = scopeEl.value;
+      if (includeAssignee && assigneeEl.value) p.assignee_id = assigneeEl.value;
+      if (caseEl.value && caseEl.value.trim()) p.case_q = caseEl.value.trim();
+      return p;
+    }
+
+    function refreshExportLinks() {
+      const exportBase = "{{ url_for('stats.api_tc_export_csv') }}";
+
+      const p1 = baseParams(true);
+      p1.mode = 'tc';
+      p1.limit = detailLimitEl.value;
+      exportTcEl.href = buildUrl(exportBase, p1);
+
+      const p2 = baseParams(true);
+      p2.mode = 'missing';
+      p2.limit = missingLimitEl.value;
+      exportMissingEl.href = buildUrl(exportBase, p2);
+    }
+
+    async function loadAssignees(){
+      const selected = assigneeEl.value;
+      const url = buildUrl("{{ url_for('stats.api_tc_assignees') }}", baseParams(false));
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      assigneeEl.innerHTML = d.map(x => {
+        const v = x.assignee_id ? String(x.assignee_id) : '';
+        const name = escapeHtml(x.assignee_name || (x.assignee_id ? `User ${x.assignee_id}` : 'All'));
+        return `<option value="${v}">${name}</option>`;
+      }).join('');
+
+      if (selected) assigneeEl.value = selected;
+    }
+
+    async function loadSummary(){
+      const url = buildUrl("{{ url_for('stats.api_tc_summary') }}", baseParams(true));
+      const r = await fetch(url);
+      const d = await r.json();
+      if (d && d.error) {
+        sumHoursEl.textContent = '-';
+        sumCountEl.textContent = '-';
+        sumAvgEl.textContent = '-';
+        sumMissingEl.textContent = '-';
+        sumCompletedEl.textContent = '-';
+        sumCoverageEl.textContent = '-';
+        sumCaseAvgEl.textContent = '-';
+        sumTopShareEl.textContent = '-';
+        return;
+      }
+      sumHoursEl.textContent = Number(d.total_hours || 0).toFixed(1);
+      sumCountEl.textContent = Number(d.tc_task_count || 0);
+      sumAvgEl.textContent = Number(d.avg_hours || 0).toFixed(2);
+      sumMissingEl.textContent = Number(d.missing_count || 0);
+      sumCompletedEl.textContent = Number(d.completed_count || 0);
+      sumCoverageEl.textContent = Number(d.tc_coverage_rate || 0).toFixed(1);
+      sumCaseAvgEl.textContent = Number(d.hours_per_case || 0).toFixed(2);
+      sumTopShareEl.textContent = Number(d.top_assignee_share || 0).toFixed(1);
+    }
+
+    async function loadTCByAssignee(){
+      const url = buildUrl("{{ url_for('stats.api_tc') }}", baseParams(true));
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      const labels = d.map(x => x.assignee_name);
+      const hours = d.map(x => x.total_hours);
+
+      if (typeof window.Chart === 'function') {
+        const canvas = document.getElementById('chartTCByAssignee');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (chartAssignee) chartAssignee.destroy();
+          chartAssignee = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [{label: 'Task(h)', data: hours, backgroundColor: 'rgba(153, 102, 255, 0.7)'}]
+            },
+            options: {
+              responsive: true,
+              indexAxis: 'y',
+              scales: {
+                x: { beginAtZero: true, ticks: { callback: v => v + 'h' } }
+              }
+            }
+          });
+        }
+      }
+
+      const tbody = document.querySelector('#tableTC tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=all" class="text-decoration-none">${escapeHtml(x.assignee_name)}</a>`
+              : escapeHtml(x.assignee_name)}
+          </td>
+          <td class="text-end">
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=all" class="text-decoration-none">${Number(x.total_hours || 0).toFixed(1)}h</a>`
+              : `${Number(x.total_hours || 0).toFixed(1)}h`}
+          </td>
+          <td class="text-end">
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=all" class="text-decoration-none">${Number(x.task_count || 0)}items</a>`
+              : `${Number(x.task_count || 0)}items`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadTCMonthly(){
+      const url = buildUrl("{{ url_for('stats.api_tc_monthly') }}", baseParams(true));
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      const labels = d.map(x => x.month);
+      const hours = d.map(x => x.total_hours);
+
+      if (typeof window.Chart === 'function') {
+        const canvas = document.getElementById('chartTCMonthly');
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (chartMonthly) chartMonthly.destroy();
+          chartMonthly = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{label: 'Task(h)', data: hours, borderColor: 'rgba(54, 162, 235, 1)', fill: false, tension: 0.1}]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, ticks: { callback: v => v + 'h' } }
+              }
+            }
+          });
+        }
+      }
+    }
+
+    async function loadTCCases(){
+      const p = baseParams(true);
+      p.limit = 20;
+      const url = buildUrl("{{ url_for('stats.api_tc_by_case') }}", p);
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      const tbody = document.querySelector('#tableTCCases tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>
+            ${x.case_id
+              ? `<a href="/case/${encodeURIComponent(String(x.case_id))}" class="text-decoration-none">${escapeHtml(x.our_ref || x.case_id)}</a>`
+              : escapeHtml(x.our_ref || '')}
+            ${x.right_name ? `<div class="text-muted small">${escapeHtml(x.right_name)}</div>` : ''}
+          </td>
+          <td class="text-end">${Number(x.total_hours || 0).toFixed(1)}</td>
+          <td class="text-end">${Number(x.task_count || 0)}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadTCDetail(){
+      const p = baseParams(true);
+      p.limit = detailLimitEl.value;
+      const url = buildUrl("{{ url_for('stats.api_tc_detail') }}", p);
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      const tbody = document.querySelector('#tableTCDetail tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>
+            ${x.case_id
+              ? `<a href="/case/${encodeURIComponent(String(x.case_id))}" class="text-decoration-none">${escapeHtml(x.our_ref)}</a>`
+              : escapeHtml(x.our_ref)}
+          </td>
+          <td>
+            ${x.workflow_id
+              ? `<a href="/workflow/${encodeURIComponent(String(x.workflow_id))}" class="text-decoration-none">${escapeHtml(x.task_name)}</a>`
+              : escapeHtml(x.task_name)}
+            ${x.case_id && x.workflow_id
+              ? `<a href="/case/${encodeURIComponent(String(x.case_id))}?workflow_id=wf_${encodeURIComponent(String(x.workflow_id))}#sec-workflow" class="link-muted ms-1" title="Matter (Task )"><i class="bi bi-link-45deg"></i></a>`
+              : ""}
+          </td>
+          <td class="text-end">${Number(x.work_hours || 0).toFixed(1)}</td>
+          <td>
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=all" class="text-decoration-none">${escapeHtml(x.assignee_name)}</a>`
+              : escapeHtml(x.assignee_name)}
+          </td>
+          <td>${escapeHtml(x.status || '-')}</td>
+          <td>${escapeHtml(x.completed_date || '-')}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadTCMissing(){
+      const p = baseParams(true);
+      p.limit = missingLimitEl.value;
+      const url = buildUrl("{{ url_for('stats.api_tc_missing') }}", p);
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!Array.isArray(d)) return;
+
+      const tbody = document.querySelector('#tableTCMissing tbody');
+      tbody.innerHTML = d.map(x => `
+        <tr>
+          <td>
+            ${x.case_id
+              ? `<a href="/case/${encodeURIComponent(String(x.case_id))}" class="text-decoration-none">${escapeHtml(x.our_ref)}</a>`
+              : escapeHtml(x.our_ref)}
+          </td>
+          <td>
+            ${x.workflow_id
+              ? `<a href="/workflow/${encodeURIComponent(String(x.workflow_id))}" class="text-decoration-none">${escapeHtml(x.task_name)}</a>`
+              : escapeHtml(x.task_name)}
+            ${x.case_id && x.workflow_id
+              ? `<a href="/case/${encodeURIComponent(String(x.case_id))}?workflow_id=wf_${encodeURIComponent(String(x.workflow_id))}#sec-workflow" class="link-muted ms-1" title="Matter (Task )"><i class="bi bi-link-45deg"></i></a>`
+              : ""}
+          </td>
+          <td>
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=all" class="text-decoration-none">${escapeHtml(x.assignee_name)}</a>`
+              : escapeHtml(x.assignee_name)}
+          </td>
+          <td>${escapeHtml(x.status || '-')}</td>
+          <td>${escapeHtml(x.completed_date || '-')}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function reloadAll(){
+      await loadAssignees();
+      refreshExportLinks();
+      await Promise.all([
+        loadSummary(),
+        loadTCByAssignee(),
+        loadTCMonthly(),
+        loadTCCases(),
+        loadTCDetail(),
+        loadTCMissing(),
+      ]);
+    }
+
+    applyBtn.addEventListener('click', e => { e.preventDefault(); reloadAll(); });
+    detailLimitEl.addEventListener('change', () => { refreshExportLinks(); loadTCDetail(); });
+    missingLimitEl.addEventListener('change', () => { refreshExportLinks(); loadTCMissing(); });
+    basisEl.addEventListener('change', () => { refreshExportLinks(); });
+    statusEl.addEventListener('change', () => { refreshExportLinks(); });
+    scopeEl.addEventListener('change', () => { refreshExportLinks(); });
+    assigneeEl.addEventListener('change', () => { refreshExportLinks(); });
+    caseEl.addEventListener('change', () => { refreshExportLinks(); });
+
+    reloadAll();
+  })();
+  </script>
+
+  {% elif page == 'performance' %}
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Done Task</div>
+        <div class="fw-semibold"><span id="perf-sum-completed">-</span>items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Total TC </div>
+        <div class="fw-semibold"><span id="perf-sum-hours">-</span>h</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">TC Log</div>
+        <div class="fw-semibold"><span id="perf-sum-coverage">-</span>%</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small"> Done</div>
+        <div class="fw-semibold"><span id="perf-sum-productivity">-</span>items/h</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">TC  Billing</div>
+        <div class="fw-semibold"><span id="perf-sum-billed-hour">-</span></div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-2">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Invoice </div>
+        <div class="fw-semibold"><span id="perf-sum-collection">-</span>%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <div class="fw-semibold"> Task Done/TC </div>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 align-items-center mb-3">
+            <div class="col-auto"><input id="perf-start" type="date" class="form-control form-control-sm" /></div>
+            <div class="col-auto">~</div>
+            <div class="col-auto"><input id="perf-end" type="date" class="form-control form-control-sm" /></div>
+            <div class="col-auto"><button id="perf-apply" class="btn btn-sm btn-outline-secondary">Apply</button></div>
+            <div class="col-auto ms-auto desktop-preferred-action"><a id="perf-export" class="btn btn-sm btn-outline-secondary" href="#" target="_blank" rel="noopener">CSV</a></div>
+          </div>
+          <canvas id="chartPerfMonthly" height="140"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">
+          <div class="fw-semibold">Contact Done </div>
+        </div>
+        <div class="card-body">
+          <canvas id="chartPerfAssignee" height="140"></canvas>
+          <div class="mt-3">
+            <table class="table table-sm table-striped" id="tablePerf">
+              <thead>
+                <tr>
+                  <th>Contact</th>
+                  <th class="text-end">Done items</th>
+                  <th class="text-end">Total Task</th>
+                  <th class="text-end"> TC</th>
+                  <th class="text-end">TC Log</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  (function(){
+    function escapeHtml(text) {
+      if (text === null || text === undefined) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function toNum(v) {
+      const n = Number(v || 0);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    const startEl = document.getElementById('perf-start');
+    const endEl = document.getElementById('perf-end');
+    const applyBtn = document.getElementById('perf-apply');
+    const sumCompletedEl = document.getElementById('perf-sum-completed');
+    const sumHoursEl = document.getElementById('perf-sum-hours');
+    const sumCoverageEl = document.getElementById('perf-sum-coverage');
+    const sumProductivityEl = document.getElementById('perf-sum-productivity');
+    const sumBilledHourEl = document.getElementById('perf-sum-billed-hour');
+    const sumCollectionEl = document.getElementById('perf-sum-collection');
+    const exportEl = document.getElementById('perf-export');
+    let chartMonthly, chartAssignee;
+
+    const today = new Date();
+    const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+    startEl.value = window.AppDate.formatYmd(yearAgo);
+    endEl.value = window.AppDate.formatYmd(today);
+
+    function buildUrl(base) {
+      let url = base || "{{ url_for('stats.api_performance') }}";
+      const params = [];
+      if (startEl.value) params.push("start=" + encodeURIComponent(startEl.value));
+      if (endEl.value) params.push("end=" + encodeURIComponent(endEl.value));
+      if (params.length) url += "?" + params.join("&");
+      return url;
+    }
+
+    function refreshExport() {
+      if (exportEl) exportEl.href = buildUrl("{{ url_for('stats.api_performance_export_csv') }}");
+    }
+
+    async function loadPerformance(){
+      const url = buildUrl();
+
+      const r = await fetch(url);
+      const d = await r.json();
+      if (!d || d.error) return;
+
+      const summary = d.summary || {};
+      sumCompletedEl.textContent = Math.round(toNum(summary.completed_total)).toLocaleString();
+      sumHoursEl.textContent = toNum(summary.total_hours).toFixed(1);
+      sumCoverageEl.textContent = toNum(summary.tc_coverage_rate).toFixed(1);
+      sumProductivityEl.textContent = toNum(summary.completed_per_hour).toFixed(2);
+      sumBilledHourEl.textContent = Math.round(toNum(summary.invoice_per_tc_hour)).toLocaleString();
+      sumCollectionEl.textContent = toNum(summary.invoice_collection_rate).toFixed(1);
+
+      // Monthly chart
+      const monthlyLabels = (d.monthly || []).map(x => x.month);
+      const monthlyCounts = (d.monthly || []).map(x => toNum(x.count));
+      const monthlyHours = (d.monthly || []).map(x => toNum(x.total_hours));
+
+      if (typeof window.Chart === 'function') {
+        const monthlyCanvas = document.getElementById('chartPerfMonthly');
+        if (monthlyCanvas) {
+          const ctxMonthly = monthlyCanvas.getContext('2d');
+          if (chartMonthly) chartMonthly.destroy();
+          chartMonthly = new Chart(ctxMonthly, {
+            data: {
+              labels: monthlyLabels,
+              datasets: [
+                {type: 'bar', label: 'Done items', data: monthlyCounts, backgroundColor: 'rgba(255, 159, 64, 0.75)', yAxisID: 'y'},
+                {type: 'line', label: 'TC ', data: monthlyHours, borderColor: 'rgba(54, 162, 235, 0.95)', yAxisID: 'y1'}
+              ]
+            },
+            options: {
+              responsive: true,
+              scales: {
+                y: { beginAtZero: true, position: 'left', ticks: { stepSize: 1 } },
+                y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+              }
+            }
+          });
+        }
+      }
+
+      // Assignee chart
+      const assigneeRows = (d.by_assignee || []).slice(0, 12);
+      const assigneeLabels = assigneeRows.map(x => x.assignee_name);
+      const assigneeCounts = assigneeRows.map(x => toNum(x.completed_count));
+      const assigneeHours = assigneeRows.map(x => toNum(x.total_hours));
+
+      if (typeof window.Chart === 'function') {
+        const assigneeCanvas = document.getElementById('chartPerfAssignee');
+        if (assigneeCanvas) {
+          const ctxAssignee = assigneeCanvas.getContext('2d');
+          if (chartAssignee) chartAssignee.destroy();
+          chartAssignee = new Chart(ctxAssignee, {
+            data: {
+              labels: assigneeLabels,
+              datasets: [
+                {type: 'bar', label: 'Done items', data: assigneeCounts, backgroundColor: 'rgba(255, 99, 132, 0.70)', xAxisID: 'x'},
+                {type: 'line', label: 'TC ', data: assigneeHours, borderColor: 'rgba(54, 162, 235, 0.95)', xAxisID: 'x1'}
+              ]
+            },
+            options: {
+              responsive: true,
+              indexAxis: 'y',
+              scales: {
+                x: { beginAtZero: true, position: 'bottom' },
+                x1: { beginAtZero: true, position: 'top', grid: { drawOnChartArea: false } }
+              }
+            }
+          });
+        }
+      }
+
+      // Update table
+      const tbody = document.querySelector('#tablePerf tbody');
+      tbody.innerHTML = (d.by_assignee || []).map(x => `
+        <tr>
+          <td>
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=completed" class="text-decoration-none">${escapeHtml(x.assignee_name)}</a>`
+              : escapeHtml(x.assignee_name)}
+          </td>
+          <td class="text-end">
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=completed" class="text-decoration-none">${Number(x.completed_count || 0)}items</a>`
+              : `${Number(x.completed_count || 0)}items`}
+          </td>
+          <td class="text-end">
+            ${x.assignee_id
+              ? `<a href="/worklog/?owner=${encodeURIComponent(String(x.assignee_id))}&filter=completed" class="text-decoration-none">${x.total_hours ? Number(x.total_hours || 0).toFixed(1) + 'h' : '-'}</a>`
+              : (x.total_hours ? Number(x.total_hours || 0).toFixed(1) + 'h' : '-')}
+          </td>
+          <td class="text-end">${Number(x.avg_hours || 0).toFixed(2)}h</td>
+          <td class="text-end">${Number(x.tc_coverage_rate || 0).toFixed(1)}%</td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" class="text-center text-muted">Data None</td></tr>';
+    }
+
+    applyBtn.addEventListener('click', e => { e.preventDefault(); refreshExport(); loadPerformance(); });
+    refreshExport();
+    loadPerformance();
+  })();
+  </script>
+
+  {% else %}
+  <div class="text-muted">   Select.</div>
+  {% endif %}
+</div>
+{% endblock %}

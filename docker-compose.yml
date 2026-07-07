@@ -1,0 +1,175 @@
+#
+# Reusable service fragments (YAML anchors)
+#
+
+x-ipm-image: &ipm_image
+  image: ip-docket-system:local
+  pull_policy: never
+  build:
+    context: .
+    args:
+      APP_UID: ${APP_UID:-1000}
+      APP_GID: ${APP_GID:-1000}
+
+x-ipm-volumes: &ipm_volumes
+  - ./data:/app/data
+  - ./logs:/app/logs
+
+x-ipm-env-file: &ipm_env_file
+  - path: .env
+    required: false
+
+x-ipm-common-env: &ipm_common_env
+  FLASK_ENV: "${FLASK_ENV:-production}"
+  FLASK_DEBUG: "${FLASK_DEBUG:-False}"
+  SECRET_KEY: "${SECRET_KEY:?SECRET_KEY is required}"
+  BASE_URL: "${BASE_URL:?BASE_URL is required}"
+  SCHEDULER_ENABLED: "${SCHEDULER_ENABLED:-0}"
+  DATABASE_URL: "postgresql://${POSTGRES_USER:-ipm}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-ipm}"
+  TIMEZONE: "${TIMEZONE:-America/New_York}"
+  TZ: "${TIMEZONE:-America/New_York}"
+  UPLOAD_FOLDER: "${UPLOAD_FOLDER:-/app/data/uploads}"
+  ATTACHMENTS_DIR: "${ATTACHMENTS_DIR:-/app/data/attachments}"
+  CLIENT_ATTACHMENTS_DIR: "${CLIENT_ATTACHMENTS_DIR:-/app/data/uploads/clients}"
+  BACKUP_DIR: "${BACKUP_DIR:-/app/data/backups}"
+  PDF_TEXT_CACHE_DIR: "${PDF_TEXT_CACHE_DIR:-/app/data/pdf_text_cache}"
+  RATELIMIT_STORAGE_URI: "${RATELIMIT_STORAGE_URI:-redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/1}"
+  RATELIMIT_REQUIRE_SHARED_STORAGE: "${RATELIMIT_REQUIRE_SHARED_STORAGE:-1}"
+  RATELIMIT_IN_MEMORY_FALLBACK_ENABLED: "${RATELIMIT_IN_MEMORY_FALLBACK_ENABLED:-0}"
+  HOUSEKEEPING_WARN_WITHOUT_SCHEDULER: "${HOUSEKEEPING_WARN_WITHOUT_SCHEDULER:-0}"
+
+x-ipm-common-depends-on: &ipm_common_depends_on
+  db:
+    condition: service_healthy
+  redis:
+    condition: service_healthy
+  clamav:
+    condition: service_started
+  db_restore:
+    condition: service_completed_successfully
+
+# Background services should start after the web container is healthy so they
+# don't crash-loop while the app is still initializing.
+x-ipm-after-app-depends-on: &ipm_after_app_depends_on
+  <<: *ipm_common_depends_on
+  app:
+    condition: service_healthy
+
+services:
+  db:
+    image: postgres:18
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ipm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-ipm}
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "${DB_BIND_IP:-127.0.0.1}:${DB_BIND_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ipm} -d ${POSTGRES_DB:-ipm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7
+    restart: always
+    # Keep service available even if snapshotting fails (e.g. low disk) so rate limiting/queues don't hard-fail.
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning", "--stop-writes-on-bgsave-error", "no", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:${REDIS_BIND_PORT:-6379}:6379"
+    healthcheck:
+      # If requirepass is set, `redis-cli ping` without auth will return NOAUTH (and should be unhealthy).
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:stable
+    restart: always
+    volumes:
+      - clamav_data:/var/lib/clamav
+
+  db_restore:
+    image: postgres:18
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/backup:ro
+      - ./scripts/restore_db_if_empty.sh:/scripts/restore_db_if_empty.sh:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ipm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-ipm}
+      DB_RESTORE_ON_START: ${DB_RESTORE_ON_START:-1}
+    entrypoint: ["/bin/sh", "/scripts/restore_db_if_empty.sh"]
+
+  app:
+    <<: *ipm_image
+    init: true
+    restart: always
+    ports:
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-5000}:5000"
+    volumes: *ipm_volumes
+    environment:
+      <<: *ipm_common_env
+      FLASK_APP: "run:app"
+    env_file: *ipm_env_file
+    depends_on: *ipm_common_depends_on
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+  scheduler:
+    <<: *ipm_image
+    init: true
+    restart: always
+    command: python run_scheduler.py
+    volumes: *ipm_volumes
+    environment:
+      <<: *ipm_common_env
+      SCHEDULER_ENABLED: "1"
+      SCHEDULER_RUN_ANYWAY: "1"
+      SCHEDULER_PROCESS_ROLE: "worker"
+    env_file: *ipm_env_file
+    depends_on: *ipm_after_app_depends_on
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.ops.healthcheck", "scheduler"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  worker:
+    <<: *ipm_image
+    init: true
+    restart: always
+    command: python -m app.ops.worker --queues=deferred,annuity
+    volumes: *ipm_volumes
+    environment:
+      <<: *ipm_common_env
+      SCHEDULER_ENABLED: "0"
+      RUN_SCHEDULER: "0"
+      STARTUP_CHECKS_ENFORCE: "0"
+      FLASK_ENV: "${FLASK_ENV:-production}"
+    env_file: *ipm_env_file
+    depends_on: *ipm_after_app_depends_on
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.ops.healthcheck", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  postgres_data:
+  redis_data:
+  clamav_data:

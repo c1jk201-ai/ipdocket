@@ -1,0 +1,55 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - "--no-verify"
+          - "--disable-plugin"
+          - "Base64HighEntropyString"
+          - "--disable-plugin"
+          - "HexHighEntropyString"
+          - "--exclude-files"
+          - "^(app/static/vendor/|reports/|.*\\.(png|jpe?g|gif|ico|pdf|woff2?|sqlite|sqlite3|db)$)"
+        files: >
+          (?x)^(
+            \.env.*|
+            \.github/.*|
+            app_config/.*|
+            config\.py|
+            Dockerfile|
+            Makefile|
+            docker-compose.*\.ya?ml|
+            requirements.*\.txt|
+            constraints\.txt|
+            pyproject\.toml|
+            .*client_secret.*|
+            .*(secret|credential|token|api[-_]?key|private[-_]?key).*|
+            .*\.(ya?ml|toml|ini|cfg|conf|env|sh|json)$
+          )$
+        types: [text]
+
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.9
+    hooks:
+      - id: ruff

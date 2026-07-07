@@ -1,0 +1,148 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">Sales tax report</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}">Reports</a>
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_expenses') }}">Expense management</a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Year</label>
+    <input type="number" name="year" value="{{ year }}">
+   </div>
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Period</label>
+    <select name="period">
+     <option value="Q1" {% if period=='Q1' or period=='1' %}selected{% endif %}>Q1 (Jan 1 - Mar 31)</option>
+     <option value="Q2" {% if period=='Q2' or period=='2' %}selected{% endif %}>Q2 (Apr 1 - Jun 30)</option>
+     <option value="Q3" {% if period=='Q3' or period=='3' %}selected{% endif %}>Q3 (Jul 1 - Sep 30)</option>
+     <option value="Q4" {% if period=='Q4' or period=='4' %}selected{% endif %}>Q4 (Oct 1 - Dec 31)</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for bp in business_profiles %}
+     <option value="{{ bp.id }}" {% if business_profile_id and business_profile_id|string==bp.id|string %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>Basis</label>
+    <select name="basis">
+     <option value="issue_date" {% if basis=='issue_date' or basis=='settlement' %}selected{% endif %}>Invoice issue date</option>
+     <option value="tax_issued" {% if basis=='tax_issued' or basis=='issued' %}selected{% endif %}>Tax documentation date</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Status</label>
+    <select name="status_scope">
+     <option value="issued" {% if status_scope=='issued' or status_scope=='completed' %}selected{% endif %}>Recorded</option>
+     <option value="paid" {% if status_scope=='paid' %}selected{% endif %}>Payment received</option>
+     <option value="all" {% if status_scope=='all' %}selected{% endif %}>All, including draft and void</option>
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-2">
+    <label>Currency</label>
+    <select name="currency">
+     <option value="ALL" {% if currency=='ALL' %}selected{% endif %}>ALL</option>
+     {% for cur in currencies %}
+      <option value="{{ cur }}" {% if currency==cur %}selected{% endif %}>{{ cur }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>Start date</label>
+    <input type="date" name="start_date" value="{{ start_date }}">
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>End date</label>
+    <input type="date" name="end_date" value="{{ end_date }}">
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('business.accounting_vat_report') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-4">Period</div>
+   <div class="text-lg text-strong">{{ period_label }}</div>
+   <div class="muted text-sm">Currency: {{ currency }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Sales tax collected</div>
+   <div class="text-xl text-bold text-accent">
+    {{ report.sales_vat|currency(currency if currency != 'ALL' else 'USD') }}
+   </div>
+   <div class="muted text-sm">Taxable base {{ report.sales_taxable|currency(currency if currency != 'ALL' else 'USD') }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Deductible expense sales tax</div>
+   <div class="text-xl text-bold text-accent-alt">
+    {{ report.input_vat|currency(currency if currency != 'ALL' else 'USD') }}
+   </div>
+   <div class="muted text-sm">Expense total {{ report.expense_total|currency(currency if currency != 'ALL' else 'USD') }}</div>
+  </div>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-4">Total sales</div>
+   <div class="text-xl text-bold">{{ report.sales_total|currency(currency if currency != 'ALL' else 'USD') }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Expense total</div>
+   <div class="text-xl text-bold">{{ report.expense_total|currency(currency if currency != 'ALL' else 'USD') }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Net sales tax</div>
+   <div class="text-xl text-bold text-amber">
+    {{ report.vat_payable|currency(currency if currency != 'ALL' else 'USD') }}
+   </div>
+   <div class="muted text-sm">Sales tax collected minus deductible expense sales tax</div>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Expense category summary</h3>
+  <div class="overflow-auto">
+   <table class="table">
+    <thead>
+     <tr>
+      <th>Category</th>
+      <th class="right">Taxable amount</th>
+      <th class="right">Sales tax</th>
+      <th class="right">Total</th>
+      <th class="right">Input sales tax</th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for row in expense_categories %}
+     <tr>
+      <td>{{ row.category_name }}</td>
+      <td class="right">{{ row.net_amount|currency(currency if currency != 'ALL' else 'USD') }}</td>
+      <td class="right">{{ row.vat_amount|currency(currency if currency != 'ALL' else 'USD') }}</td>
+      <td class="right">{{ row.total_amount|currency(currency if currency != 'ALL' else 'USD') }}</td>
+      <td class="right">{{ row.input_vat|currency(currency if currency != 'ALL' else 'USD') }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="5" class="muted">No expense categories in this period.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

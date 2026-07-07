@@ -1,0 +1,236 @@
+<div class="toast-container position-fixed top-0 end-0 p-3" id="case-toast-container" style="z-index: 1090;"></div>
+
+{% include "case/_client_search_modal.html" %}
+
+{% if can_edit_case %}
+  {% set _related_app_suggestion = related_application_suggestion or pct_related_application_suggestion %}
+  {% if _related_app_suggestion %}
+    {% set _rel = _related_app_suggestion %}
+    {% set _rel_source = _rel.source or {} %}
+    <div
+      class="modal fade"
+      id="relatedApplicationModal"
+      tabindex="-1"
+      aria-labelledby="relatedApplicationModalLabel"
+      aria-hidden="true"
+      data-auto-open="1"
+      data-target="{{ _rel.target or '' }}"
+      data-source-matter-id="{{ _rel_source.matter_id or '' }}"
+      data-basis-date="{{ _rel.basis_date or '' }}"
+    >
+      <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{{ url_for('case_work.related_application_apply', case_id=matter.matter_id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="modal-header">
+            <h5 class="modal-title" id="relatedApplicationModalLabel">
+              <i class="bi bi-info-circle"></i> Apply related application information
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="small text-muted mb-3">
+              {{ _rel_source.our_ref or 'Related applications' }}
+              {% if _rel_source.application_no %} · {{ _rel_source.application_no }}{% endif %}
+              {% if _rel_source.application_date %} · {{ (_rel_source.application_date or '')|us_date }}{% endif %}
+               Confirm.
+              <br>
+              {{ _rel.basis_label or 'reference date' }} {{ (_rel.basis_date or '')|us_date }} to empty {{ _rel.storage_label or _rel.target_label or 'Registry' }}  .
+            </div>
+            <div class="list-group list-group-flush border rounded">
+              {% for field in _rel.fields or [] %}
+                {% set _rel_field_key = field.key or '' %}
+                <div class="list-group-item d-flex justify-content-between gap-3 small">
+                  <span class="fw-semibold">{{ field.label or field.key }}</span>
+                  <span class="text-end">
+                    {% if 'date' in _rel_field_key or 'deadline' in _rel_field_key %}
+                      {{ (field.value or '')|us_date }}
+                    {% else %}
+                      {{ field.value }}
+                    {% endif %}
+                  </span>
+                </div>
+              {% endfor %}
+            </div>
+            <div class="form-text mt-2">
+              already-entered Registry value is Changedoes not.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">In Progress</button>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="bi bi-check2-circle"></i> 
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="modal fade" id="quickDeadlineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="quickDeadlineForm">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-calendar-plus"></i> TaskDeadline Add</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2">
+            <label class="form-label small">TaskDeadline</label>
+            <input type="text" name="label" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Final Due date(Statutory deadline)</label>
+            <input type="date" name="due_date" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Internal/ Due date(Task )</label>
+            <input type="date" name="internal_due_date" class="form-control form-control-sm">
+            <div class="form-text">Final Due date Internal/ Due date In Progress  Input.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Task </label>
+            <input type="date" name="visible_from_date" class="form-control form-control-sm">
+            <div class="form-text"> Immediate Task Display.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Contact</label>
+            <select name="assignee_id" class="form-select form-select-sm">
+              <option value="">-</option>
+              {% for u in (staff_users_all or []) %}
+                <option value="{{ u.id }}">{{ u.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Priority</label>
+            <input type="text" name="priority" class="form-control form-control-sm" placeholder="//">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editDeadlineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="editDeadlineForm">
+        <input type="hidden" name="docket_id">
+        <input type="hidden" name="is_system" value="0">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-calendar-event"></i> TaskDeadline Edit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-light py-2 small mb-2" id="editDeadlineSystemHint" style="display:none;">
+             TaskDeadline Auto   exists. Change  <b></b> .
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small">TaskDeadline</label>
+            <input type="text" name="label" class="form-control form-control-sm" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Final Due date(Statutory deadline)</label>
+            <input type="date" name="due_date" class="form-control form-control-sm">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Internal/ Due date(Task )</label>
+            <input type="date" name="internal_due_date" class="form-control form-control-sm">
+            <div class="form-text">Input  Task   to .</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Task </label>
+            <input type="date" name="visible_from_date" class="form-control form-control-sm">
+            <div class="form-text"> Immediate Task Display.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small">Contact</label>
+            <select name="assignee_id" class="form-select form-select-sm">
+              <option value="">-</option>
+              {% for u in (staff_users_all or []) %}
+                <option value="{{ u.id }}">{{ u.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2" id="editDeadlinePriorityGroup">
+            <label class="form-label small">Priority</label>
+            <input type="text" name="priority" class="form-control form-control-sm" placeholder="//">
+          </div>
+          <div class="form-check mb-2" id="editDeadlineLockGroup" style="display:none;">
+            <input class="form-check-input" type="checkbox" value="1" id="editDeadlineLock" name="locked">
+            <label class="form-check-label" for="editDeadlineLock"> Auto  </label>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-danger"
+            id="editDeadlineDeleteBtn"
+            style="display:none;"
+          >Delete</button>
+          <div class="d-flex align-items-center gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="quickMemoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="quickMemoForm">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Notes Add</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <textarea class="form-control form-control-sm" name="content" rows="4" placeholder="Notes Content Input" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="quickFileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form class="modal-content" id="quickFileForm" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-cloud-upload"></i> File Upload</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="parent_id" value="{{ fm_folder_id or '' }}">
+          <div class="mb-2">
+            <label class="form-label small">Select file</label>
+            <input type="file" name="file" class="form-control form-control-sm" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-primary">Upload</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endif %}
+
+<div class="modal fade" id="filePreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filePreviewTitle"><i class="bi bi-eye"></i> Preview</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <iframe id="filePreviewFrame" class="file-preview-frame" title="file preview"></iframe>
+      </div>
+    </div>
+  </div>
+</div>

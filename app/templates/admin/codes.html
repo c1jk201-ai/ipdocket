@@ -1,0 +1,62 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Legacy Code Registry{% endblock %}
+
+{% block admin_description %}The previous central code registry is disabled. Use the current operations pages listed below.{% endblock %}
+
+{% block admin_content %}
+<div class="alert alert-warning border-warning-subtle shadow-sm" role="alert">
+  <div class="fw-semibold mb-1">Legacy code registry is no longer editable.</div>
+  <div>
+    Previous tables such as <code>ROLES</code>, <code>JOB_CODES</code>, <code>CASE_TYPES</code>,
+    <code>EVENT_CODE</code>, and <code>FEE_ITEMS</code> moved into dedicated pages or operational data.
+    Use the current destinations below instead of the old code editor.
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white py-3">
+    <h5 class="mb-0">Current Destinations</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 22%">Legacy Table</th>
+            <th>Current Source</th>
+            <th style="width: 28%">Destination</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ROLES</code></td>
+            <td>Roles use <code>roles</code>, <code>user_roles</code>, and permission keys.</td>
+            <td><a href="{{ url_for('admin.list_roles') }}">Roles & Permissions</a></td>
+          </tr>
+          <tr>
+            <td><code>JOB_CODES</code></td>
+            <td>Task identifiers are stored on workflow and docket records.</td>
+            <td><a href="{{ url_for('admin.access_debug_page') }}">Access Review</a> / Matter task views</td>
+          </tr>
+          <tr>
+            <td><code>CASE_TYPES</code></td>
+            <td>Matter type values are managed through <code>right_group</code> and <code>matter_type</code>.</td>
+            <td>Data migration required</td>
+          </tr>
+          <tr>
+            <td><code>EVENT_CODE</code></td>
+            <td>Deadline and event labels use <code>docket_item.name_ref</code> and <code>matter_event.event_key</code>.</td>
+            <td><a href="{{ url_for('admin.deadlines_page') }}">Deadline Rules</a></td>
+          </tr>
+          <tr>
+            <td><code>FEE_ITEMS</code></td>
+            <td>Billing categories are stored through invoice line item and expense category data.</td>
+            <td><a href="{{ url_for('billing_invoices.expenses.list_categories') }}">Billing Categories</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

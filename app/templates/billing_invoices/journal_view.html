@@ -1,0 +1,161 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">table Details</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">Listto</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_general_ledger') }}">TotalAccountLedger</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}"> </a>
+   {% if entry.can_approve %}
+   <form method="post" action="{{ url_for('business.accounting_journal_approve', entry_id=entry.id) }}" class="m-0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit"></button>
+   </form>
+   {% endif %}
+   {% if entry.can_post %}
+   <form method="post" action="{{ url_for('business.accounting_journal_post', entry_id=entry.id) }}" class="m-0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit"></button>
+   </form>
+   {% endif %}
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <div class="grid grid-3">
+   <div>
+    <div class="muted">table days</div>
+    <div class="text-strong">{{ entry.entry_date }}</div>
+   </div>
+   <div>
+    <div class="muted">Notes</div>
+    <div class="text-strong">{{ entry.memo or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Registration date</div>
+    <div class="text-strong">{{ entry.created_at|local_dt if entry.created_at else '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Status</div>
+    <div class="text-strong">
+     <span class="badge text-bg-{% if entry.status_code == 'posted' %}success{% elif entry.status_code == 'approved' %}primary{% elif entry.status_code == 'reversed' %}secondary{% else %}warning{% endif %}">
+      {{ entry.status_label }}
+     </span>
+    </div>
+   </div>
+   <div>
+    <div class="muted">Business profile</div>
+    <div class="text-strong">{{ entry.business_profile_name or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted"> Status</div>
+    <div class="text-strong">
+     {% if entry.closed_period %}
+      deadline 
+     {% else %}
+      column
+     {% endif %}
+    </div>
+   </div>
+   <div>
+    <div class="muted"> Total</div>
+    <div class="text-strong">{{ entry.debit_total|currency('USD') }}</div>
+   </div>
+   <div>
+    <div class="muted"> Total</div>
+    <div class="text-strong">{{ entry.credit_total|currency('USD') }}</div>
+   </div>
+   <div>
+    <div class="muted"> </div>
+    <div class="text-strong">{{ '' if entry.is_balanced else '' }}</div>
+   </div>
+  </div>
+ </div>
+
+ {% if entry.closed_period %}
+ <div class="card mt-12">
+  <div class="muted">deadline Period</div>
+  <div class="text-strong">
+   {{ entry.closed_period.start_date }} ~ {{ entry.closed_period.end_date }}
+  </div>
+  <div class="muted mt-8">deadline Period  .</div>
+ </div>
+ {% endif %}
+
+ {% if entry.reversal_of_entry or entry.reversed_by_entry %}
+ <div class="card mt-12">
+  {% if entry.reversal_of_entry %}
+   <div class="muted">Original table</div>
+   <div class="text-strong">
+    <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=entry.reversal_of_entry.id) }}">
+     #{{ entry.reversal_of_entry.id }} · {{ entry.reversal_of_entry.entry_date }} · {{ entry.reversal_of_entry.memo or '-' }}
+    </a>
+   </div>
+  {% endif %}
+  {% if entry.reversed_by_entry %}
+   <div class="muted {% if entry.reversal_of_entry %}mt-12{% endif %}">items table</div>
+   <div class="text-strong">
+    <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=entry.reversed_by_entry.id) }}">
+     #{{ entry.reversed_by_entry.id }} · {{ entry.reversed_by_entry.entry_date }} · {{ entry.reversed_by_entry.memo or '-' }}
+    </a>
+   </div>
+  {% endif %}
+ </div>
+ {% endif %}
+
+ {% if entry.can_reverse %}
+ <div class="card mt-12">
+  <h3 class="mt-0">items</h3>
+  <form method="post" action="{{ url_for('business.accounting_journal_reverse', entry_id=entry.id) }}" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-3">
+    <label>items days</label>
+    <input type="date" name="reversal_date" value="{{ today_iso }}">
+   </div>
+   <div class="col-12 col-md-7">
+    <label> Notes</label>
+    <input type="text" name="reversal_memo" placeholder="items ">
+   </div>
+   <div class="col-12 col-md-2">
+    <button class="btn btn-outline-danger w-100" type="submit">items row</button>
+   </div>
+  </form>
+  <div class="muted mt-8">Delete  items Existing  .</div>
+ </div>
+ {% endif %}
+
+ <div class="card mt-12">
+  <div class="overflow-auto">
+   <table class="table">
+    <thead>
+     <tr>
+      <th>Account</th>
+      <th class="right"></th>
+      <th class="right"></th>
+      <th>Description</th>
+      <th>Currency</th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for line in lines %}
+     <tr>
+      <td>
+       <a class="text-decoration-none" href="{{ url_for('business.accounting_general_ledger', account_id=line.account_id) }}">
+        {{ line.account_code }} · {{ line.account_name }}
+       </a>
+      </td>
+      <td class="right">{{ line.debit|currency(line.currency or 'USD') }}</td>
+      <td class="right">{{ line.credit|currency(line.currency or 'USD') }}</td>
+      <td>{{ line.description or '-' }}</td>
+      <td>{{ line.currency or 'USD' }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="5" class="muted"> none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

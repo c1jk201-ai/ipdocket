@@ -1,0 +1,85 @@
+# Managed DB (PostgreSQL running outside Docker) deployment compose.
+# - Uses POSTGRES_* from .env, but rewrites host=host.docker.internal inside containers.
+# - Does not run a local Postgres container
+
+#
+# Reusable service fragments (YAML anchors)
+#
+
+x-ipm-image: &ipm_image
+  image: ip-docket-system:local
+  pull_policy: never
+  build:
+    context: .
+    args:
+      APP_UID: ${APP_UID:-1000}
+      APP_GID: ${APP_GID:-1000}
+
+x-ipm-volumes: &ipm_volumes
+  - ./data:/app/data
+  - ./logs:/app/logs
+
+x-ipm-env-file: &ipm_env_file
+  - path: .env
+    required: false
+
+# Linux compatibility: make host.docker.internal resolvable
+x-ipm-extra-hosts: &ipm_extra_hosts
+  - "host.docker.internal:host-gateway"
+
+x-ipm-common-env: &ipm_common_env
+  FLASK_ENV: "${FLASK_ENV:-production}"
+  FLASK_DEBUG: "${FLASK_DEBUG:-False}"
+  SECRET_KEY: "${SECRET_KEY:?SECRET_KEY is required}"
+  BASE_URL: "${BASE_URL:?BASE_URL is required}"
+  SCHEDULER_ENABLED: "${SCHEDULER_ENABLED:-0}"
+  DATABASE_URL: "postgresql://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@host.docker.internal:5432/${POSTGRES_DB:?POSTGRES_DB is required}"
+  RATELIMIT_STORAGE_URI: "${RATELIMIT_STORAGE_URI:?RATELIMIT_STORAGE_URI is required}"
+  UPLOAD_FOLDER: "/app/data/uploads"
+  CLIENT_ATTACHMENTS_DIR: "${CLIENT_ATTACHMENTS_DIR:-/app/data/uploads/clients}"
+
+services:
+  app:
+    <<: *ipm_image
+    init: true
+    restart: always
+    ports:
+      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-5000}:5000"
+    volumes: *ipm_volumes
+    env_file: *ipm_env_file
+    extra_hosts: *ipm_extra_hosts
+    environment: *ipm_common_env
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  scheduler:
+    <<: *ipm_image
+    init: true
+    restart: always
+    command: python run_scheduler.py
+    volumes: *ipm_volumes
+    env_file: *ipm_env_file
+    extra_hosts: *ipm_extra_hosts
+    environment:
+      <<: *ipm_common_env
+      SCHEDULER_ENABLED: "1"
+      SCHEDULER_RUN_ANYWAY: "1"
+      SCHEDULER_PROCESS_ROLE: "worker"
+
+  worker:
+    <<: *ipm_image
+    init: true
+    restart: always
+    command: python -m app.ops.worker --queues=deferred,annuity,calendar,email
+    volumes: *ipm_volumes
+    env_file: *ipm_env_file
+    extra_hosts: *ipm_extra_hosts
+    environment:
+      <<: *ipm_common_env
+      SCHEDULER_ENABLED: "0"
+      RUN_SCHEDULER: "0"
+      STARTUP_CHECKS_ENFORCE: "0"
+      FLASK_ENV: "${FLASK_ENV:-production}"

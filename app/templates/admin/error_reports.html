@@ -1,0 +1,145 @@
+{% extends "admin/layout.html" %}
+{% from "_entity_links.html" import case_detail, workflow_detail, invoice_view, worklog_owner %}
+
+{% block title %}Error Reports{% endblock %}
+
+{% block admin_content %}
+  <div class="mb-3">
+    <div class="small text-muted">Review recent errors by source, type, endpoint, status, and message text.</div>
+  </div>
+
+  <form method="get" class="row g-2 align-items-end mb-2">
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="window">Window (minutes)</label>
+      <input id="window" name="window" type="number" min="1" class="form-control form-control-sm" value="{{ window_minutes }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="limit">Summary Limit</label>
+      <input id="limit" name="limit" type="number" min="1" class="form-control form-control-sm" value="{{ summary_limit }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="recent">Recent Limit</label>
+      <input id="recent" name="recent" type="number" min="1" class="form-control form-control-sm" value="{{ recent_limit }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="source">Source</label>
+      <select id="source" name="source" class="form-select form-select-sm">
+        <option value="all" {% if source_filter == 'all' %}selected{% endif %}>all</option>
+        <option value="swallowed" {% if source_filter == 'swallowed' %}selected{% endif %}>swallowed</option>
+        <option value="logged" {% if source_filter == 'logged' %}selected{% endif %}>logged</option>
+        <option value="request" {% if source_filter == 'request' %}selected{% endif %}>request</option>
+        <option value="system" {% if source_filter == 'system' %}selected{% endif %}>system</option>
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="type">Error Type</label>
+      <input id="type" name="type" type="text" class="form-control form-control-sm" value="{{ type_filter or '' }}" placeholder="OperationalError">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="status">Status</label>
+      <input id="status" name="status" type="number" min="100" max="599" class="form-control form-control-sm" value="{{ status_filter if status_filter is not none else '' }}" placeholder="500">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small fw-semibold" for="q">Search</label>
+      <input id="q" name="q" type="text" class="form-control form-control-sm" value="{{ text_filter or '' }}" placeholder="message / endpoint">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-sm btn-primary" type="submit">Search</button>
+    </div>
+    <div class="col-auto text-muted small mb-1">
+      {{ window_count }} items
+      {% if window_total_count != window_count %}
+      ({{ window_total_count }} total)
+      {% endif %}
+    </div>
+  </form>
+  <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <span class="badge text-bg-secondary">all {{ source_counts['all'] or 0 }}</span>
+    <span class="badge text-bg-warning">swallowed {{ source_counts['swallowed'] or 0 }}</span>
+    <span class="badge text-bg-info">logged {{ source_counts['logged'] or 0 }}</span>
+    <span class="badge text-bg-primary">request {{ source_counts['request'] or 0 }}</span>
+    <span class="badge text-bg-dark">system {{ source_counts['system'] or 0 }}</span>
+  </div>
+  <form method="post" class="mb-3" action="{{ url_for('admin.error_reports_reset') }}" data-confirm="Reset all error report records?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-sm btn-outline-danger" type="submit">Reset All</button>
+  </form>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light fw-semibold">Error Summary</div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th style="width: 80px">Count</th>
+            <th style="width: 160px">Last Seen</th>
+            <th style="width: 100px">Source</th>
+            <th style="width: 180px">Type</th>
+            <th style="width: 220px">Endpoint</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row, source in summary %}
+          <tr>
+            <td class="fw-semibold">{{ row.count }}</td>
+            <td class="text-muted">{{ row.last_seen or "-" }}</td>
+            <td><span class="badge text-bg-light border">{{ source }}</span></td>
+            <td>{{ row.error_type or "-" }}</td>
+            <td class="text-muted">{{ row.endpoint or "-" }}</td>
+            <td>{{ row.message_prefix|truncate(180, True, '...') }}</td>
+          </tr>
+          {% endfor %}
+          {% if not summary %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No error summary records.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-light fw-semibold">Recent Errors</div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0">
+        <thead>
+          <tr>
+            <th style="width: 160px">Created</th>
+            <th style="width: 100px">Source</th>
+            <th style="width: 180px">Type</th>
+            <th>Message</th>
+            <th style="width: 180px">Endpoint</th>
+            <th style="width: 140px">Request ID</th>
+            <th style="width: 90px">User</th>
+            <th style="width: 120px">Matter</th>
+            <th style="width: 120px">Invoice</th>
+            <th style="width: 120px">Task</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for report, source in recent %}
+          <tr>
+            <td class="text-muted">{{ report.created_at|local_dt }}</td>
+            <td><span class="badge text-bg-light border">{{ source }}</span></td>
+            <td>{{ report.error_type or "-" }}</td>
+            <td>{{ report.message|truncate(160, True, '...') }}</td>
+            <td class="small text-muted">{{ report.endpoint or "-" }}</td>
+            <td class="small text-muted">{{ report.request_id or "-" }}</td>
+            <td class="small">{{ worklog_owner(report.user_id, label=report.user_id, filter='all', classes='text-decoration-none') }}</td>
+            <td class="small">{{ case_detail(report.matter_id, label=report.matter_id, classes='text-decoration-none') }}</td>
+            <td class="small">{{ invoice_view(report.invoice_id, label=report.invoice_id, classes='text-decoration-none') }}</td>
+            <td class="small">{{ workflow_detail(report.workflow_id, label=report.workflow_id, classes='text-decoration-none') }}</td>
+          </tr>
+          {% endfor %}
+          {% if not recent %}
+          <tr>
+            <td colspan="10" class="text-center text-muted py-4">No recent errors.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

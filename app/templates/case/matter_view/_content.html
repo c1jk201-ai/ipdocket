@@ -1,0 +1,843 @@
+{% from "case/_patent_center_links.html" import patent_center_application_link, patent_center_search_link %}
+<div class="case-content">
+  <div class="case-board-shell">
+    <div class="case-board-main">
+      <div class="case-main-stack">
+    <div id="sec-basic">
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title">Default </div>
+        <div class="case-section-actions case-primary-actions">
+          {% if can_edit_case %}
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleBlock('statusUpdateForm')">Close or abandon matter</button>
+            <a
+              class="btn btn-sm btn-outline-primary"
+              hx-boost="false"
+              data-full-navigation="1"
+              href="{{ url_for('case_work.edit_matter', matter_id=matter.matter_id) }}"
+            >Registry Edit</a>
+            <form
+              method="POST"
+              action="{{ url_for('case_work.copy_case', case_id=matter.matter_id) }}"
+              class="d-inline"
+              data-confirm="  Registry Item to  Matter CreateLegacy (Matching//Deadline/File/   .)"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="btn btn-sm btn-outline-secondary"> Matter </button>
+            </form>
+          {% endif %}
+          {% if can_delete_case %}
+            <button class="btn btn-sm btn-outline-danger" type="button" data-delete-matter="{{ matter.our_ref|e }}">Delete</button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if can_edit_case %}
+        <div id="statusUpdateForm" class="border rounded p-3 mb-3 bg-light" style="display:none;">
+          <form
+            method="POST"
+            action="{{ url_for('case_work.update_status', case_id=matter.matter_id) }}"
+            data-terminal-status-confirm="1"
+          >
+            <div class="small fw-semibold text-secondary mb-2">Matter Status Process</div>
+            <div class="d-flex flex-wrap gap-2 mb-3" data-terminal-status-presets="1">
+              <button type="button" class="btn btn-sm btn-outline-danger" data-terminal-status-preset="Abandoned">Matter Abandoned</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-terminal-status-preset="Withdrawn">Withdrawn</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-terminal-status-preset="Transferred">Transferred</button>
+              <button type="button" class="btn btn-sm btn-outline-dark" data-terminal-status-preset="Matter closed">Matter closed</button>
+            </div>
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3">
+                <label class="form-label small fw-bold"> Matter Status</label>
+                <input
+                  type="text"
+                  name="new_status"
+                  class="form-control form-control-sm"
+                  list="matter-status-options"
+                  placeholder=": Registration, Abandoned, Withdrawn, Transferred, Matter closed"
+                  required
+                />
+                <datalist id="matter-status-options">
+                  <option value="Registration"></option>
+                  <option value="RegistrationDone"></option>
+                  <option value="Abandoned"></option>
+                  <option value="Withdrawn"></option>
+                  <option value="Transferred"></option>
+                  <option value="Matter closed"></option>
+                  <option value="Term expired"></option>
+                </datalist>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold"></label>
+                <input type="date" name="status_date" class="form-control form-control-sm" data-terminal-status-date="1" required />
+              </div>
+               <div class="col-md-4">
+                <label class="form-label small fw-bold">Process Reason</label>
+                <input type="text" name="status_note" class="form-control form-control-sm" placeholder="Example: abandoned at applicant request" />
+              </div>
+              <div class="col-md-2">
+                 <button type="submit" class="btn btn-sm btn-primary w-100">Status Save</button>
+              </div>
+            </div>
+            <div class="small text-muted mt-2">
+              Select <strong>Matter Abandoned</strong>, enter the reason, and save.
+              Open tasks and deadlines will be marked abandoned automatically.
+            </div>
+          </form>
+        </div>
+      {% endif %}
+
+      <table class="table table-bordered table-sm small align-middle mb-3 case-basic-table" style="table-layout: fixed">
+        <colgroup>
+          <col style="width: 14%" />
+          <col style="width: 36%" />
+          <col style="width: 14%" />
+          <col style="width: 36%" />
+        </colgroup>
+        <tbody>
+          <tr>
+            <th class="text-center">Our Ref.</th>
+            <td class="fw-bold text-primary">
+              <span class="inline-edit" data-inline-field="our_ref" data-inline-type="text" data-value="{{ matter.our_ref|e }}">
+                <span class="inline-display" id="caseOurRefDisplay">{{ matter.our_ref }}</span>
+                <button type="button" class="app-copy-btn" data-copy-text="{{ matter.our_ref|e }}" title=""><i class="bi bi-clipboard"></i></button>
+                {% if can_edit_case %}
+                  <button type="button" class="inline-edit-btn" title="">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <span class="inline-editor"></span>
+                {% endif %}
+              </span>
+            </td>
+            <th class="text-center">{{ 'ForeignRepresentative' if (is_incoming_patent or is_incoming_design or is_incoming_trademark) else 'Client' }}</th>
+
+            {% set _client_name = (_custom_data.get('client_name', '') if _custom_data else '') %}
+            {% set _client_id = (_custom_data.get('client_id', '') if _custom_data else '') %}
+            {% set _client_label = _client_name or ((overview.clients if overview else '') or '') %}
+            <td>
+              <span
+                class="inline-edit"
+                data-inline-field="client_id"
+                data-inline-type="client"
+                data-value="{{ _client_id|int if _client_id else '' }}"
+                data-name="{{ _client_label }}"
+              >
+                <span class="inline-display" id="inlineClientDisplay" data-client-url-base="{{ url_for('customers.client_view', client_id=0) }}">
+                  {% if (_client_id|int) > 0 and _client_label %}
+                    <a href="{{ url_for('customers.client_view', client_id=_client_id|int) }}">{{ _client_label }}</a>
+                    <a href="{{ url_for('customers.clients', q=_client_label) }}" class="link-muted ms-1" title="Search CRM"><i class="bi bi-search"></i></a>
+                    <a href="{{ url_for('customers.client_edit', client_id=_client_id|int) }}" class="link-muted ms-1" title="Client Edit"><i class="bi bi-pencil"></i></a>
+                  {% elif _client_label %}
+                    <a href="{{ url_for('customers.clients', q=_client_label) }}" class="text-decoration-none">{{ _client_label }}</a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </span>
+                {% if can_edit_case %}
+                  <button type="button" class="inline-edit-btn" title="">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <span class="inline-editor"></span>
+                {% endif %}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-center">Engagement date</th>
+            <td>{{ matter.retained_at or '' }}</td>
+            <th class="text-center">Entry date</th>
+            <td>{{ matter.entered_at or '' }}</td>
+          </tr>
+          <tr>
+            <th class="text-center">Filing date</th>
+            <td>{{ (_custom_data.get('application_date', '') or '') }}</td>
+            <th class="text-center">Application No.</th>
+            {% set _app_no_value = (app_no or '') %}
+            <td>
+              {{ _app_no_value }}
+              {% if _app_no_value %}
+                <button type="button" class="app-copy-btn" data-copy-text="{{ _app_no_value|e }}" title="Application No. "><i class="bi bi-clipboard"></i></button>
+              {% endif %}
+              {{ patent_center_application_link(_app_no_value, 'Open Patent Center file history') }}
+            </td>
+          </tr>
+          <tr>
+            <th class="text-center">Registration date</th>
+            <td>{{ (_custom_data.get('registration_date', '') or '') }}</td>
+            <th class="text-center">Registration No.</th>
+            {% set _reg_no_value = (reg_no or '') %}
+            <td>
+              {{ _reg_no_value }}
+              {% if _reg_no_value %}
+                <button type="button" class="app-copy-btn" data-copy-text="{{ _reg_no_value|e }}" title="Registration No. "><i class="bi bi-clipboard"></i></button>
+              {% endif %}
+              {{ patent_center_search_link(_reg_no_value, 'Search Patent Center by patent number') }}
+            </td>
+          </tr>
+          <tr>
+            <th class="text-center">Publication No.</th>
+            <td>{{ pub_no or '' }}</td>
+            <th class="text-center">Your Ref</th>
+            <td>
+              <span class="inline-edit" data-inline-field="your_ref" data-inline-type="text" data-value="{{ matter.your_ref|e }}">
+                <span class="inline-display" id="inlineYourRefDisplay">{{ matter.your_ref or '' }}</span>
+                {% if can_edit_case %}
+                  <button type="button" class="inline-edit-btn" title="">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <span class="inline-editor"></span>
+                {% endif %}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-center">Applicant name</th>
+            <td>
+              {% set _applicant_names = (applicant_names or []) %}
+              {% set _applicant_client_ids = (applicant_client_ids or {}) %}
+              {% if _applicant_names %}
+                {% for _nm in _applicant_names %}
+                  {% set _cid = (_applicant_client_ids.get(_nm) if _applicant_client_ids else None) %}
+                  {% if _cid %}
+                    <a href="{{ url_for('customers.client_view', client_id=_cid) }}" class="text-decoration-none">{{ _nm }}</a>
+                  {% else %}
+                    <a href="{{ url_for('customers.clients', q=_nm) }}" class="text-decoration-none">{{ _nm }}</a>
+                  {% endif %}
+                  {% if not loop.last %}<span class="text-muted">; </span>{% endif %}
+                {% endfor %}
+              {% else %}
+                {{ (overview.applicants if overview else '') or '' }}
+              {% endif %}
+            </td>
+            <th class="text-center">Responsible attorney</th>
+            <td>
+              <span class="inline-edit" data-inline-field="assignee_id" data-inline-type="select" data-value="{{ current_assignee_id or '' }}">
+                {% set _attorney_label = (_custom_data.get('attorney', '') if _custom_data else '') %}
+                <span class="inline-display" id="inlineAssigneeDisplay" data-worklog-url="{{ url_for('worklog.index') }}">
+                  {% if current_assignee_id %}
+                    <a href="{{ url_for('worklog.index', owner_role='attorney', owner=current_assignee_id, filter='todo') }}">{{ _attorney_label or '-' }}</a>
+                  {% else %}
+                    {{ _attorney_label or '-' }}
+                  {% endif %}
+                </span>
+                {% if can_edit_case %}
+                  <button type="button" class="inline-edit-btn" title="">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <span class="inline-editor"></span>
+                {% endif %}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <th class="text-center">Manager</th>
+            <td>{{ (_custom_data.get('manager', '') if _custom_data else '') or '-' }}</td>
+            <th class="text-center">Handler</th>
+            <td>{{ (_custom_data.get('handler', '') if _custom_data else '') or '-' }}</td>
+          </tr>
+          <tr>
+            <th class="text-center">Proposed title</th>
+            <td colspan="3" id="caseProposalTitle">{{ (_custom_data.get('proposal_title', '') if _custom_data else '') or (matter.right_name or '') or (overview.right_name if overview else '') or '' }}</td>
+          </tr>
+          <tr>
+            <th class="text-center">Internal status</th>
+            <td>
+              <span class="inline-edit" data-inline-field="status" data-inline-type="text" data-value="{{ matter.inhouse_status|e }}">
+                <span class="inline-display" id="inlineStatusDisplay">{{ matter.inhouse_status or '' }}</span>
+                {% if can_edit_case %}
+                  <button type="button" class="inline-edit-btn" title="">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <span class="inline-editor"></span>
+                {% endif %}
+              </span>
+            </td>
+            <th class="text-center">System status</th>
+            <td>
+              {% set _red = (matter.status_red or '') %}
+              {% set _red_dt = (matter.status_red_related_date or '') %}
+              {% set _blue = (matter.status_blue or '') %}
+              {% if auto_status is defined and auto_status %}
+                {% set _red = (auto_status.display_red or '') %}
+                {% set _red_dt = '' %}
+                {% set _blue = (auto_status.display_blue or '') %}
+              {% endif %}
+              <div class="d-flex flex-column gap-1 lh-sm">
+              {% if _red or _red_dt %}
+                <div class="fw-bold text-danger">
+                  {{ (_red or '')|format_status }} {% if _red_dt %}<br><span class="small">[{{ _red_dt|us_date }}]</span>{% endif %}
+                </div>
+                {% endif %}
+                {% if _blue %}
+                <div class="fw-bold text-primary">
+                  {{ _blue }}
+                </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+      {% if can_edit_case %}
+        <select id="assigneeOptionsTemplate" class="d-none">
+          <option value="">-</option>
+          {% for u in (staff_users_all or []) %}
+            <option value="{{ u.id }}">{{ u.username }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
+
+      {% if identifiers %}
+      <div class="mb-2 fw-bold small">Identifiers</div>
+      <div class="d-flex flex-wrap gap-2">
+        {% set key_map = {
+            'APP_NO': 'Application No.',
+            'application_no': 'Application No.',
+            'app_no': 'Application No.',
+            'Application No.': 'Application No.',
+            'REG_NO': 'Registration No.',
+            'registration_no': 'Registration No.',
+            'reg_no': 'Registration No.',
+            'Registration No.': 'Registration No.',
+            'PUB_NO': 'Publication No.',
+            'publication_no': 'Publication No.',
+            'pub_no': 'Publication No.',
+            'Publication No.': 'Publication No.'
+        } %}
+        {% set display_identifiers = {} %}
+        {% for k, vals in identifiers.items() %}
+            {% set display_key = key_map.get(k, k) %}
+            {% if display_key not in display_identifiers %}
+                {% set _ = display_identifiers.update({display_key: []}) %}
+            {% endif %}
+            {% for v in vals %}
+                {% if v not in display_identifiers[display_key] %}
+                    {% set _ = display_identifiers[display_key].append(v) %}
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+
+        {% for k, vals in display_identifiers.items() %}
+          <span class="badge bg-light text-dark border">{{ k }}: {{ vals|join(', ') }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    {% if is_domestic_patent or is_domestic_design or is_domestic_trademark or is_incoming_patent or is_incoming_design or is_incoming_trademark or is_outgoing_patent or is_outgoing_design or is_outgoing_trademark or is_pct or is_litigation or is_misc %}
+    {% set _registry_fields = (dom_patent_fields if is_domestic_patent else (dom_design_fields if is_domestic_design else (dom_trademark_fields if is_domestic_trademark else (inc_patent_fields if is_incoming_patent else (inc_design_fields if is_incoming_design else (inc_trademark_fields if is_incoming_trademark else (out_patent_fields if is_outgoing_patent else (out_design_fields if is_outgoing_design else (out_trademark_fields if is_outgoing_trademark else (pct_fields if is_pct else (litigation_fields if is_litigation else misc_fields))))))))))) %}
+    {% set _registry_data = (dom_patent if is_domestic_patent else (dom_design if is_domestic_design else (dom_trademark if is_domestic_trademark else (inc_patent if is_incoming_patent else (inc_design if is_incoming_design else (inc_trademark if is_incoming_trademark else (out_patent if is_outgoing_patent else (out_design if is_outgoing_design else (out_trademark if is_outgoing_trademark else (pct if is_pct else (litigation if is_litigation else misc))))))))))) %}
+    {% set _registry_sections = [('Registry', _registry_fields)] %}
+    {% if is_domestic_patent %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('Invention/Title', (_registry_fields or [])[8:10]),
+        ('Filing/Publication', (_registry_fields or [])[10:14]),
+        ('Billing//', (_registry_fields or [])[14:17]),
+        ('Priority/', (_registry_fields or [])[17:23]),
+        ('Examination/Publication', (_registry_fields or [])[23:30]),
+        ('Registration/', (_registry_fields or [])[30:34]),
+        ('//', (_registry_fields or [])[34:42]),
+        ('Other/Closed', (_registry_fields or [])[42:]),
+      ] %}
+    {% elif is_domestic_design %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('Filing/Publication/Notice', (_registry_fields or [])[8:15]),
+        ('DefaultDesign/', (_registry_fields or [])[15:18]),
+        ('Applicant/Title', (_registry_fields or [])[18:21]),
+        ('Priority/', (_registry_fields or [])[21:26]),
+        ('Registration/', (_registry_fields or [])[26:30]),
+        ('//', (_registry_fields or [])[30:36]),
+        ('Foreign/Abandoned', (_registry_fields or [])[36:38]),
+        ('Other/Closed', (_registry_fields or [])[38:]),
+      ] %}
+    {% elif is_domestic_trademark %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('Filing/Publication/Notice', (_registry_fields or [])[8:17]),
+        ('Applicant/Trademark', (_registry_fields or [])[17:21]),
+        ('Priority/Parent application', (_registry_fields or [])[21:25]),
+        ('Registration/', (_registry_fields or [])[25:30]),
+        ('///Foreign', (_registry_fields or [])[30:38]),
+        ('Abandoned/Other/Closed', (_registry_fields or [])[38:]),
+      ] %}
+    {% elif is_incoming_design %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('EP/Filing/Publication', (_registry_fields or [])[8:18]),
+        ('/Applicant/Title', (_registry_fields or [])[18:22]),
+        ('Priority/', (_registry_fields or [])[22:27]),
+        ('Billing/Registration', (_registry_fields or [])[27:32]),
+        ('//', (_registry_fields or [])[32:38]),
+        ('Abandoned/Other', (_registry_fields or [])[38:40]),
+        ('Done/', (_registry_fields or [])[40:]),
+      ] %}
+    {% elif is_incoming_trademark %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('Filing/Publication', (_registry_fields or [])[8:17]),
+        ('Applicant/Trademark', (_registry_fields or [])[17:21]),
+        ('Priority/Parent application', (_registry_fields or [])[21:25]),
+        ('/CTM', (_registry_fields or [])[25:27]),
+        ('Registration/', (_registry_fields or [])[27:32]),
+        ('//', (_registry_fields or [])[32:37]),
+        ('Abandoned/', (_registry_fields or [])[37:]),
+      ] %}
+    {% elif is_incoming_patent %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:6]),
+        ('PCT/EP', (_registry_fields or [])[6:8]),
+        ('Filing/Publication', (_registry_fields or [])[8:18]),
+        ('Applicant/Title', (_registry_fields or [])[18:21]),
+        ('Priority/', (_registry_fields or [])[21:26]),
+        ('Billing//', (_registry_fields or [])[26:29]),
+        ('Registration/', (_registry_fields or [])[29:33]),
+        ('//', (_registry_fields or [])[33:41]),
+        ('Examination/Other', (_registry_fields or [])[41:45]),
+        ('Done/', (_registry_fields or [])[45:]),
+      ] %}
+    {% elif is_outgoing_patent %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:8]),
+        ('PCT/EP', (_registry_fields or [])[8:10]),
+        ('Filing/Publication/Examination', (_registry_fields or [])[10:16]),
+        ('Applicant/Title', (_registry_fields or [])[16:20]),
+        ('Priority/', (_registry_fields or [])[20:25]),
+        ('Billing//', (_registry_fields or [])[25:28]),
+        ('Registration/', (_registry_fields or [])[28:34]),
+        ('//', (_registry_fields or [])[34:40]),
+        ('Other/Done/', (_registry_fields or [])[40:]),
+      ] %}
+    {% elif is_outgoing_design %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:9]),
+        ('Image/Filing', (_registry_fields or [])[9:16]),
+        ('Applicant/Title', (_registry_fields or [])[16:20]),
+        ('Priority/', (_registry_fields or [])[20:25]),
+        ('Registration/', (_registry_fields or [])[25:29]),
+        ('//', (_registry_fields or [])[29:35]),
+        ('Abandoned/Other/Done', (_registry_fields or [])[35:]),
+      ] %}
+    {% elif is_outgoing_trademark %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:9]),
+        ('Image/Filing', (_registry_fields or [])[9:17]),
+        ('Applicant/Trademark', (_registry_fields or [])[17:21]),
+        ('Priority/Parent application', (_registry_fields or [])[21:26]),
+        ('Registration/', (_registry_fields or [])[26:31]),
+        ('//', (_registry_fields or [])[31:38]),
+        ('Abandoned/Other/Done/', (_registry_fields or [])[38:]),
+      ] %}
+    {% elif is_pct %}
+      {% set _registry_sections = [
+        ('Default/Responsible', (_registry_fields or [])[0:6]),
+        ('Filing/Publication/Preliminary examination', (_registry_fields or [])[6:10]),
+        ('Applicant/Title', (_registry_fields or [])[10:13]),
+        ('Priority//', (_registry_fields or [])[13:17]),
+        ('Domestic/', (_registry_fields or [])[17:20]),
+        ('Abandoned/Other/Closed', (_registry_fields or [])[20:]),
+      ] %}
+    {% elif is_litigation %}
+      {% set _registry_sections = [
+        ('Default/Client', (_registry_fields or [])[0:6]),
+        ('Responsible/', (_registry_fields or [])[6:10]),
+        ('/', (_registry_fields or [])[10:17]),
+        ('/Closed', (_registry_fields or [])[17:]),
+      ] %}
+    {% elif is_misc %}
+      {% set _registry_sections = [
+        ('Other', _registry_fields),
+      ] %}
+    {% endif %}
+    {% set _registry_sections = _registry_fields|case_field_sections(_registry_sections) %}
+    <div id="sec-domestic-patent">
+      <div id="ledger"></div>
+	      <div class="legacy-section-header mb-2">
+	        <div class="legacy-title">Registry</div>
+	        <div class="case-section-actions">
+	          <button
+	            type="button"
+	            class="btn btn-sm btn-outline-secondary"
+	            id="toggleLedgerHiddenBtn"
+	            aria-pressed="false"
+	            title="Hidden fields(Registry details) Display/."
+	          >Details</button>
+	        </div>
+	      </div>
+		      {% for section in _registry_sections %}
+	        {% set _pairs = section[1] or [] %}
+	        {% set _section_state = namespace(has_value=False) %}
+	        {% for pair in _pairs %}
+	          {% set left = pair[0] %}
+	          {% set right = pair[1] %}
+	          {% if (_registry_data.get(left[1], '') or _registry_data.get(right[1], '')) %}
+	            {% set _section_state.has_value = True %}
+	          {% endif %}
+	        {% endfor %}
+	        {% if _registry_sections|length > 1 %}
+		        <div class="d-flex justify-content-between align-items-center mt-3 mb-2{% if not _section_state.has_value %} ledger-empty-section{% endif %}">
+		          <div class="fw-bold">{{ section[0] }}</div>
+		          <div></div>
+		        </div>
+	        {% endif %}
+	        <table class="table table-bordered table-sm small align-middle mb-3 registry-table {% if not _section_state.has_value %}dimmed ledger-empty-section{% endif %}" style="table-layout: fixed">
+	          <colgroup>
+	            <col style="width: 14%; background-color: #f8f9fa" />
+	            <col style="width: 36%" />
+	            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+          </colgroup>
+          <tbody>
+            {% for pair in _pairs %}
+              {% set left = pair[0] %}
+              {% set right = pair[1] %}
+	              {% set v_left = _registry_data.get(left[1], '') %}
+	              {% set v_right = _registry_data.get(right[1], '') %}
+	              {% set left_blank = left[1] == '__blank__' %}
+	              {% set right_blank = right[1] == '__blank__' %}
+	              {# NOTE: keep image field visible even when empty (dropzone UX). #}
+	              {% set left_empty = (left[1] != 'image') and ((v_left is none) or ((v_left|string)|trim == '')) %}
+	              {% set right_empty = (right[1] != 'image') and ((v_right is none) or ((v_right|string)|trim == '')) %}
+	              {# Hide configured ledger-only fields and blank/empty values in compact mode. #}
+	              {% set left_hidden = (left[1] in (ledger_hidden_keys or [])) or left_blank or left_empty %}
+	              {% set right_hidden = (right[1] in (ledger_hidden_keys or [])) or right_blank or right_empty %}
+	              {% set left_hide = left_hidden %}
+	              {% set right_hide = right_hidden %}
+	              <tr>
+	                <th class="text-center{% if left_hide %} ledger-hidden{% endif %}">{{ left[0] }}</th>
+	                <td{% if left_hide %} class="ledger-hidden"{% endif %}>
+                  {% if left[1] == 'image' %}
+                    {% set _img_asset = registry_image_asset if registry_image_asset and (registry_image_asset.file_asset_id or '') == v_left else None %}
+                    {% set _img_preview = _img_asset and url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=_img_asset.file_asset_id, inline=1) %}
+                    {% set _img_download = _img_asset and url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=_img_asset.file_asset_id) %}
+                    <div
+                      class="registry-image-dropzone border rounded p-2 text-center small"
+                      data-registry-image-dropzone="1"
+                      data-current-id="{{ v_left }}"
+                      data-current-url="{{ _img_preview or '' }}"
+                      data-current-download="{{ _img_download or '' }}"
+                      data-current-name="{{ (_img_asset.original_name if _img_asset else v_left) }}"
+                    >
+                      <input type="file" name="image_file" accept="image/*" class="d-none" data-registry-image-file="1" />
+                      <div class="registry-image-preview mb-2" data-registry-image-preview="1">
+                        {% if _img_asset %}
+                          {% set _mime = (_img_asset.mime_type or '') %}
+                          <div class="d-flex flex-column gap-1">
+                            <a href="{{ _img_download }}">{{ _img_asset.original_name or v_left }}</a>
+                            {% if _mime.startswith('image/') %}
+                              <img class="img-fluid rounded border" style="max-height: 220px;" src="{{ _img_preview }}" alt="/Image" loading="lazy" decoding="async" />
+                            {% endif %}
+                          </div>
+                        {% elif v_left %}
+                          <div class="text-muted small">Current value: {{ v_left }}</div>
+                        {% else %}
+                          <div class="text-muted small">Drag and drop here or click</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex justify-content-center gap-2 edit-only">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-registry-image-select="1">Select file</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-registry-image-clear="1">Delete</button>
+                      </div>
+                    </div>
+                  {% elif left[1] in ('application_no', 'app_no', 'registration_no', 'reg_no') %}
+                    {{ v_left }}
+                    {% if left[1] in ('application_no', 'app_no') %}
+                      {{ patent_center_application_link(v_left, 'Open Patent Center file history') }}
+                    {% else %}
+                      {{ patent_center_search_link(v_left, 'Search Patent Center by patent number') }}
+                    {% endif %}
+                  {% elif left[2] == 'date' %}
+                    {{ (v_left or '')|us_date }}
+                  {% else %}
+                    {{ v_left }}
+                  {% endif %}
+                </td>
+                <th class="text-center{% if right_hide %} ledger-hidden{% endif %}">{{ right[0] }}</th>
+                <td{% if right_hide %} class="ledger-hidden"{% endif %}>
+                  {% if right[1] == 'image' %}
+                    {% set _img_asset = registry_image_asset if registry_image_asset and (registry_image_asset.file_asset_id or '') == v_right else None %}
+                    {% set _img_preview = _img_asset and url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=_img_asset.file_asset_id, inline=1) %}
+                    {% set _img_download = _img_asset and url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=_img_asset.file_asset_id) %}
+                    <div
+                      class="registry-image-dropzone border rounded p-2 text-center small"
+                      data-registry-image-dropzone="1"
+                      data-current-id="{{ v_right }}"
+                      data-current-url="{{ _img_preview or '' }}"
+                      data-current-download="{{ _img_download or '' }}"
+                      data-current-name="{{ (_img_asset.original_name if _img_asset else v_right) }}"
+                    >
+                      <input type="file" name="image_file" accept="image/*" class="d-none" data-registry-image-file="1" />
+                      <div class="registry-image-preview mb-2" data-registry-image-preview="1">
+                        {% if _img_asset %}
+                          {% set _mime = (_img_asset.mime_type or '') %}
+                          <div class="d-flex flex-column gap-1">
+                            <a href="{{ _img_download }}">{{ _img_asset.original_name or v_right }}</a>
+                            {% if _mime.startswith('image/') %}
+                              <img class="img-fluid rounded border" style="max-height: 220px;" src="{{ _img_preview }}" alt="/Image" loading="lazy" decoding="async" />
+                            {% endif %}
+                          </div>
+                        {% elif v_right %}
+                          <div class="text-muted small">Current value: {{ v_right }}</div>
+                        {% else %}
+                          <div class="text-muted small">Drag and drop here or click</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex justify-content-center gap-2 edit-only">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-registry-image-select="1">Select file</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-registry-image-clear="1">Delete</button>
+                      </div>
+                    </div>
+                  {% elif right[1] in ('application_no', 'app_no', 'registration_no', 'reg_no') %}
+                    {{ v_right }}
+                    {% if right[1] in ('application_no', 'app_no') %}
+                      {{ patent_center_application_link(v_right, 'Open Patent Center file history') }}
+                    {% else %}
+                      {{ patent_center_search_link(v_right, 'Search Patent Center by patent number') }}
+                    {% endif %}
+                  {% elif right[2] == 'date' %}
+                    {{ (v_right or '')|us_date }}
+                  {% else %}
+                    {{ v_right }}
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+      </div>
+
+      <section class="case-shell-block case-shell-block--ops">
+        <div id="bottom-panel"></div>
+      </section>
+    </div>
+  </div>
+
+    {% set _family_rows = related_family_rows or [] %}
+    {% set _current_status_red = (auto_status.display_red if auto_status else '') or matter.status_red or '' %}
+    {% set _current_status_blue = (auto_status.display_blue if auto_status else '') or matter.status_blue or '' %}
+    <div id="sec-family" class="top-panel">
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title"><i class="bi bi-diagram-3"></i> Related applications (Family)</div>
+        {% if can_edit_case %}
+          <div class="case-section-action-host">
+            <a
+              class="btn btn-sm btn-primary"
+              href="{{ url_for('case_work.select_matter_create', family_link_target_id=matter.matter_id) }}"
+              title="Create related application"
+            >
+              <i class="bi bi-plus-lg"></i> Create related application
+            </a>
+            <form
+              method="post"
+              action="{{ url_for('case_work.family_link', case_id=matter.matter_id) }}"
+              class="family-link-form"
+            >
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <input
+                class="form-control form-control-sm"
+                name="target_ref"
+                placeholder="Link Our Ref"
+                autocomplete="off"
+              />
+              <button type="submit" class="btn btn-sm btn-outline-primary" title="Family Link">
+                <i class="bi bi-link-45deg"></i> Family Link
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+      {% set _related_app_suggestion = related_application_suggestion or pct_related_application_suggestion %}
+      {% if can_edit_case and _related_app_suggestion %}
+        {% set _rel = _related_app_suggestion %}
+        {% set _rel_source = _rel.source or {} %}
+        <div class="alert alert-warning py-2 px-3 small d-flex flex-wrap align-items-center gap-2 mb-3">
+          <i class="bi bi-info-circle" aria-hidden="true"></i>
+          <span class="fw-semibold">Related application information available</span>
+          <span class="text-muted">
+            {{ _rel_source.our_ref or 'Related applications' }}
+            {% if _rel_source.application_date %} Filing date {{ (_rel_source.application_date or '')|us_date }}{% endif %}  Confirm.
+            {{ _rel.basis_label or 'reference date' }} {{ (_rel.basis_date or '')|us_date }} to empty {{ _rel.target_label or 'Registry' }}     exists.
+          </span>
+          <div class="ms-auto d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-dark" data-bs-toggle="modal" data-bs-target="#relatedApplicationModal">
+              <i class="bi bi-eye"></i> Confirm
+            </button>
+            <form method="post" action="{{ url_for('case_work.related_application_apply', case_id=matter.matter_id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+              <button type="submit" class="btn btn-sm btn-primary">
+                <i class="bi bi-check2-circle"></i> Apply related application information
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+      <div class="family-network" aria-label="Related applications  ">
+        <div class="family-network__source">
+          <div class="family-network__node family-network__node--current" aria-current="true">
+            <div class="family-network__node-top">
+              <span class="family-network__badge family-network__badge--current">Current Matter</span>
+              <span class="family-network__count">{{ _family_rows|length }} Link</span>
+            </div>
+            <a class="family-network__ref" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id, _anchor='sec-family') }}">
+              {{ matter.our_ref or 'REF None' }}
+            </a>
+            <div class="family-network__title">{{ case_title or matter.right_name or 'Title None' }}</div>
+            {% if _current_status_red or _current_status_blue %}
+              <div class="family-network__status">
+                {% if _current_status_red %}
+                  <span class="family-network__status-red">{{ _current_status_red|format_status }}</span>
+                {% endif %}
+                {% if _current_status_blue %}
+                  <span class="family-network__status-blue">{{ _current_status_blue }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+          {% if family_keys %}
+            <div class="family-network__keys" aria-label="Family Key">
+              {% for key in family_keys %}
+                <span class="family-network__key">{{ key }}</span>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="family-network__links">
+          {% for r in _family_rows %}
+            {% set _relation_label = r.relation_label or '' %}
+            {% set _is_explicit_family = 'Family' in _relation_label %}
+            <a
+              class="family-network__node family-network__node--related{% if _is_explicit_family %} is-explicit{% else %} is-auto{% endif %}"
+              href="{{ url_for('case_work.case_detail', case_id=r.matter_id, _anchor='sec-family') }}"
+              title="{{ r.our_ref or ' Matter' }} Open"
+            >
+              <span class="family-network__node-top">
+                <span class="family-network__badge family-network__relation">{{ _relation_label }}</span>
+                {% if r.application_date %}
+                  <span class="family-network__date">{{ (r.application_date or '')|us_date }}</span>
+                {% endif %}
+              </span>
+              <span class="family-network__ref">{{ r.our_ref or 'REF None' }}</span>
+              <span class="family-network__title">{{ r.title or 'Title None' }}</span>
+              <span class="family-network__meta">
+                {% if r.application_no %}<span>Filing {{ r.application_no }}</span>{% endif %}
+                {% if r.registration_no %}<span>Registration {{ r.registration_no }}</span>{% endif %}
+                {% if r.origin_application_no %}<span>Parent application {{ r.origin_application_no }}</span>{% endif %}
+              </span>
+              {% if r.auto_status_red or r.auto_status_blue %}
+                <span class="family-network__status">
+                  {% if r.auto_status_red %}
+                    <span class="family-network__status-red">{{ (r.auto_status_red or '')|format_status }}</span>
+                  {% endif %}
+                  {% if r.auto_status_blue %}
+                    <span class="family-network__status-blue">{{ r.auto_status_blue }}</span>
+                  {% endif %}
+                </span>
+              {% endif %}
+            </a>
+          {% else %}
+            <div class="family-network__empty">
+              <i class="bi bi-diagram-2" aria-hidden="true"></i>
+              <span>Link No related application data.</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="legacy-grid-wrap">
+        <table class="legacy-grid small">
+          <thead>
+            <tr>
+              <th style="width: 200px;">TaskType</th>
+              <th style="width: 140px;">Our Ref.</th>
+              <th style="width: 160px;">System status</th>
+              <th style="width: 120px;">Filing date</th>
+              <th style="width: 170px;">Application No.</th>
+              <th style="width: 170px;">Parent application No.</th>
+              <th style="width: 170px;">Registration No.</th>
+              <th>Title</th>
+              {% if can_edit_case %}
+              <th style="width: 120px;"></th>
+              {% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in _family_rows %}
+              <tr class="legacy-row-hover">
+                <td align="center">
+                  {{ r.work_label or '' }}
+                </td>
+                <td align="center">
+                  <a href="{{ url_for('case_work.case_detail', case_id=r.matter_id) }}">{{ r.our_ref or '' }}</a>
+                </td>
+                <td align="center">
+                  <div class="d-flex flex-column gap-1 lh-sm">
+                    {% if r.auto_status_red %}
+                      <div class="fw-bold text-danger">{{ (r.auto_status_red or '')|format_status }}</div>
+                    {% endif %}
+                    {% if r.auto_status_blue %}
+                      <div class="fw-bold text-primary">{{ r.auto_status_blue }}</div>
+                    {% endif %}
+                  </div>
+                </td>
+                <td align="center">{{ (r.application_date or '')|us_date }}</td>
+                {% set _fam_app_no = (r.application_no or '') %}
+                <td align="center">
+                  {{ _fam_app_no }}
+                  {{ patent_center_application_link(_fam_app_no, 'Open Patent Center file history') }}
+                </td>
+                <td align="center">{{ r.origin_application_no or '' }}</td>
+                {% set _fam_reg_no = (r.registration_no or '') %}
+                <td align="center">
+                  {{ _fam_reg_no }}
+                  {{ patent_center_search_link(_fam_reg_no, 'Search Patent Center by patent number') }}
+                </td>
+                <td style="text-align:left;">{{ r.title or '' }}</td>
+                {% if can_edit_case %}
+                  {% set _is_manual_family = 'Family' in (r.relation_label or '') %}
+                  {% set _disconnect_confirm = ' Family Link Clear ? ' if _is_manual_family else ' AutoLink Item ?' %}
+                  {% set _disconnect_label = 'Link Clear' if _is_manual_family else 'Auto ' %}
+                  <td align="center">
+                    <form
+                      method="post"
+                      action="{{ url_for('case_work.family_disconnect', case_id=matter.matter_id) }}"
+                      onsubmit="return confirm('{{ _disconnect_confirm }}');"
+                    >
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <input type="hidden" name="target_matter_id" value="{{ r.matter_id or '' }}" />
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="{{ _disconnect_label }}">
+                        <i class="bi bi-x-circle"></i> {{ _disconnect_label }}
+                      </button>
+                    </form>
+                  </td>
+                {% endif %}
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="{{ 9 if can_edit_case else 8 }}" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-diagram-2"></i><span>No related application data.</span></div></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div
+      id="sec-files"
+      class="top-panel"
+      style="min-height: 500px; padding-bottom: 100px;"
+      hx-get="{{ url_for('case_work.case_detail_section', case_id=matter.matter_id, section='files', fm_folder_id=(fm_folder_id or None), fm_page=(fm_page or 1), fm_per_page=(fm_per_page or 50)) }}"
+      hx-trigger="revealed once, case-panel-show once"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <div class="d-flex align-items-center gap-2 text-muted small py-4">
+        <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></span>
+        <span> Section Loading...</span>
+      </div>
+    </div>
+    </div>

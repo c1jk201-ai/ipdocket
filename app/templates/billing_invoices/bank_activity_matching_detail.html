@@ -1,0 +1,1519 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+
+<div
+ id="app-page-meta"
+ class="d-none"
+ data-type="bank_activity_match_invoice"
+ data-id="{{ inv.id }}"
+ data-title=" Matching - {{ inv.number }}"
+ data-subtitle="{{ inv.client_name }}"
+ data-url="{{ request.path }}"
+></div>
+
+<div class="page-header gap-2">
+ <h2 class="mb-0"> Matching - {{ inv.number }}</h2>
+ <div class="page-actions">
+  {% if inv.status != 'paid' %}
+  <form
+   method="post"
+   action="{{ url_for('billing_invoices.invoices.force_paid', invoice_id=inv.id) }}"
+   class="d-inline" data-confirm=" Paid Process"
+ >
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+   <button
+    class="btn btn-warning"
+    type="submit"
+    title=" Paid Process"
+  >
+    ⚡ Paid
+   </button>
+  </form>
+  {% endif %}
+  <a
+   class="btn btn-ghost"
+   href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv.id) }}"
+ >Invoice View</a>
+  {% if inv.client_id %}
+  <a
+   class="btn btn-ghost"
+   href="{{ url_for('billing_invoices.clients.view_client', client_id=inv.client_id) }}"
+ >Client View</a>
+  {% endif %}
+  {% if inv.ipm_case_id %}
+  <a
+   class="btn btn-ghost"
+   href="{{ url_for('case_work.case_detail', case_id=inv.ipm_case_id, invoice_id=inv.id, _anchor='sec-cost') }}"
+ >View matter</a>
+  {% elif inv.ipm_case_ref %}
+  <a
+   class="btn btn-ghost"
+   href="{{ url_for('case_work.case_list', q=inv.ipm_case_ref) }}"
+ >Matter Search</a>
+  {% endif %}
+  <a class="btn" href="{{ url_for('billing_invoices.bank_activity.matching_page', currency=selected_currency) }}">Listto</a>
+ </div>
+</div>
+
+<div class="card mt-3">
+ <div class="grid-3">
+  <div>
+   <div class="muted">Invoice number</div>
+   <div><strong>{{ inv.number }}</strong></div>
+  </div>
+  <div>
+   <div class="muted">Client</div>
+   <div>
+    {% if inv.client_id %}
+     <a
+      href="{{ url_for('billing_invoices.clients.view_client', client_id=inv.client_id) }}"
+      class="text-decoration-none"
+    >{{ inv.client_name }}</a>
+    {% else %}
+     {{ inv.client_name }}
+    {% endif %}
+    {% if inv.ipm_case_id %}
+     <br>
+     <a
+      href="{{ url_for('case_work.case_detail', case_id=inv.ipm_case_id, invoice_id=inv.id, _anchor='sec-cost') }}"
+      class="gray2 f11 text-decoration-none"
+    >{{ inv.ipm_case_ref or inv.ipm_case_id }}</a>
+    {% elif inv.ipm_case_ref %}
+     <br>
+     <a
+      href="{{ url_for('case_work.case_list', q=inv.ipm_case_ref) }}"
+      class="gray2 f11 text-decoration-none"
+    >{{ inv.ipm_case_ref }}</a>
+    {% endif %}
+   </div>
+  </div>
+  <div>
+   <div class="muted">Issue date</div>
+   <div>{{ inv.issue_date or '-' }}</div>
+  </div>
+  <div>
+   <div class="muted">Business profile</div>
+   <div>{{ inv.biz_name or '-' }}</div>
+  </div>
+  <div>
+   <div class="muted">Currency</div>
+   <div>{{ inv.currency }}</div>
+  </div>
+  <div>
+   <div class="muted">Total</div>
+   <div class="a_r" id="invTotalUSD">0</div>
+  </div>
+  <div>
+   <div class="muted">Matching Total</div>
+   <div class="a_r" id="matchedPaidSum">{{ inv.paid_sum or 0 }}</div>
+  </div>
+  <div>
+   <div class="muted"></div>
+   <div class="a_r" id="matchedRemaining">
+    {{ inv.remaining or 0 }}
+   </div>
+  </div>
+  <div>
+   <div class="muted">Matching items</div>
+   <div class="a_r" id="matchedDepositCount">
+    {{ (inv.deposit_count or 0) | int }}
+   </div>
+  </div>
+ </div>
+</div>
+
+<div class="card mt-3" id="matchedDepositsCard">
+ <div class="controls-row justify-content-between">
+  <div><strong>Matching Deposit</strong></div>
+  <div class="muted f11">
+   Matching  Deposit Notes INV  .
+  </div>
+ </div>
+ <table class="table-list table-head-center table-sticky mt-2" id="matchedDepositsTable">
+  <colgroup>
+   <col class="w-16p" />
+   <col class="w-14p" />
+   <col class="w-18p" />
+   <col />
+   <col class="w-18p" />
+   <col class="w-12p" />
+  </colgroup>
+  <thead>
+   <tr>
+    <th class="a_c">days</th>
+    <th class="a_c">Amount</th>
+    <th class="a_c">Bank account</th>
+    <th class="a_c"></th>
+    <th class="a_c">TID</th>
+    <th class="a_c">Actions</th>
+   </tr>
+  </thead>
+  <tbody>
+   {% if matched_deposits and matched_deposits|length %} {% for d in
+   matched_deposits %}
+   <tr data-tid="{{ d.tid }}">
+    <td class="a_c">{{ d.date or '-' }}</td>
+    <td class="a_r">{{ d.deposit or 0 }}</td>
+    <td class="a_c">{{ d.account_alias or '-' }}</td>
+    <td class="a_c">{{ d.summary or '-' }}</td>
+    <td class="a_c">
+     {% if d.tid %}
+      <a
+       href="{{ url_for('billing_invoices.bank_activity.matching_deposit_detail', tid=d.tid) }}"
+       class="muted mono text-decoration-none"
+     >{{ d.tid }}</a>
+     {% else %}
+      <span class="muted mono">-</span>
+     {% endif %}
+    </td>
+    <td class="a_c">
+     {% if d.tid %}
+     <button
+      class="btn btn-warning"
+      data-action="unmatch"
+      data-tid="{{ d.tid }}"
+    >
+      Matching
+     </button>
+     {% else %}
+     <button class="btn" disabled>Matching</button>
+     {% endif %}
+    </td>
+   </tr>
+   {% endfor %} {% else %}
+   <tr>
+    <td colspan="6" class="a_c muted">Matching Deposit none.</td>
+   </tr>
+   {% endif %}
+  </tbody>
+ </table>
+</div>
+
+<div
+ id="invMeta"
+ data-id="{{ inv.id }}"
+ data-no="{{ inv.number }}"
+ data-total="{{ inv.total or 0 }}"
+ data-paid-sum="{{ inv.paid_sum or 0 }}"
+ data-remaining="{{ inv.remaining or 0 }}"
+ data-currency="{{ inv.currency or selected_currency or 'USD' }}"
+ data-issue="{{ inv.issue_date or '' }}"
+ data-default-start="{{ default_start }}"
+ data-default-end="{{ default_end }}"
+></div>
+
+<div class="card sticky-filter filter-card mt-3">
+ <table class="table-list">
+  <colgroup>
+   <col class="w-15p" />
+   <col />
+  </colgroup>
+  <tbody>
+   <tr>
+    <th>SearchPeriod</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input type="date" id="sdate" class="w-180 max-w-100" value="{{ default_start }}" />
+      <span class="muted">~</span>
+      <input type="date" id="edate" class="w-180 max-w-100" value="{{ default_end }}" />
+      <div class="spacer"></div>
+      <div class="date-preset-group" role="group" aria-label="Quick date-range presets">
+       <button class="btn date-preset-btn" type="button" id="btnDateIssue" data-detail-preset="issue" aria-pressed="false">Issued+30</button>
+       <button class="btn date-preset-btn" type="button" id="btnDate30" data-detail-preset="30" aria-pressed="false">Recent30days</button>
+      </div>
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Bank account</th>
+    <td>
+     <div class="controls-row mb-2">
+      <span class="muted">Select </span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="accSelectAll">AllSelect</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="accSelectNone">All</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="accSelectInvert"></button>
+      <span class="muted ms-2">Bank account Search</span>
+      <input
+       type="text"
+       id="accFilter"
+       placeholder="row/"
+       class="w-220"
+      />
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="accSelectVisible">Display Select</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="accDeselectVisible">Display </button>
+     </div>
+     <div id="activeAccountsList" class="accounts-grid"></div>
+     <div class="muted mt-1" id="accSummary"></div>
+    </td>
+   </tr>
+   <tr>
+    <th>Filters</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <label class="mb-0">Search</label>
+      <input type="text" id="q" placeholder="/Notes Search" class="w-320 max-w-100" />
+      <label class="mb-0">Sort</label>
+      <select id="order" class="w-120 max-w-100">
+       <option value="D"></option>
+       <option value="A"></option>
+      </select>
+      <label class="mb-0"></label>
+      <select id="tradeType" class="w-120 max-w-100">
+       <option value="I">Deposit</option>
+       <option value="">All</option>
+      </select>
+
+      <div class="spacer"></div>
+
+      <label class="mb-0">(±%)</label>
+      <input type="number" id="tolPct" value="20" step="0.1" min="0" class="w-110" />
+      <span class="muted">%</span>
+      <label class="mb-0 d-inline-flex align-items-center gap-2">
+       <input type="checkbox" id="onlyTol" checked />
+      </label>
+      <label class="mb-0 d-inline-flex align-items-center gap-2">
+       <input type="checkbox" id="excludeMatched" checked /> Matching
+      </label>
+      <span class="muted"> </span>
+      <span id="tolChips" class="quick-chip-group">
+       <a href="#" class="btn-chip" data-pct="5">5%</a>
+       <a href="#" class="btn-chip" data-pct="10">10%</a>
+       <a href="#" class="btn-chip b" data-pct="20">20%</a>
+       <a href="#" class="btn-chip" data-pct="30">30%</a>
+       <a href="#" class="btn-chip" data-pct="50">50%</a>
+      </span>
+      <a class="btn btn-sm btn-primary" id="btnSearch">Search</a>
+      <a class="btn btn-sm btn-outline-secondary" id="btnReset">Reset</a>
+     </div>
+    </td>
+   </tr>
+  </tbody>
+ </table>
+</div>
+
+<div class="card mt-3">
+ <div id="detailPagingTop" class="app-pagination" aria-label=" Matching Deposit Pagination"></div>
+ <table class="table-list table-head-center table-sticky" id="detailTable">
+  <colgroup>
+   <col class="w-18p" />
+   <col class="w-14p" />
+   <col class="w-18p" />
+   <col />
+   <col class="w-20p" />
+   <col class="w-12p" />
+  </colgroup>
+  <thead>
+   <tr>
+    <th>days</th>
+    <th>Amount</th>
+    <th>Bank account</th>
+    <th>/Notes</th>
+    <th></th>
+    <th>Actions</th>
+   </tr>
+  </thead>
+  <tbody></tbody>
+ </table>
+ <div id="detailPaging" class="app-pagination" aria-label=" Matching Deposit Pagination"></div>
+ <div class="muted mt-2" id="recommendNote"></div>
+</div>
+
+<script>
+ const CSRF = document
+  .querySelector('meta[name="csrf-token"]')
+  .getAttribute("content");
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+ const _metaEl = document.getElementById("invMeta");
+ const INV_ID = parseInt(_metaEl.dataset.id || "0", 10) || 0;
+ const INV_NO = _metaEl.dataset.no || "";
+ const MATCH_CURRENCY = (_metaEl.dataset.currency || "{{ selected_currency or 'USD' }}").toUpperCase();
+ const INV_TOTAL = parseMoney(_metaEl.dataset.total || "0");
+ let PAID_SUM = parseMoney(_metaEl.dataset.paidSum || "0");
+ let REMAINING = parseMoney(_metaEl.dataset.remaining || "0");
+ const ISSUE_DATE = _metaEl.dataset.issue || "";
+ let ALIAS_BY_ACC = {}; // bankCode|accountNumber -> alias
+ let PAGE = 1;
+ const PER_PAGE = 20;
+ let ACCOUNTS_LOAD_TOKEN = 0;
+ let DEPOSITS_LOAD_TOKEN = 0;
+
+ function escapeHtml(text) {
+  if (text === null || typeof text === "undefined") return "";
+  return String(text)
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#039;");
+ }
+
+ function getInvoiceRoot() {
+  return document.querySelector('.invoice-theme') || document.body;
+ }
+
+ function parseMoney(value) {
+  const n = Number(String(value == null ? "0" : value).replaceAll(",", ""));
+  return Number.isFinite(n) ? n : 0;
+ }
+
+ function moneyScale() {
+  return MATCH_CURRENCY === "USD" ? 0 : 2;
+ }
+
+ function normalizePaymentAmount(value) {
+  const n = parseMoney(value);
+  const scale = moneyScale();
+  if (scale === 0) return Math.round(n);
+  return Number(n.toFixed(scale));
+ }
+
+ function moneyDeltaMinor(a, b) {
+  const factor = moneyScale() === 0 ? 1 : 100;
+  return Math.round((parseMoney(a) - parseMoney(b)) * factor);
+ }
+
+ function depositAvailableAmount(dep) {
+  if (!dep) return 0;
+  const state = String(dep.match_state || dep.matchState || "")
+   .trim()
+   .toLowerCase();
+  const matched = parseMoney(dep.matched_amount || dep.matchedAmount || 0);
+  if (
+   Object.prototype.hasOwnProperty.call(dep, "remainingAccIn") &&
+   (state === "partial" || state === "full" || matched> 0)
+  ) {
+   return parseMoney(dep.remainingAccIn || 0);
+  }
+  return parseMoney(dep.accIn || 0);
+ }
+
+ function appendInvoiceTagToMemo(memo, invoiceNo) {
+  const tag = invoiceNo ? `INV:${invoiceNo}` : "INV";
+  const parts = String(memo || "")
+   .split("|")
+   .map((part) => part.trim())
+   .filter(Boolean);
+  if (!parts.includes(tag)) parts.push(tag);
+  return parts.join(" | ");
+ }
+
+ function formatUsd(n) {
+  const scale = moneyScale();
+  const amount = parseMoney(n);
+  return `${amount.toLocaleString(undefined, {
+   minimumFractionDigits: scale === 0 || Number.isInteger(amount) ? 0 : scale,
+   maximumFractionDigits: scale,
+  })} ${MATCH_CURRENCY}`;
+ }
+
+ function getTargetAmount() {
+  // Matching is usually done against remaining balance when partial matches exist.
+  const rem = parseMoney(REMAINING || 0);
+  const total = parseMoney(INV_TOTAL || 0);
+  if (rem> 0) return rem;
+  return total;
+ }
+
+ function updateRecommendNote() {
+  const el = document.getElementById("recommendNote");
+  if (!el) return;
+  const rem = parseMoney(REMAINING || 0);
+  const basis = rem> 0 ? "" : "Total";
+  const target = getTargetAmount();
+  const pct = Math.max(
+   0,
+   parseFloat(document.getElementById("tolPct")?.value || "0") || 0
+  );
+  el.textContent = ` Amount(${basis} ${formatUsd(
+   target
+  )}) (±${pct}%) .`;
+ }
+
+ function updateMatchedSummary(paidSum, remaining, depositCount) {
+  try {
+   const elPaid = document.getElementById("matchedPaidSum");
+   const elRem = document.getElementById("matchedRemaining");
+   const elCnt = document.getElementById("matchedDepositCount");
+   if (elPaid) elPaid.textContent = formatUsd(paidSum);
+   if (elRem) elRem.textContent = formatUsd(remaining);
+   if (elCnt)
+    elCnt.textContent = String(parseInt(depositCount || 0, 10) || 0);
+  } catch (e) {}
+  try {
+   updateRecommendNote();
+  } catch (e) {}
+ }
+
+ function renderMatchedDepositsFromMeta(pm) {
+  let paid = 0;
+  let deps = [];
+  try {
+   if (pm && Array.isArray(pm.deposits)) {
+    deps = pm.deposits;
+    paid = parseMoney(pm.deposit || 0);
+   } else if (pm && pm.deposit != null) {
+    paid = parseMoney(pm.deposit || 0);
+    deps = [pm];
+   }
+  } catch (e) {
+   paid = 0;
+   deps = [];
+  }
+  const rem = INV_TOTAL - paid;
+  PAID_SUM = paid;
+  REMAINING = rem;
+  _metaEl.dataset.paidSum = String(paid);
+  _metaEl.dataset.remaining = String(rem);
+  updateMatchedSummary(paid, rem, deps.length);
+
+  const tbody = document.querySelector("#matchedDepositsTable tbody");
+  if (!tbody) return;
+  if (!deps.length) {
+   tbody.innerHTML =
+    '<tr><td colspan="6" class="a_c muted">Matching Deposit none.</td></tr>';
+   return;
+  }
+  tbody.innerHTML = "";
+  deps.forEach((d) => {
+   const tid = (d && d.tid ? String(d.tid) : "").trim();
+   const tidUrl = tid
+    ? `${scriptRoot}/bank_activity/matching/deposit/${encodeURIComponent(tid)}`
+    : "";
+   const date = (d && d.date ? String(d.date) : "-").trim() || "-";
+   const alias =
+    (d && d.account_alias ? String(d.account_alias) : "-").trim() || "-";
+   const summary = (d && d.summary ? String(d.summary) : "-").trim() || "-";
+   const amt = parseMoney((d && d.deposit) || 0);
+   const tr = document.createElement("tr");
+   tr.setAttribute("data-tid", tid);
+   tr.innerHTML = `
+    <td class="a_c">${escapeHtml(date)}</td>
+    <td class="a_r">${formatUsd(amt)}</td>
+    <td class="a_c">${escapeHtml(alias)}</td>
+    <td class="a_c">${escapeHtml(summary)}</td>
+    <td class="a_c">${
+     tid
+      ? `<a href="${tidUrl}" class="muted mono text-decoration-none">${escapeHtml(tid)}</a>`
+      : `<span class="muted mono">-</span>`
+    }</td>
+    <td class="a_c">${
+     tid
+      ? `<button class="btn btn-warning" data-action="unmatch" data-tid="${tid}">Matching</button>`
+      : `<button class="btn" disabled>Matching</button>`
+    }</td>
+   `;
+   tbody.appendChild(tr);
+  });
+ }
+
+ async function unmatchTid(tid) {
+  const tidSafe = (tid || "").toString().trim();
+  if (!tidSafe) return;
+  const ok = await window.AppConfirm(`Confirm matching\nTID: ${tidSafe}`);
+  if (!ok) return;
+  const res = await fetchJSON(
+   `${scriptRoot}/invoices/${INV_ID}/unmatch_deposit`,
+   {
+    method: "POST",
+    body: JSON.stringify({ tid: tidSafe }),
+   }
+  );
+  const pm = res && res.payment_meta ? res.payment_meta : null;
+  try {
+   renderMatchedDepositsFromMeta(pm);
+  } catch (e) {}
+  showMessageModal("Done", "Matching .");
+ }
+
+ function pad2(n) {
+  return String(n).padStart(2, "0");
+ }
+
+ function formatYmdKst(d) {
+  try {
+   return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+   }).format(d);
+  } catch (e) {
+   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(
+    d.getDate()
+   )}`;
+  }
+ }
+
+ function normalizeYmdParam(raw) {
+  const v = (raw || "").toString().trim();
+  if (!v) return "";
+  if (/^\d{8}$/.test(v)) {
+   return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  return v;
+ }
+
+ function getKstYmdParts(d) {
+  try {
+   const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+   }).formatToParts(d);
+   const map = {};
+   parts.forEach((p) => {
+    if (p && p.type && p.value) map[p.type] = p.value;
+   });
+   const y = parseInt(map.year || "0", 10) || 0;
+   const m = parseInt(map.month || "0", 10) || 0;
+   const da = parseInt(map.day || "0", 10) || 0;
+   return { y, m, d: da };
+  } catch (e) {
+   return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+  }
+ }
+
+ function makeUtcNoonFromYmd(y, m, d) {
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
+ }
+
+ function addDaysUtc(dateUtc, days) {
+  return new Date(
+   dateUtc.getTime() + (parseInt(days || 0, 10) || 0) * 86400000
+  );
+ }
+
+ function todayKstUtcNoon() {
+  const p = getKstYmdParts(new Date());
+  return makeUtcNoonFromYmd(p.y, p.m, p.d);
+ }
+
+ function setActiveDetailDatePreset(presetKey) {
+  document.querySelectorAll(".date-preset-btn[data-detail-preset]").forEach((btn) => {
+   const active = !!presetKey && btn.dataset.detailPreset === presetKey;
+   btn.classList.toggle("is-active", active);
+   btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+ }
+
+ function getIssueDateWindow() {
+  if (!ISSUE_DATE) return null;
+  const d0 = new Date(ISSUE_DATE);
+  if (isNaN(d0.getTime())) return null;
+  const p = getKstYmdParts(d0);
+  const start = makeUtcNoonFromYmd(p.y, p.m, p.d);
+  return { start, end: addDaysUtc(start, 30) };
+ }
+
+ function syncDetailDatePresetFromInputs() {
+  const sValue = normalizeYmdParam(document.getElementById("sdate")?.value || "");
+  const eValue = normalizeYmdParam(document.getElementById("edate")?.value || "");
+  const issueWindow = getIssueDateWindow();
+  if (
+   issueWindow &&
+   formatYmdKst(issueWindow.start) === sValue &&
+   formatYmdKst(issueWindow.end) === eValue
+  ) {
+   setActiveDetailDatePreset("issue");
+   return;
+  }
+  const recentEnd = todayKstUtcNoon();
+  const recentStart = addDaysUtc(recentEnd, -30);
+  if (formatYmdKst(recentStart) === sValue && formatYmdKst(recentEnd) === eValue) {
+   setActiveDetailDatePreset("30");
+   return;
+  }
+  setActiveDetailDatePreset("");
+ }
+ function parseTrdtToDate(trdt) {
+  if (!trdt) return null;
+  if (/^\d{14}$/.test(trdt)) {
+   const y = parseInt(trdt.slice(0, 4), 10);
+   const m = parseInt(trdt.slice(4, 6), 10) - 1;
+   const d = parseInt(trdt.slice(6, 8), 10);
+   const hh = parseInt(trdt.slice(8, 10), 10);
+   const mm = parseInt(trdt.slice(10, 12), 10);
+   const ss = parseInt(trdt.slice(12, 14), 10);
+   return new Date(y, m, d, hh, mm, ss);
+  }
+  const dt = new Date(trdt);
+  if (!isNaN(dt.getTime())) return dt;
+  return null;
+ }
+ function formatTrdt(trdt) {
+  const dt = parseTrdtToDate(trdt);
+  if (!dt) {
+   const safe = (trdt || "").toString().replace("T", " ").replace("Z", "");
+   if (safe.length>= 10)
+    return `${safe.slice(0, 10)}<br>${safe.slice(11, 19)}`;
+   return safe || "-";
+  }
+  const y = dt.getFullYear();
+  const m = pad2(dt.getMonth() + 1);
+  const d = pad2(dt.getDate());
+  const hh = pad2(dt.getHours());
+  const mm = pad2(dt.getMinutes());
+  const ss = pad2(dt.getSeconds());
+  return `${y}-${m}-${d}<br>${hh}:${mm}:${ss}`;
+ }
+ function aliasColor(alias) {
+  const palette = [
+   "#fffef6",
+   "#f6fffb",
+   "#f6fbff",
+   "#fff6f9",
+   "#f4f9ff",
+   "#f9fff4",
+   "#f9f6ff",
+   "#f6f9ff",
+  ];
+  let h = 0;
+  const s = (alias || "").toString();
+  for (let i = 0; i < s.length; i++) {
+   h = (h * 31 + s.charCodeAt(i))>>> 0;
+  }
+  return palette[h % palette.length];
+ }
+	 function renderDetailPagination(containerId, pageNum, pageCount) {
+	  const container = document.getElementById(containerId);
+	  if (!container) return;
+	  window.AppPagination.render(container, {
+	   page: pageNum,
+	   totalPages: pageCount,
+	   ariaLabel: " Matching Deposit Pagination",
+	   onPageChange: changeDetailPage,
+	  });
+	 }
+
+	 async function changeDetailPage(nextPage) {
+	  if (nextPage === PAGE) return;
+	  PAGE = nextPage;
+	  try {
+	   await loadDeposits();
+	  } catch (e) {
+	   showMessageModal(
+	    "Error",
+	    e && e.message ? e.message : "An error occurred while processing the request."
+	   );
+	  }
+	 }
+	 function showMessageModal(title, message) {
+  try {
+   const existing = document.getElementById("matchingDetailMessageOverlay");
+   if (existing) existing.remove();
+
+   const overlay = document.createElement("div");
+   overlay.id = "matchingDetailMessageOverlay";
+   overlay.className = "modal-overlay show";
+
+   const panel = document.createElement("div");
+   panel.className = "modal-card is-wide";
+
+   const safeTitle = (title || "Notice").toString();
+   const safeMsg = (message || "").toString();
+   const h3 = document.createElement("h3");
+   h3.className = "modal-title";
+   h3.textContent = safeTitle;
+   const body = document.createElement("div");
+   body.className = "panel-neutral mb-3";
+   body.textContent = safeMsg;
+   const actions = document.createElement("div");
+   actions.className = "confirm-actions";
+   const okBtn = document.createElement("button");
+   okBtn.type = "button";
+   okBtn.id = "matchingDetailMessageOkBtn";
+   okBtn.className = "btn btn-primary";
+   okBtn.textContent = "Confirm";
+   actions.appendChild(okBtn);
+   panel.appendChild(h3);
+   panel.appendChild(body);
+   panel.appendChild(actions);
+
+   overlay.appendChild(panel);
+   getInvoiceRoot().appendChild(overlay);
+
+   const cleanup = function () {
+    try {
+     overlay.remove();
+    } catch (e) {}
+   };
+   const btnOk = document.getElementById("matchingDetailMessageOkBtn");
+   if (btnOk) {
+    btnOk.addEventListener("click", function (ev) {
+     ev.preventDefault();
+     cleanup();
+    });
+   }
+   overlay.addEventListener("click", function (ev) {
+    if (ev.target === overlay) cleanup();
+   });
+  } catch (e) {}
+ }
+
+ async function fetchJSON(url, opts = {}) {
+  const res = await fetch(url, {
+   headers: { "X-CSRFToken": CSRF, "Content-Type": "application/json" },
+   credentials: "same-origin",
+   ...opts,
+  });
+  if (!res.ok) {
+   let msg = "request failed";
+   try {
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) {
+     const j = await res.json();
+     msg = (j && (j.error || j.message)) || JSON.stringify(j);
+    } else {
+     const t = await res.text();
+     msg = t || msg;
+     try {
+      const j2 = JSON.parse(msg);
+      msg = (j2 && (j2.error || j2.message)) || msg;
+     } catch (e) {}
+    }
+   } catch (e) {}
+   const err = new Error(msg);
+   err.status = res.status;
+   throw err;
+  }
+  return res.json();
+ }
+
+ async function loadAccounts() {
+  const token = ++ACCOUNTS_LOAD_TOKEN;
+  const sdateStr = document.getElementById("sdate").value.replaceAll("-", "");
+  const edateStr = document.getElementById("edate").value.replaceAll("-", "");
+  const data = await fetchJSON(
+   `${scriptRoot}/bank_activity/db_accounts?sdate=${encodeURIComponent(
+    sdateStr
+   )}&edate=${encodeURIComponent(
+    edateStr
+   )}&depositsOnly=1&currency=${encodeURIComponent(MATCH_CURRENCY)}`
+  );
+  if (token !== ACCOUNTS_LOAD_TOKEN) return;
+  const wrap = document.getElementById("activeAccountsList");
+  wrap.innerHTML = "";
+  const items = data.items || [];
+  items.forEach((a) => {
+   const labelText = `${a.bankCode || ""} <span class=\"muted\">${
+    a.accountNumber || ""
+   }</span>`;
+   const div = document.createElement("div");
+   div.className = "account-item";
+   div.innerHTML = `<label><input type=\"checkbox\" name=\"activeAccount\" value=\"${
+    a.bankCode
+   }|${a.accountNumber}\" ${"checked"} /> ${labelText}</label>`;
+   wrap.appendChild(div);
+   ALIAS_BY_ACC[`${a.bankCode}|${a.accountNumber}`] = `${
+    a.bankCode || ""
+   } (${(a.accountNumber || "").slice(-4)})`;
+  });
+  updateAccSummary();
+  // re-apply filter if any term exists
+  if (document.getElementById("accFilter")) applyAccountFilter();
+ }
+ function getSelectedAccounts() {
+  const accs = [];
+  document
+   .querySelectorAll('input[name="activeAccount"]:checked')
+   .forEach((chk) => accs.push(chk.value));
+  return accs;
+ }
+
+ function annotate(items) {
+  const pct = Math.max(
+   0,
+   parseFloat(document.getElementById("tolPct").value || "0") || 0
+  );
+  const target = getTargetAmount();
+  return (items || []).map((it) => {
+   const available = depositAvailableAmount(it);
+   const diff = Math.abs(available - target);
+   const diffPct = target> 0 ? (diff / target) * 100 : 0;
+   const within = target> 0 ? diffPct <= pct : false;
+   return { ...it, _diff: diff, _diffPct: diffPct, _within: within };
+  });
+ }
+
+ async function loadDeposits() {
+  const token = ++DEPOSITS_LOAD_TOKEN;
+  const sdateStr = document.getElementById("sdate").value.replaceAll("-", "");
+  const edateStr = document.getElementById("edate").value.replaceAll("-", "");
+  const accs = getSelectedAccounts();
+  if (!accs.length) {
+   document.querySelector("#detailTable tbody").innerHTML = "";
+   return;
+  }
+  const tradeType = document.getElementById("tradeType").value;
+  const q = document.getElementById("q").value.trim();
+  const order = document.getElementById("order").value;
+  const excludeMatched = document.getElementById("excludeMatched").checked;
+  const pct = Math.max(
+   0,
+   parseFloat(document.getElementById("tolPct").value || "0") || 0
+  );
+  const onlyTol = document.getElementById("onlyTol").checked;
+  const params = new URLSearchParams({
+   sdate: sdateStr,
+   edate: edateStr,
+   accounts: accs.join(","),
+   tradeType,
+   searchString: q,
+   page: String(PAGE),
+   perPage: String(PER_PAGE),
+   order,
+   excludeMatched: excludeMatched ? "1" : "0",
+   currency: MATCH_CURRENCY,
+  });
+  if (onlyTol) {
+   const target = getTargetAmount();
+   if (target <= 0) {
+    // Avoid filtering everything out when invoice totals are missing/0.
+    params.delete("amountMin");
+    params.delete("amountMax");
+   } else {
+    // percentage to amount range
+    const min = Math.max(0, Math.floor(target * (1 - pct / 100)));
+    const max = Math.max(min, Math.ceil(target * (1 + pct / 100)));
+    params.set("amountMin", String(min));
+    params.set("amountMax", String(max));
+   }
+  }
+  const res = await fetchJSON(
+   `${scriptRoot}/bank_activity/local_search?${params.toString()}`
+  );
+  if (token !== DEPOSITS_LOAD_TOKEN) return;
+  const raw = res.list || res.items || [];
+  const items = annotate(raw);
+  renderDeposits(items, res.pageNum || PAGE, res.pageCount || 1, res.total);
+ }
+
+ function renderDeposits(items, pageNum, pageCount, total) {
+  const tbody = document.querySelector("#detailTable tbody");
+  tbody.innerHTML = "";
+  if (!items.length) {
+   const tr = document.createElement("tr");
+   tr.innerHTML = `<td colspan="6" class="a_c muted">No search results.</td>`;
+   tbody.appendChild(tr);
+  }
+  items.forEach((r) => {
+   const tr = document.createElement("tr");
+   tr.dataset.tid = r.tid;
+   const tidUrl = r.tid
+    ? `${scriptRoot}/bank_activity/matching/deposit/${encodeURIComponent(r.tid)}`
+    : "";
+   const key = `${r.bankCode || ""}|${r.accountNumber || ""}`;
+   const alias =
+    ALIAS_BY_ACC[key] ||
+    `${r.bankCode || ""} ${r.accountNumber || ""}`.trim();
+   const desc1 = (r.remark1 || "-");
+   const desc2 =
+    r.remark2 || ""
+     ? `<br><span class=\"gray2 f11\">${escapeHtml(r.remark2)}</span>`
+     : '<br><span class="gray2 f11">-</span>';
+   const desc3 =
+    r.remark3 || ""
+     ? `<br><span class=\"gray1\">${escapeHtml(r.remark3)}</span>`
+     : '<br><span class="gray1">-</span>';
+   const pctTxt =
+    typeof r._diffPct === "number"
+     ? (Math.round(r._diffPct * 100) / 100).toFixed(2)
+     : "";
+   const recommend = r._within
+    ? `<span class=\"pill\"> · Δ ${(
+      r._diff || 0
+     ).toLocaleString()} ${MATCH_CURRENCY} · ${pctTxt}%</span>`
+    : "";
+   const availableAmount = depositAvailableAmount(r);
+   const matchedAmount = parseMoney(r.matched_amount || r.matchedAmount || 0);
+   const matchState = String(r.match_state || r.matchState || "unmatched");
+   const amountHtml =
+    matchState === "partial"
+     ? `${formatUsd(r.accIn || 0)}<br><span class="gray2 f11">:${formatUsd(
+       matchedAmount
+      )} / :${formatUsd(availableAmount)}</span>`
+     : formatUsd(r.accIn || 0);
+   tr.innerHTML = `
+   <td class="a_c">${formatTrdt(r.trdt || r.trdate)}</td>
+   <td class="a_r">${amountHtml}</td>
+   <td class="a_c">${escapeHtml(alias)}</td>
+   <td class="a_c">${escapeHtml(desc1)}${desc2}${desc3}${
+    r.memo ? `<br><span class=\"gray2 f11\">Notes: ${escapeHtml(r.memo)}</span>` : ""
+   }${
+    tidUrl
+     ? `<br><span class=\"gray2 f11\">TID: <a href=\"${tidUrl}\" class=\"text-decoration-none\" target=\"_blank\" rel=\"noopener\">${escapeHtml(r.tid)}</a></span>`
+     : ""
+   }</td>
+   <td class="a_c">${recommend}</td>
+   <td class="a_c">
+    <button class="btn" data-action="match">Matching</button>
+    <button class="btn btn-warning" data-action="force" title=" Paid Process Link">Matching</button>
+   </td>`;
+   tr.style.backgroundColor = aliasColor(alias);
+   tr.querySelector('button[data-action="match"]').addEventListener(
+    "click",
+    async () => {
+     try {
+      await performMatch(INV_ID, r, alias);
+      await loadDeposits();
+     } catch (e) {
+      showMessageModal(
+       "Error",
+       e && e.message ? e.message : "An error occurred while processing the request."
+      );
+     }
+    }
+   );
+   tr.querySelector('button[data-action="force"]').addEventListener(
+    "click",
+    async () => {
+     try {
+      await performForceMatch(INV_ID, r, alias);
+      await loadDeposits();
+     } catch (e) {
+      showMessageModal(
+       "Error",
+       e && e.message ? e.message : "An error occurred while processing the request."
+      );
+     }
+    }
+   );
+   tbody.appendChild(tr);
+  });
+
+	  renderDetailPagination("detailPagingTop", pageNum, pageCount);
+	  renderDetailPagination("detailPaging", pageNum, pageCount);
+ }
+
+ async function performMatch(invoiceId, dep, alias) {
+  const dt = parseTrdtToDate(dep.trdt || dep.trdate);
+  const dateStr = dt
+   ? `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+   : "";
+  const meta = {
+   currency: MATCH_CURRENCY,
+   date: dateStr,
+   account_alias:
+    alias || `${dep.bankCode || ""} ${dep.accountNumber || ""}`.trim(),
+   deposit: normalizePaymentAmount(depositAvailableAmount(dep)),
+   summary: [dep.remark1, dep.remark2, dep.remark3]
+    .filter(Boolean)
+    .join(" | "),
+  };
+  const originalDepositAmount = normalizePaymentAmount(dep.accIn || 0);
+  const availableDepositAmount = normalizePaymentAmount(depositAvailableAmount(dep));
+  if (moneyDeltaMinor(originalDepositAmount, availableDepositAmount) !== 0) {
+   meta.source_deposit = originalDepositAmount;
+   meta.source_remaining_before_match = availableDepositAmount;
+  }
+  const depositAmt = parseMoney(meta.deposit || 0);
+  const targetAmount = REMAINING> 0 ? REMAINING : INV_TOTAL;
+  const mismatch = targetAmount> 0 && depositAmt !== targetAmount;
+  let partialOk = false;
+  if (mismatch) {
+   partialOk = await window.AppConfirm(
+    `Amount does not match.\n Deposit: ${formatUsd(
+     depositAmt
+    )}\nCurrent : ${formatUsd(
+     targetAmount
+    )}\n\n Matchingto Save`
+   );
+   if (!partialOk) return;
+   if (moneyDeltaMinor(depositAmt, targetAmount)> 0) {
+    meta.source_deposit = originalDepositAmount;
+    meta.source_remaining_before_match = availableDepositAmount;
+    meta.deposit = normalizePaymentAmount(targetAmount);
+    meta.match_mode = "deposit_split_to_invoices";
+   }
+  }
+
+  const saved = await fetchJSON(
+   `${scriptRoot}/invoices/${invoiceId}/save_payment_meta`,
+   {
+    method: "POST",
+    body: JSON.stringify({
+     payment_meta: meta,
+     append: true,
+     tid: dep.tid,
+     allow_multi_invoice: true,
+    }),
+   }
+  );
+  const savedMeta = (saved && saved.payment_meta) || meta;
+  const v = await fetchJSON(
+   `${scriptRoot}/invoices/${invoiceId}/verify_payment`,
+   {
+    method: "POST",
+    body: JSON.stringify({ payment_meta: savedMeta }),
+   }
+  );
+  if (v && v.ok) {
+   const invNo = INV_NO || "";
+   const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+   try {
+    await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+     method: "POST",
+     body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+    });
+   } catch (e) {
+    console.warn("memo save failed", e);
+   }
+   try {
+    renderMatchedDepositsFromMeta(savedMeta);
+   } catch (e) {}
+   showMessageModal("Done", "Matching  Done");
+  } else {
+   const reason = (v && v.reason) || " people";
+   if (
+    partialOk &&
+    (reason.includes("Total") || reason.includes(""))
+   ) {
+    const invNo = INV_NO || "";
+    const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+    try {
+     await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+      method: "POST",
+      body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+     });
+    } catch (e) {
+     console.warn("memo save failed", e);
+    }
+    try {
+     renderMatchedDepositsFromMeta(savedMeta);
+    } catch (e) {}
+    showMessageModal(" Matching Save", " Matchingto Save.");
+   } else {
+    throw new Error(` : ${reason}`);
+   }
+  }
+ }
+
+ async function performForceMatch(invoiceId, dep, alias) {
+  // 1) Save meta using the selected deposit
+  const dt = parseTrdtToDate(dep.trdt || dep.trdate);
+  const dateStr = dt
+   ? `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+   : "";
+  const meta = {
+   currency: MATCH_CURRENCY,
+   date: dateStr,
+   account_alias:
+    alias || `${dep.bankCode || ""} ${dep.accountNumber || ""}`.trim(),
+   deposit: normalizePaymentAmount(depositAvailableAmount(dep)),
+   summary: [dep.remark1, dep.remark2, dep.remark3]
+    .filter(Boolean)
+    .join(" | "),
+  };
+  const originalDepositAmount = normalizePaymentAmount(dep.accIn || 0);
+  const availableDepositAmount = normalizePaymentAmount(depositAvailableAmount(dep));
+  const targetAmount = getTargetAmount();
+  if (targetAmount> 0 && moneyDeltaMinor(meta.deposit, targetAmount)> 0) {
+   meta.source_deposit = originalDepositAmount;
+   meta.source_remaining_before_match = availableDepositAmount;
+   meta.deposit = normalizePaymentAmount(targetAmount);
+   meta.match_mode = "deposit_split_to_invoices";
+  } else if (moneyDeltaMinor(originalDepositAmount, availableDepositAmount) !== 0) {
+   meta.source_deposit = originalDepositAmount;
+   meta.source_remaining_before_match = availableDepositAmount;
+  }
+  const saved = await fetchJSON(
+   `${scriptRoot}/invoices/${invoiceId}/save_payment_meta`,
+   {
+    method: "POST",
+    body: JSON.stringify({
+     payment_meta: meta,
+     append: true,
+     tid: dep.tid,
+     allow_multi_invoice: true,
+    }),
+   }
+  );
+  const savedMeta = (saved && saved.payment_meta) || meta;
+  // 2) Force mark as paid (admin/staff only)
+  await fetch(`${scriptRoot}/invoices/${invoiceId}/force_paid`, {
+   method: "POST",
+   headers: { "X-CSRFToken": CSRF },
+  });
+  // 3) Tag memo with invoice number
+  const invNo = INV_NO || "";
+  const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+  try {
+   await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+    method: "POST",
+    body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+   });
+  } catch (e) {
+   console.warn("memo save failed", e);
+  }
+  try {
+   renderMatchedDepositsFromMeta(savedMeta);
+  } catch (e) {}
+  showMessageModal("Done", " Matching Done ( Payment Process)");
+ }
+
+ function resetToIssueWindow() {
+  const sInp = document.getElementById("sdate");
+  const eInp = document.getElementById("edate");
+  const issueWindow = getIssueDateWindow();
+  if (issueWindow) {
+   sInp.value = formatYmdKst(issueWindow.start);
+   eInp.value = formatYmdKst(issueWindow.end);
+   setActiveDetailDatePreset("issue");
+  } else {
+   setActiveDetailDatePreset("");
+  }
+ }
+
+ // Events
+
+ document.getElementById("btnSearch").addEventListener("click", async () => {
+  PAGE = 1;
+  try {
+   await loadDeposits();
+  } catch (e) {
+   showMessageModal(
+    "Error",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  }
+ });
+
+ // Enter-to-search for keyword input
+ document.getElementById("q").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") {
+   ev.preventDefault();
+   document.getElementById("btnSearch").click();
+  }
+ });
+
+ document.getElementById("btnReset").addEventListener("click", async () => {
+  document.getElementById("q").value = "";
+  document.getElementById("order").value = "D";
+  document.getElementById("tradeType").value = "I";
+  document.getElementById("excludeMatched").checked = true;
+  document.getElementById("tolPct").value = 20;
+  document.getElementById("onlyTol").checked = true;
+  resetToIssueWindow();
+  // select all accounts
+  document.querySelectorAll('input[name="activeAccount"]').forEach((chk) => {
+   chk.checked = true;
+  });
+  updateAccSummary();
+  PAGE = 1;
+  try {
+   await loadAccounts();
+   await loadDeposits();
+  } catch (e) {
+   console.error(e);
+  }
+ });
+
+ document
+  .getElementById("btnDateIssue")
+  .addEventListener("click", async () => {
+   resetToIssueWindow();
+   try {
+    await loadAccounts();
+    PAGE = 1;
+    await loadDeposits();
+   } catch (e) {
+    console.error(e);
+   }
+  });
+
+ document.getElementById("btnDate30").addEventListener("click", async () => {
+  const end = todayKstUtcNoon();
+  const start = addDaysUtc(end, -30);
+  document.getElementById("sdate").value = formatYmdKst(start);
+  document.getElementById("edate").value = formatYmdKst(end);
+  setActiveDetailDatePreset("30");
+  try {
+   await loadAccounts();
+   PAGE = 1;
+   await loadDeposits();
+  } catch (e) {
+   console.error(e);
+  }
+ });
+
+ // Quick tolerance chips (auto refresh list)
+ document.querySelectorAll("#tolChips .btn-chip").forEach((chip) => {
+  chip.addEventListener("click", (ev) => {
+   ev.preventDefault();
+   const v = parseFloat(chip.getAttribute("data-pct") || "");
+   if (!isNaN(v)) {
+    document.getElementById("tolPct").value = v;
+    document
+     .querySelectorAll("#tolChips .btn-chip")
+     .forEach((c) => c.classList.remove("b"));
+    chip.classList.add("b");
+    updateRecommendNote();
+    // Refresh results immediately when tolerance drives the amount range.
+    PAGE = 1;
+    loadDeposits().catch((e) => {
+     showMessageModal(
+      "Error",
+      e && e.message ? e.message : "An error occurred while processing the request."
+     );
+    });
+   }
+  });
+ });
+
+ // Account selection tools (no auto search)
+ document.getElementById("accSelectAll").addEventListener("click", (ev) => {
+  ev.preventDefault();
+  document
+   .querySelectorAll('input[name="activeAccount"]')
+   .forEach((chk) => (chk.checked = true));
+  updateAccSummary();
+ });
+ document.getElementById("accSelectNone").addEventListener("click", (ev) => {
+  ev.preventDefault();
+  document
+   .querySelectorAll('input[name="activeAccount"]')
+   .forEach((chk) => (chk.checked = false));
+  updateAccSummary();
+ });
+ document.getElementById("accSelectInvert").addEventListener("click", (ev) => {
+  ev.preventDefault();
+  document
+   .querySelectorAll('input[name="activeAccount"]')
+   .forEach((chk) => (chk.checked = !chk.checked));
+  updateAccSummary();
+ });
+
+	 document
+  .getElementById("matchedDepositsTable")
+  .addEventListener("click", async (ev) => {
+   const btn = ev.target.closest('button[data-action="unmatch"]');
+   if (!btn) return;
+   ev.preventDefault();
+   try {
+    await unmatchTid(btn.getAttribute("data-tid"));
+   } catch (e) {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   }
+  });
+
+ // Init
+ (async function () {
+  // invoice total render
+  document.getElementById("invTotalUSD").textContent = formatUsd(INV_TOTAL || 0);
+  updateMatchedSummary(
+   PAID_SUM,
+   REMAINING,
+   parseInt(
+    document.getElementById("matchedDepositCount")?.textContent || "0",
+    10
+   ) || 0
+  );
+  updateRecommendNote();
+  // default dates from server
+  try {
+   const params = new URLSearchParams(window.location.search);
+   const qsStart = normalizeYmdParam(
+    params.get("sdate") || params.get("date_from")
+   );
+   const qsEnd = normalizeYmdParam(
+    params.get("edate") || params.get("date_to")
+   );
+   const ds = _metaEl.dataset.defaultStart;
+   const de = _metaEl.dataset.defaultEnd;
+   const sInput = document.getElementById("sdate");
+   const eInput = document.getElementById("edate");
+   if (qsStart) sInput.value = qsStart;
+   else if (ds) sInput.value = ds;
+   if (qsEnd) eInput.value = qsEnd;
+   else if (de) eInput.value = de;
+   syncDetailDatePresetFromInputs();
+  } catch (e) {}
+  // ensure default checked for tolerance filter
+  const onlyTolEl = document.getElementById("onlyTol");
+  if (onlyTolEl) onlyTolEl.checked = true;
+  const excludeMatchedEl = document.getElementById("excludeMatched");
+  if (excludeMatchedEl) excludeMatchedEl.checked = true;
+  // initial load
+  try {
+   await loadAccounts();
+   updateAccSummary();
+   await loadDeposits();
+  } catch (e) {
+   console.error(e);
+  }
+ })();
+
+ // Reload deposits on account checkbox changes
+ document
+  .getElementById("activeAccountsList")
+  .addEventListener("change", async (ev) => {
+   if (
+    ev.target &&
+    ev.target.matches('input[type="checkbox"][name="activeAccount"]')
+   ) {
+    PAGE = 1;
+    updateAccSummary();
+    try {
+     await loadDeposits();
+    } catch (e) {
+     console.error(e);
+    }
+   }
+  });
+
+ // Live refresh on filter toggles (keyword input remains manual via Enter/Search button).
+ ["tradeType", "order", "onlyTol", "excludeMatched"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("change", async () => {
+   PAGE = 1;
+   updateRecommendNote();
+   try {
+    await loadDeposits();
+   } catch (e) {
+    console.error(e);
+   }
+  });
+ });
+
+ const tolPctEl = document.getElementById("tolPct");
+ if (tolPctEl) {
+  tolPctEl.addEventListener("change", async () => {
+   PAGE = 1;
+   updateRecommendNote();
+   try {
+    await loadDeposits();
+   } catch (e) {
+    console.error(e);
+   }
+  });
+ }
+
+ // Reload accounts and list when date range is edited manually.
+ ["sdate", "edate"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("change", async () => {
+   PAGE = 1;
+   setActiveDetailDatePreset("");
+   try {
+    await loadAccounts();
+    await loadDeposits();
+   } catch (e) {
+    console.error(e);
+   }
+  });
+ });
+
+ function updateAccSummary() {
+  const total = document.querySelectorAll(
+   'input[name="activeAccount"]'
+  ).length;
+  const selected = document.querySelectorAll(
+   'input[name="activeAccount"]:checked'
+  ).length;
+  const el = document.getElementById("accSummary");
+  if (el) el.textContent = total ? `${selected}/${total}selected` : "";
+ }
+
+ // --- Accounts filtering helpers ---
+ function _isInitialSearchChar(ch) {
+  return /^[A-Za-z]$/.test(ch);
+ }
+
+ function isCompactQuery(s) {
+  if (!s) return false;
+  const t = String(s).trim();
+  if (!t) return false;
+  for (let i = 0; i < t.length; i++) {
+   const ch = t[i];
+   if (ch === " ") continue;
+   if (!_isInitialSearchChar(ch)) return false;
+  }
+  return true;
+ }
+
+ function toCompact(s) {
+  if (!s) return "";
+  const str = String(s);
+  const out = [];
+  for (let i = 0; i < str.length; i++) {
+   const ch = str[i];
+   if (_isInitialSearchChar(ch)) {
+    out.push(ch);
+   } else if (/[0-9]/.test(ch)) {
+    out.push(ch);
+   }
+  }
+  return out.join("");
+ }
+
+ function applyAccountFilter() {
+  const raw = (document.getElementById("accFilter")?.value || "").toString();
+  const term = raw.trim().toLowerCase();
+  const isCho = isCompactQuery(raw);
+  const qCho = isCho ? raw.replace(/\s+/g, "") : "";
+  const items = document.querySelectorAll(
+   "#activeAccountsList .account-item"
+  );
+  items.forEach((div) => {
+   const txtRaw = (div.textContent || "").toString();
+   const txt = txtRaw.toLowerCase();
+   let show = false;
+   if (!term) {
+    show = true;
+   } else if (isCho) {
+    const txtCho = toCompact(txtRaw).replace(/\s+/g, "");
+    show = txtCho.includes(qCho);
+   } else {
+    show = txt.includes(term);
+   }
+   div.style.display = show ? "" : "none";
+  });
+ }
+ function forVisibleAccountCheckboxes(fn) {
+  const items = document.querySelectorAll(
+   "#activeAccountsList .account-item"
+  );
+  items.forEach((div) => {
+   const st = window.getComputedStyle(div);
+   if (st.display !== "none") {
+    const chk = div.querySelector(
+     'input[type="checkbox"][name="activeAccount"]'
+    );
+    if (chk) fn(chk);
+   }
+  });
+ }
+
+ // Bind account filter controls
+ const accFilterEl = document.getElementById("accFilter");
+ if (accFilterEl) {
+  accFilterEl.addEventListener("input", () => {
+   applyAccountFilter();
+   updateAccSummary();
+  });
+ }
+ const accSelVis = document.getElementById("accSelectVisible");
+ if (accSelVis) {
+  accSelVis.addEventListener("click", (ev) => {
+   ev.preventDefault();
+   forVisibleAccountCheckboxes((chk) => (chk.checked = true));
+   updateAccSummary();
+  });
+ }
+ const accDeselVis = document.getElementById("accDeselectVisible");
+ if (accDeselVis) {
+  accDeselVis.addEventListener("click", (ev) => {
+   ev.preventDefault();
+   forVisibleAccountCheckboxes((chk) => (chk.checked = false));
+   updateAccSummary();
+  });
+ }
+</script>
+{% endblock %}

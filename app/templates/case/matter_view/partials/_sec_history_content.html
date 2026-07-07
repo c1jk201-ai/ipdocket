@@ -1,0 +1,294 @@
+{% set _history_count = _history_count if _history_count is defined else (history_total_count if history_total_count is defined else ((history_rows or [])|length)) %}
+{% set _action_sent = "\ubc1c\uc1a1" %}
+{% set _action_submit = "\uc81c\ucd9c" %}
+      <div class="case-panel-header mb-2">
+        <div class="fw-bold">Communications</div>
+        <div class="case-section-actions">
+          {% if can_edit_case %}
+            <div class="dropdown desktop-preferred-action">
+              <button
+                class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                Add
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a
+                    class="dropdown-item text-danger"
+                    href="{{ url_for('case_work.history_notice_new', case_id=matter.matter_id, popup=1) }}"
+                    onclick="window.open(this.href,'noticeAdd','width=1100,height=800'); return false;"
+                    >Add office action</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item text-success"
+                    href="{{ url_for('case_work.history_letter_new', case_id=matter.matter_id, popup=1) }}"
+                    onclick="window.open(this.href,'letterAdd','width=1100,height=800'); return false;"
+                    >Add correspondence</a
+                  >
+                </li>
+              </ul>
+            </div>
+          {% endif %}
+          <div class="btn-group btn-group-sm desktop-preferred-action" role="group" aria-label="Edit communication order">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="historyOrderToggleBtn"
+              {% if not can_edit_case %}disabled title="Matter edit permission is required to edit communication order."{% endif %}
+            >Edit order</button>
+            <button type="button" class="btn btn-sm btn-outline-primary d-none" id="historyOrderSaveBtn" disabled>Save</button>
+            <button type="button" class="btn btn-sm btn-outline-danger d-none" id="historyOrderResetBtn">Reset</button>
+          </div>
+          <div class="btn-group btn-group-sm" role="group" aria-label="Manage communication merges">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="historyMergeViewToggleBtn"
+              {% if not (history_merge_groups or []) %}disabled{% endif %}
+            >Merged view</button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="historyMergeExpandToggleBtn"
+              {% if not (history_merge_groups or []) %}disabled{% endif %}
+            >Expand details</button>
+            {% if can_edit_case %}
+              <button type="button" class="btn btn-sm btn-outline-secondary desktop-preferred-action" id="historyMergeSelectToggleBtn">Select to merge</button>
+              <button type="button" class="btn btn-sm btn-outline-primary d-none desktop-preferred-action" id="historyMergeCreateBtn" disabled>Create merge</button>
+            {% endif %}
+          </div>
+          <span class="badge bg-light text-secondary">Total {{ history_total_count if history_total_count is defined else ((history_rows or [])|length) }}</span>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.all_letters', q=matter.our_ref) }}">Correspondence</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.all_notices', q=matter.our_ref) }}">Office actions</a>
+        </div>
+      </div>
+      {% if history_truncated is defined and history_truncated %}
+        <div class="small text-muted mb-2">Showing the most recent {{ (history_rows or [])|length }} records for performance.</div>
+      {% endif %}
+      {% if can_edit_case and history_truncated is defined and history_truncated %}
+        <div class="small text-muted mb-2">Order edits apply only to the recent records currently shown.</div>
+      {% endif %}
+      {% if history_merge_groups %}
+        <div class="small text-muted mb-2">{{ (history_merge_groups or [])|length }} saved merge groups. Use merged view to switch between thread summary and detail.</div>
+      {% endif %}
+      <div class="comm-legend">
+        <div class="comm-legend__item"><span class="comm-legend__dot comm-legend__dot--notice"></span> Office action</div>
+        <div class="comm-legend__item"><span class="comm-legend__dot comm-legend__dot--response"></span> Response</div>
+        <div class="comm-legend__item"><span class="comm-legend__dot comm-legend__dot--letter"></span> Correspondence</div>
+      </div>
+      <div class="history-merge-toolbar" id="historyMergeToolbar">
+        <div class="history-merge-toolbar__left">
+          <span class="badge bg-light text-secondary border" id="historyMergeGroupsBadge">Merge groups {{ (history_merge_groups or [])|length }}</span>
+          <span class="badge bg-light text-secondary border" id="historyMergeModeBadge">
+            {% if history_merge_groups %}Merged view{% else %}Individual view{% endif %}
+          </span>
+          <span class="badge bg-light text-secondary border d-none" id="historyMergeSelectionBadge">Selected 0</span>
+          <span class="history-merge-toolbar__hint" id="historyMergeHint">
+            {% if history_merge_groups %}Merged summary is shown by default.{% else %}No merge groups exist, so individual records are shown.{% endif %}
+          </span>
+        </div>
+        {% if can_edit_case %}
+          <div class="history-merge-toolbar__right">
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="historyMergeSelectAllBtn">Select visible rows</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="historyMergeSelectionClearBtn">Clear selection</button>
+          </div>
+        {% endif %}
+      </div>
+      <script id="historyMergeGroupsData" type="application/json">{{ (history_merge_groups or [])|tojson }}</script>
+      <div class="legacy-grid-wrap">
+      <table class="legacy-grid small" id="caseHistoryTable">
+        <thead>
+          <tr>
+            <th style="width: 50px;">No</th>
+            <th>Document</th>
+            <th style="width: 80px;">Action</th>
+            <th style="width: 100px;">Uploaded</th>
+            <th style="width: 100px;">Mailed / Filed</th>
+            <th style="width: 100px;">Due</th>
+            <th style="width: 100px;">Extended Due</th>
+            <th style="width: 80px;">Owner</th>
+            <th style="width: 150px;">Recipient</th>
+            <th style="width: 50px;">Files</th>
+            <th style="width: 60px;">Linked Files</th>
+            <th style="width: 90px;">Manage</th>
+          </tr>
+        </thead>
+        <tbody id="caseHistoryTableBody">
+          {% for r in (history_rows or []) %}
+          {% set row_class = 'legacy-row-receive' %}
+          {% if (r.action or '') == _action_sent %}{% set row_class = 'legacy-row-sent' %}{% endif %}
+          {% if (r.action or '') == _action_submit %}{% set row_class = 'legacy-row-submit' %}{% endif %}
+          {% set row_text_class = '' %}
+          {% set row_kind_class = '' %}
+          {% if r.kind == 'notice' %}
+            {% set row_text_class = 'text-danger' %}
+            {% set row_kind_class = 'app-comm-row app-comm-row-notice' %}
+          {% elif r.kind == 'letter' %}
+            {% if r.comm_type == 'R' %}
+              {% set row_text_class = 'text-primary' %}
+              {% set row_kind_class = 'app-comm-row app-comm-row-response' %}
+            {% elif r.comm_type == 'T' %}
+              {% set row_text_class = 'text-warning text-dark' %}
+              {% set row_kind_class = 'app-comm-row app-comm-row-letter' %}
+            {% else %}
+              {% set row_text_class = 'text-success' %}
+              {% set row_kind_class = 'app-comm-row app-comm-row-letter' %}
+            {% endif %}
+          {% endif %}
+          <tr
+            class="{{ row_class }} {{ row_text_class }} {{ row_kind_class }}"
+            data-history-row-key="{{ r.row_key or (r.kind ~ ':' ~ r.id) }}"
+            data-history-kind="{{ r.kind }}"
+            data-history-id="{{ r.id }}"
+            data-history-merge-group="{{ r.merge_group_id or '' }}"
+          >
+            <td data-label="No">
+              <label class="history-merge-check" title="Select for merge">
+                <input type="checkbox" class="form-check-input history-merge-row-checkbox" data-history-merge-row-key="{{ r.row_key or (r.kind ~ ':' ~ r.id) }}" />
+              </label>
+              <span class="history-row-no">{{ _history_count - loop.index0 }}</span>
+            </td>
+            <td class="legacy-doc" style="text-align:left;" data-label="Document">
+              {% if r.kind == 'notice' %}
+                <div class="history-doc-main">
+                  <span class="history-doc-title text-danger fw-bold">{{ r.doc_name or '' }}</span>
+                  <span
+                    class="badge bg-danger text-white"
+                    style="background-color:#dc3545 !important;color:#fff !important;"
+                  >Office action</span>
+                </div>
+                {% elif r.kind == 'letter' %}
+                {% if r.comm_type == 'R' %}
+                  <div class="history-doc-main">
+                    <span class="history-doc-title text-primary fw-bold">{{ r.doc_name or '' }}</span>
+                    <span
+                      class="badge bg-primary text-white"
+                      style="background-color:#0d6efd !important;color:#fff !important;"
+                    >Response</span>
+                  </div>
+                {% elif r.comm_type == 'T' %}
+                  <div class="history-doc-main">
+                    <span class="history-doc-title text-warning text-dark fw-bold">{% if r.doc_name == 'T' %}Call notes{% else %}{{ r.doc_name or 'No title' }}{% endif %}</span>
+                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Call</span>
+                  </div>
+                {% else %}
+                  <div class="history-doc-main">
+                    <span class="history-doc-title text-success fw-bold">{% if r.doc_name == 'M' %}(No title){% else %}{{ r.doc_name or '' }}{% endif %}</span>
+                    <span
+                      class="badge bg-success text-white"
+                      style="background-color:#198754 !important;color:#fff !important;"
+                    >Correspondence</span>
+                  </div>
+                {% endif %}
+              {% endif %}
+              {% if r.merge_group_id %}
+                <div class="small mt-1">
+                  <button
+                    type="button"
+                    class="btn btn-link p-0 text-decoration-none history-merge-pill"
+                    data-history-merge-focus="{{ r.merge_group_id }}"
+                  >
+                    <span class="badge bg-light text-secondary border">Merged</span>
+                  </button>
+                </div>
+              {% endif %}
+            </td>
+            {% set _action_label = "Sent" if (r.action or '') == _action_sent else "Filed" if (r.action or '') == _action_submit else "Uploaded" if (r.action or '') else "" %}
+            <td data-label="Action">{{ _action_label }}</td>
+            <td data-label="Uploaded">{{ (r.received_date or '')|us_date }}</td>
+            <td data-label="Mailed / Filed">{{ (r.notified_date or '')|us_date }}</td>
+            <td data-label="Due">
+              {% if (r.done_date or '') and (r.due_date or '') %}
+                <span class="legacy-muted" title="Done: {{ (r.done_date or '')|us_date }}">{{ (r.due_date or '')|us_date }}</span>
+              {% else %}
+                {{ (r.due_date or '')|us_date }}
+              {% endif %}
+            </td>
+            <td data-label="Extended Due">{{ (r.extended_due_date or '')|us_date }}</td>
+            <td data-label="Owner">{{ r.owner_name or '' }}</td>
+            <td class="legacy-target" data-label="Recipient">{{ r.target or '' }}</td>
+            <td data-label="Files">{% if (r.attach_count or 0) > 0 %}{{ r.attach_count }}{% else %}-{% endif %}</td>
+            <td data-label="Linked Files">
+              {% if (r.attach_count or 0) > 0 %}
+                {% if r.kind == 'letter' %}
+                  <a href="{{ url_for('case_work.history_letter_attachments', case_id=matter.matter_id, comm_id=r.id) }}" class="text-decoration-none">View</a>
+                {% else %}
+                  <a href="{{ url_for('case_work.history_notice_attachments', case_id=matter.matter_id, oa_id=r.id) }}" class="text-decoration-none">View</a>
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td data-label="Manage">
+              {% if can_edit_case %}
+                <div class="history-order-controls d-none" data-history-order-controls-row="1">
+                  <button type="button" class="btn btn-sm btn-outline-secondary history-order-btn" data-history-order-move="up" title="Move up">Up</button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary history-order-btn" data-history-order-move="down" title="Move down">Down</button>
+                </div>
+                {% if r.kind == 'notice' %}
+                  <a
+                    href="{{ url_for('case_work.history_notice_edit', case_id=matter.matter_id, oa_id=r.id, popup=1) }}"
+                    onclick="window.open(this.href,'noticeEdit','width=1100,height=800'); return false;"
+                    class="text-decoration-none"
+                    >Edit</a
+                  >
+                  <form
+                    id="deleteNoticeForm_{{ r.id }}"
+                    method="POST"
+                    action="{{ url_for('case_work.history_notice_delete', case_id=matter.matter_id, oa_id=r.id) }}"
+                    style="display:inline;"
+                    data-editmode-skip="1"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-link p-0 text-danger history-delete-btn"
+                      data-editmode-skip="1"
+                      data-type="notice"
+                      data-doc-name="{{ r.doc_name or '' }}"
+                      data-form-id="deleteNoticeForm_{{ r.id }}"
+                    >Delete</button>
+                  </form>
+                {% else %}
+                  <a
+                    href="{{ url_for('case_work.history_letter_edit', case_id=matter.matter_id, comm_id=r.id, popup=1) }}"
+                    onclick="window.open(this.href,'letterEdit','width=1100,height=800'); return false;"
+                    class="text-decoration-none"
+                    >Edit</a
+                  >
+                  <form
+                    id="deleteLetterForm_{{ r.id }}"
+                    method="POST"
+                    action="{{ url_for('case_work.history_letter_delete', case_id=matter.matter_id, comm_id=r.id) }}"
+                    style="display:inline;"
+                    data-editmode-skip="1"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-link p-0 text-danger history-delete-btn"
+                      data-editmode-skip="1"
+                      data-type="letter"
+                      data-doc-name="{{ r.doc_name or '' }}"
+                      data-form-id="deleteLetterForm_{{ r.id }}"
+                    >Delete</button>
+                  </form>
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="12" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-chat-left-text"></i><span>No communication history.</span></div></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>

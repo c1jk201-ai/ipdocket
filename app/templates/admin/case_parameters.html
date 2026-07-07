@@ -1,0 +1,884 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Matter Parameters{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.matter_create_menu_page') }}"><i class="bi bi-list-ul"></i> Create Menu</a>
+<button type="button" class="btn btn-outline-secondary btn-sm" id="param-repair-btn"><i class="bi bi-shield-check"></i> Repair baseline</button>
+<button type="button" class="btn btn-outline-secondary btn-sm" id="param-refresh-btn"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="card shadow-sm mb-3">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div class="small text-muted">
+        Source: <code id="param-source"></code>
+        <span class="ms-2">Fields: <strong id="param-field-count">0</strong></span>
+        <span class="ms-2">Mappings: <strong id="param-mapping-count">0</strong></span>
+        <span class="ms-2">Baseline: <strong id="param-baseline-count">0 / 0</strong></span>
+        <span class="ms-2">Create Menu: <strong id="param-menu-mapping-count">0</strong></span>
+      </div>
+      <div class="small text-muted">Saved changes update <code>UNIFIED_FIELD_REGISTRY_JSON</code>.</div>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="parameter-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="fields-tab" data-bs-toggle="tab" data-bs-target="#fields-pane" type="button" role="tab">Field Definitions</button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="mappings-tab" data-bs-toggle="tab" data-bs-target="#mappings-pane" type="button" role="tab">Matter Mappings</button>
+  </li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="fields-pane" role="tabpanel" aria-labelledby="fields-tab">
+    <div class="row g-3">
+      <div class="col-xl-5">
+        <div class="card shadow-sm">
+          <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="mb-0">Parameter Catalog</h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="param-new-field-btn"><i class="bi bi-plus-lg"></i> New</button>
+          </div>
+          <div class="card-body p-0">
+            <div class="p-3 border-bottom">
+              <input id="param-field-filter" class="form-control form-control-sm" placeholder="Search key, label, type">
+            </div>
+            <div class="table-responsive" style="max-height: 62vh;">
+              <table class="table table-sm table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Key</th>
+                    <th>Label</th>
+                    <th>Type</th>
+                    <th class="text-end">Use</th>
+                  </tr>
+                </thead>
+                <tbody id="param-field-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-7">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h5 class="mb-0">Field Definition</h5>
+          </div>
+          <div class="card-body">
+            <form id="param-field-form">
+              <input type="hidden" id="field-current-key">
+              <div class="row g-2">
+                <div class="col-md-4">
+                  <label class="form-label small">Key</label>
+                  <input id="field-key" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Label</label>
+                  <input id="field-label" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Input preset</label>
+                  <select id="field-input-preset" class="form-select form-select-sm"></select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Input type</label>
+                  <input id="field-input-type" list="field-input-type-options" class="form-control form-control-sm" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Serializer</label>
+                  <input id="field-serializer" list="field-serializer-options" class="form-control form-control-sm" placeholder="string">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Options source</label>
+                  <input id="field-options-source" list="field-options-source-options" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Default value</label>
+                  <input id="field-default-value" class="form-control form-control-sm">
+                </div>
+                <div class="col-12" id="field-options-wrap">
+                  <label class="form-label small">Inline options</label>
+                  <textarea id="field-options" class="form-control form-control-sm font-monospace" rows="4" spellcheck="false" placeholder="PENDING|Pending&#10;DONE|Done"></textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small">Help text</label>
+                  <input id="field-help-text" class="form-control form-control-sm">
+                </div>
+                <div class="col-12">
+                  <label class="form-label small">Input preview</label>
+                  <div id="field-input-preview" class="border rounded bg-light p-2"></div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label small">Validators JSON</label>
+                  <textarea id="field-validators" class="form-control form-control-sm font-monospace" rows="6" spellcheck="false"></textarea>
+                </div>
+                <div class="col-12">
+                  <div class="form-check form-switch">
+                    <input id="field-deprecated" class="form-check-input" type="checkbox">
+                    <label class="form-check-label small" for="field-deprecated">Deprecated</label>
+                  </div>
+                </div>
+              </div>
+              <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-danger btn-sm" id="param-delete-field-btn"><i class="bi bi-trash"></i> Delete</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-save"></i> Save field</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="mappings-pane" role="tabpanel" aria-labelledby="mappings-tab">
+    <div class="row g-3">
+      <div class="col-xl-4">
+        <div class="card shadow-sm">
+          <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h5 class="mb-0">Matter Profiles</h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="param-new-mapping-btn"><i class="bi bi-plus-lg"></i> New</button>
+          </div>
+          <div class="card-body p-0">
+            <div class="p-3 border-bottom">
+              <input id="param-mapping-filter" class="form-control form-control-sm" placeholder="Search mapping, namespace">
+            </div>
+            <div class="table-responsive" style="max-height: 62vh;">
+              <table class="table table-sm table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Mapping</th>
+                    <th>Namespace</th>
+                    <th class="text-end">Fields</th>
+                  </tr>
+                </thead>
+                <tbody id="param-mapping-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-8">
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h5 class="mb-0">Mapping Fields</h5>
+          </div>
+          <div class="card-body">
+            <form id="param-mapping-form">
+              <input type="hidden" id="mapping-current-key">
+              <div id="mapping-source-note" class="alert alert-info py-2 small d-none"></div>
+              <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                  <label class="form-label small">Mapping key</label>
+                  <input id="mapping-key" class="form-control form-control-sm" placeholder="IP:DOM:PATENT" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Namespace</label>
+                  <input id="mapping-namespace" class="form-control form-control-sm" placeholder="domestic_patent">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small">Inherit</label>
+                  <input id="mapping-inherit" list="mapping-key-options" class="form-control form-control-sm">
+                </div>
+                <div class="col-12">
+                  <label class="form-label small">Extra allowed keys</label>
+                  <textarea id="mapping-extra-allowed" class="form-control form-control-sm font-monospace" rows="2" spellcheck="false"></textarea>
+                </div>
+              </div>
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <div class="fw-semibold small">Ledger parameter layout</div>
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="param-load-effective-fields-btn"><i class="bi bi-download"></i> Load effective fields</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="param-add-mapping-field-btn"><i class="bi bi-plus-lg"></i> Add field</button>
+                </div>
+              </div>
+              <div class="table-responsive border rounded">
+                <table class="table table-sm align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Field key</th>
+                      <th style="width: 110px;">Order</th>
+                      <th style="width: 100px;">Column</th>
+                      <th style="width: 170px;">Group</th>
+                      <th style="width: 120px;">Group order</th>
+                      <th style="width: 95px;">Required</th>
+                      <th style="width: 130px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="param-mapping-field-list"></tbody>
+                </table>
+              </div>
+              <div class="border rounded bg-light p-3 mt-3">
+                <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                  <div class="fw-semibold small">Case create preview</div>
+                  <div class="small text-muted" id="mapping-create-target"></div>
+                </div>
+                <div id="mapping-create-warnings" class="small mb-2"></div>
+                <div class="table-responsive" style="max-height: 260px;">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Order</th>
+                        <th>Column</th>
+                        <th>Group</th>
+                        <th>Group order</th>
+                        <th>Key</th>
+                        <th>Label</th>
+                        <th>Widget</th>
+                        <th>Required</th>
+                      </tr>
+                    </thead>
+                    <tbody id="mapping-create-preview"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                <button type="submit" class="btn btn-primary btn-sm" id="param-save-mapping-btn"><i class="bi bi-save"></i> Save mapping</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<datalist id="field-input-type-options"></datalist>
+<datalist id="field-serializer-options"></datalist>
+<datalist id="field-options-source-options"></datalist>
+<datalist id="mapping-key-options"></datalist>
+<datalist id="mapping-group-options"></datalist>
+
+<script>
+  let parameterState = {{ snapshot|tojson }};
+  let selectedFieldKey = "";
+  let selectedMappingKey = "";
+  let selectedMappingFields = [];
+  let selectedMappingReadOnly = false;
+
+  const parameterApiUrl = "{{ url_for('admin.api_case_parameters_snapshot') }}";
+  const fieldApiUrl = "{{ url_for('admin.api_case_parameter_field') }}";
+  const mappingApiUrl = "{{ url_for('admin.api_case_parameter_mapping') }}";
+  const repairBaselineApiUrl = "{{ url_for('admin.api_case_parameter_repair_baseline') }}";
+  const readCsrfToken = () =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+  const escapeHtml = (value) =>
+    String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  function todayIso() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function fieldInputPresets() {
+    return parameterState.input_type_presets || [];
+  }
+
+  function presetForInputType(inputType) {
+    const normalized = String(inputType || "").trim();
+    return fieldInputPresets().find((preset) => preset.input_type === normalized) || null;
+  }
+
+  function parseInlineOptionsText(text) {
+    return String(text || "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        if (line.includes("|")) {
+          const parts = line.split("|");
+          const value = parts.shift().trim();
+          return { value, label: parts.join("|").trim() || value };
+        }
+        if (line.includes("\t")) {
+          const [value, label] = line.split("\t", 2).map((part) => part.trim());
+          return { value, label: label || value };
+        }
+        return { value: line, label: line };
+      })
+      .filter((item) => item.value);
+  }
+
+  function optionsTextFromOptions(options) {
+    return (options || [])
+      .map((item) => {
+        const value = String(item?.value || "").trim();
+        const label = String(item?.label || value).trim();
+        if (!value) return "";
+        return value === label ? value : `${value}|${label}`;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function validatorsJsonForPreset(preset) {
+    return JSON.stringify(preset?.validators || [], null, 2);
+  }
+
+  function syncFieldPresetSelection() {
+    const inputType = document.getElementById("field-input-type").value.trim();
+    const preset = presetForInputType(inputType);
+    document.getElementById("field-input-preset").value = preset?.value || "";
+  }
+
+  function refreshFieldOptionsVisibility() {
+    const inputType = document.getElementById("field-input-type").value.trim();
+    const optionsWrap = document.getElementById("field-options-wrap");
+    const showOptions = inputType === "select";
+    optionsWrap.style.display = showOptions ? "" : "none";
+  }
+
+  function renderFieldInputPreview() {
+    const host = document.getElementById("field-input-preview");
+    const key = document.getElementById("field-key").value.trim() || "field";
+    const inputType = document.getElementById("field-input-type").value.trim() || "text";
+    const optionsSource = document.getElementById("field-options-source").value.trim();
+    const options = parseInlineOptionsText(document.getElementById("field-options").value);
+    const defaultValue = document.getElementById("field-default-value").value.trim();
+    const required = `<span class="badge text-bg-secondary ms-2">optional</span>`;
+
+    if (inputType === "date") {
+      host.innerHTML = `<div class="input-group input-group-sm"><input class="form-control form-control-sm" type="date" value="${escapeHtml(defaultValue)}" data-field-preview-date="1"><button type="button" class="btn btn-outline-secondary" data-field-preview-today="1" title="Set to today">Today</button></div>`;
+      return;
+    }
+    if (inputType === "textarea") {
+      host.innerHTML = `<textarea class="form-control form-control-sm" rows="2" disabled></textarea>`;
+      return;
+    }
+    if (inputType === "select_yn") {
+      host.innerHTML = `<div class="d-flex flex-wrap gap-3"><label class="form-check mb-0"><input class="form-check-input" type="radio" disabled> Select</label><label class="form-check mb-0"><input class="form-check-input" type="radio" disabled> Yes</label><label class="form-check mb-0"><input class="form-check-input" type="radio" disabled> No</label></div>`;
+      return;
+    }
+    if (inputType === "select") {
+      const optionHtml = options.length
+        ? options.map((item) => `<option value="${escapeHtml(item.value)}">${escapeHtml(item.label)}</option>`).join("")
+        : `<option>${escapeHtml(optionsSource || "Select")}</option>`;
+      host.innerHTML = `<select class="form-select form-select-sm" disabled><option>Select</option>${optionHtml}</select><div class="small text-muted mt-1">${options.length ? `${options.length} inline options` : (optionsSource ? `source: ${escapeHtml(optionsSource)}` : "no options yet")}${required}</div>`;
+      return;
+    }
+    if (inputType === "client_search") {
+      host.innerHTML = `<input class="form-control form-control-sm" type="text" value="Search contact" disabled>`;
+      return;
+    }
+    if (inputType === "number") {
+      host.innerHTML = `<input class="form-control form-control-sm" type="number" name="${escapeHtml(key)}" disabled>`;
+      return;
+    }
+    host.innerHTML = `<input class="form-control form-control-sm" type="text" name="${escapeHtml(key)}" disabled>`;
+  }
+
+  function refreshFieldInputControls() {
+    syncFieldPresetSelection();
+    refreshFieldOptionsVisibility();
+    renderFieldInputPreview();
+  }
+
+  function applyFieldPreset(presetValue) {
+    const preset = fieldInputPresets().find((item) => item.value === presetValue);
+    if (!preset) return;
+    document.getElementById("field-input-type").value = preset.input_type || "text";
+    document.getElementById("field-serializer").value = preset.serializer || "string";
+    if (preset.input_type !== "select") {
+      document.getElementById("field-options-source").value = "";
+      document.getElementById("field-options").value = "";
+    }
+    document.getElementById("field-validators").value = validatorsJsonForPreset(preset);
+    refreshFieldInputControls();
+  }
+
+  function findField(key) {
+    return (parameterState.fields || []).find((field) => field.key === key) || null;
+  }
+
+  function findMapping(key) {
+    return (parameterState.mappings || []).find((mapping) => mapping.key === key) || null;
+  }
+
+  function mappingGroupOptions() {
+    const groups = new Set(["Default/Responsible", "Management", "Applicant/Title", "Filing/Publication", "Priority", "Registration", "Abandoned/Other/Done"]);
+    (parameterState.mappings || []).forEach((mapping) => {
+      [...(mapping.fields || []), ...(mapping.create_preview?.fields || [])].forEach((field) => {
+        const group = String(field.group || "").trim();
+        if (group) groups.add(group);
+      });
+    });
+    selectedMappingFields.forEach((field) => {
+      const group = String(field.group || "").trim();
+      if (group) groups.add(group);
+    });
+    return [...groups].sort((a, b) => a.localeCompare(b));
+  }
+
+  async function parameterRequest(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": readCsrfToken(),
+        ...(options.headers || {}),
+      },
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.success === false) {
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+    if (data.snapshot) {
+      parameterState = data.snapshot;
+      renderAll();
+    }
+    return data;
+  }
+
+  function renderDatalists() {
+    document.getElementById("field-input-preset").innerHTML = [
+      '<option value="">Custom</option>',
+      ...fieldInputPresets().map((preset) => `<option value="${escapeHtml(preset.value)}">${escapeHtml(preset.label)}</option>`),
+    ].join("");
+    document.getElementById("field-input-type-options").innerHTML = (parameterState.input_types || [])
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join("");
+    document.getElementById("field-serializer-options").innerHTML = (parameterState.serializers || [])
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join("");
+    document.getElementById("field-options-source-options").innerHTML = (parameterState.option_sources || [])
+      .map((value) => `<option value="${escapeHtml(value)}"></option>`)
+      .join("");
+    document.getElementById("mapping-key-options").innerHTML = (parameterState.mappings || [])
+      .map((mapping) => `<option value="${escapeHtml(mapping.key)}"></option>`)
+      .join("");
+    document.getElementById("mapping-group-options").innerHTML = mappingGroupOptions()
+      .map((group) => `<option value="${escapeHtml(group)}"></option>`)
+      .join("");
+  }
+
+  function renderSummary() {
+    document.getElementById("param-source").textContent = parameterState.meta?.source || "unknown";
+    document.getElementById("param-field-count").textContent = String((parameterState.fields || []).length);
+    document.getElementById("param-mapping-count").textContent = String((parameterState.mappings || []).length);
+    document.getElementById("param-baseline-count").textContent =
+      `${parameterState.baseline?.field_count || 0} / ${parameterState.baseline?.mapping_count || 0}`;
+    document.getElementById("param-menu-mapping-count").textContent =
+      String(parameterState.case_menu?.mapping_count || 0);
+  }
+
+  function renderFieldList() {
+    const needle = document.getElementById("param-field-filter").value.trim().toLowerCase();
+    const rows = (parameterState.fields || []).filter((field) => {
+      const haystack = `${field.key} ${field.label} ${field.input_type} ${field.options_source}`.toLowerCase();
+      return !needle || haystack.includes(needle);
+    });
+    document.getElementById("param-field-list").innerHTML = rows.map((field) => {
+      const menuUsage = Number(field.menu_usage_count || 0);
+      const registryUsage = Number(field.registry_usage_count || 0);
+      const usageHint = menuUsage
+        ? `<div class="small text-muted">menu ${escapeHtml(menuUsage)}</div>`
+        : (registryUsage ? `<div class="small text-muted">registry ${escapeHtml(registryUsage)}</div>` : "");
+      return `
+      <tr data-field-key="${escapeHtml(field.key)}" class="${field.key === selectedFieldKey ? "table-active" : ""}" style="cursor:pointer;">
+        <td><code>${escapeHtml(field.key)}</code>${field.baseline ? ' <span class="badge text-bg-info">baseline</span>' : ""}${field.deprecated ? ' <span class="badge text-bg-secondary">deprecated</span>' : ""}</td>
+        <td>${escapeHtml(field.label)}</td>
+        <td>${escapeHtml(field.input_type)}${(field.options || []).length ? ` <span class="badge text-bg-light">${escapeHtml((field.options || []).length)} opt</span>` : ""}</td>
+        <td class="text-end">${escapeHtml(field.usage_count)}${usageHint}</td>
+      </tr>
+    `;
+    }).join("") || '<tr><td colspan="4" class="text-muted text-center py-3">No fields.</td></tr>';
+  }
+
+  function setFieldForm(field) {
+    selectedFieldKey = field?.key || "";
+    document.getElementById("field-current-key").value = field?.key || "";
+    document.getElementById("field-key").value = field?.key || "";
+    document.getElementById("field-key").readOnly = field?.baseline === true;
+    document.getElementById("field-label").value = field?.label || "";
+    document.getElementById("field-input-type").value = field?.input_type || "text";
+    document.getElementById("field-serializer").value = field?.serializer || "string";
+    document.getElementById("field-options-source").value = field?.options_source || "";
+    document.getElementById("field-default-value").value = field?.default_value ?? "";
+    document.getElementById("field-options").value = field?.options_text || optionsTextFromOptions(field?.options || []);
+    document.getElementById("field-help-text").value = field?.help_text || "";
+    document.getElementById("field-validators").value = field?.validators_json || "[]";
+    document.getElementById("field-deprecated").checked = Boolean(field?.deprecated);
+    document.getElementById("param-delete-field-btn").innerHTML = field?.baseline
+      ? '<i class="bi bi-archive"></i> Mark deprecated'
+      : '<i class="bi bi-trash"></i> Delete';
+    refreshFieldInputControls();
+    renderFieldList();
+  }
+
+  function collectFieldPayload() {
+    return {
+      current_key: document.getElementById("field-current-key").value.trim(),
+      key: document.getElementById("field-key").value.trim(),
+      label: document.getElementById("field-label").value.trim(),
+      input_type: document.getElementById("field-input-type").value.trim(),
+      serializer: document.getElementById("field-serializer").value.trim(),
+      options_source: document.getElementById("field-options-source").value.trim(),
+      options: document.getElementById("field-options").value.trim(),
+      default_value: document.getElementById("field-default-value").value,
+      help_text: document.getElementById("field-help-text").value.trim(),
+      deprecated: document.getElementById("field-deprecated").checked,
+      validators: document.getElementById("field-validators").value.trim() || "[]",
+    };
+  }
+
+  function fieldSelectOptions(selected) {
+    return (parameterState.fields || []).map((field) => (
+      `<option value="${escapeHtml(field.key)}" ${field.key === selected ? "selected" : ""}>${escapeHtml(field.key)} - ${escapeHtml(field.label)}</option>`
+    )).join("");
+  }
+
+  function renderMappingList() {
+    const needle = document.getElementById("param-mapping-filter").value.trim().toLowerCase();
+    const rows = (parameterState.mappings || []).filter((mapping) => {
+      const groupText = (mapping.fields || []).map((field) => field.group || "").join(" ");
+      const haystack = `${mapping.key} ${mapping.namespace} ${mapping.inherit} ${groupText}`.toLowerCase();
+      return !needle || haystack.includes(needle);
+    });
+    document.getElementById("param-mapping-list").innerHTML = rows.map((mapping) => `
+      <tr data-mapping-key="${escapeHtml(mapping.key)}" class="${mapping.key === selectedMappingKey ? "table-active" : ""}" style="cursor:pointer;">
+        <td><code>${escapeHtml(mapping.key)}</code>${mapping.baseline ? ' <span class="badge text-bg-info">baseline</span>' : ""}${mapping.menu_override ? ' <span class="badge text-bg-warning">create menu</span>' : ""}${mapping.inherit ? `<div class="small text-muted">inherits ${escapeHtml(mapping.inherit)}</div>` : ""}</td>
+        <td>${escapeHtml(mapping.namespace || "-")}</td>
+        <td class="text-end">${escapeHtml(mapping.effective_field_count || 0)}<div class="small text-muted">direct ${escapeHtml(mapping.direct_field_count || 0)}</div></td>
+      </tr>
+    `).join("") || '<tr><td colspan="3" class="text-muted text-center py-3">No mappings.</td></tr>';
+  }
+
+  function setMappingForm(mapping) {
+    selectedMappingKey = mapping?.key || "";
+    selectedMappingFields = (mapping?.fields || []).map((field) => ({ ...field }));
+    selectedMappingReadOnly = Boolean(mapping?.read_only || mapping?.menu_override);
+    document.getElementById("mapping-current-key").value = mapping?.key || "";
+    document.getElementById("mapping-key").value = mapping?.key || "";
+    document.getElementById("mapping-key").readOnly = mapping?.baseline === true || selectedMappingReadOnly;
+    document.getElementById("mapping-namespace").value = mapping?.namespace || "";
+    document.getElementById("mapping-namespace").readOnly = selectedMappingReadOnly;
+    document.getElementById("mapping-inherit").value = mapping?.inherit || "";
+    document.getElementById("mapping-inherit").readOnly = selectedMappingReadOnly;
+    document.getElementById("mapping-extra-allowed").value = (mapping?.extra_allowed || []).join("\n");
+    document.getElementById("mapping-extra-allowed").readOnly = selectedMappingReadOnly;
+    document.getElementById("param-add-mapping-field-btn").disabled = selectedMappingReadOnly;
+    document.getElementById("param-save-mapping-btn").disabled = selectedMappingReadOnly;
+    const sourceNote = document.getElementById("mapping-source-note");
+    if (sourceNote) {
+      sourceNote.classList.toggle("d-none", !selectedMappingReadOnly);
+      sourceNote.innerHTML = selectedMappingReadOnly
+        ? 'This layout is controlled by <a href="{{ url_for("admin.matter_create_menu_page") }}">Matter Create Menu</a>. Edit the menu item there, then refresh this page.'
+        : "";
+    }
+    renderMappingList();
+    renderMappingFields();
+    renderCreatePreview(mapping);
+  }
+
+  function mappingTargetFromKey(key) {
+    const parts = String(key || "").split(":").map((part) => part.trim()).filter(Boolean);
+    if (parts.length >= 3 && parts[0].toUpperCase() === "IP") return { division: parts[1].toUpperCase(), case_type: parts[2].toUpperCase() };
+    if (parts.length === 2 && parts[0].toUpperCase() === "IP") return { division: "ETC", case_type: parts[1].toUpperCase() };
+    if (parts.length === 2) return { division: parts[0].toUpperCase(), case_type: parts[1].toUpperCase() };
+    if (parts.length === 1 && ["LITIGATION", "MISC"].includes(parts[0].toUpperCase())) return { division: "ETC", case_type: parts[0].toUpperCase() };
+    return { division: "", case_type: "" };
+  }
+
+  function createWidgetFor(fieldKey, definition, mappingKey) {
+    const upperMapping = String(mappingKey || "").toUpperCase();
+    let inputType = String(definition?.input_type || "text").trim() || "text";
+    const optionsSource = String(definition?.options_source || "").trim();
+    if (inputType === "select" && optionsSource) inputType = optionsSource;
+    if (fieldKey === "filing_type") {
+      if (upperMapping.includes("DESIGN")) return "select_design_filing_type";
+      if (upperMapping.includes("TRADEMARK")) return "select_tm_filing_type";
+      return "select_filing_type";
+    }
+    if (fieldKey === "filing_kind" && upperMapping.includes("DESIGN")) return "select_design_filing_kind";
+    if (fieldKey === "right_type") {
+      if (upperMapping.includes("TRADEMARK")) return "select_tm_right_type";
+      if (upperMapping.includes("LITIGATION") || upperMapping.includes("MISC")) return "select_litigation_right_type";
+    }
+    return inputType;
+  }
+
+  function buildDraftCreatePreview(mapping) {
+    const mappingKey = document.getElementById("mapping-key").value.trim().toUpperCase() || selectedMappingKey;
+    const namespace = document.getElementById("mapping-namespace").value.trim();
+    const inherit = document.getElementById("mapping-inherit").value.trim().toUpperCase();
+    const directRows = selectedMappingFields
+      .map((field, index) => ({
+        key: String(field.key || "").trim(),
+        order: Number(field.order || index + 1),
+        col: Number(field.col || 1) === 2 ? 2 : 1,
+        required: Boolean(field.required),
+        group: String(field.group || "").trim(),
+        group_order: field.group_order ?? "",
+      }))
+      .filter((field) => field.key);
+
+    if (!directRows.length && mapping?.key === mappingKey && (mapping.create_preview?.fields || []).length) {
+      const preview = mapping.create_preview || {};
+      return {
+        target: preview.target || mappingTargetFromKey(mappingKey),
+        fields: preview.fields || [],
+        warnings: [...(preview.warnings || []), "showing_saved_effective_fields"],
+        namespace: preview.namespace || namespace,
+        source: "saved effective",
+      };
+    }
+
+    const warnings = [];
+    if (!namespace) warnings.push("missing_namespace");
+    if (!directRows.length) warnings.push(inherit ? "no_direct_fields_uses_inherit_after_save" : "no_direct_fields");
+    const seen = new Set();
+    const duplicates = new Set();
+    const unknown = new Set();
+    const fields = directRows.map((field) => {
+      if (seen.has(field.key)) duplicates.add(field.key);
+      seen.add(field.key);
+      const definition = findField(field.key);
+      if (!definition) unknown.add(field.key);
+      return {
+        ...field,
+        label: definition?.label || field.key,
+        widget: createWidgetFor(field.key, definition, mappingKey),
+      };
+    });
+    if (duplicates.size) warnings.push(`duplicate_fields:${[...duplicates].sort().join(",")}`);
+    if (unknown.size) warnings.push(`unknown_fields:${[...unknown].sort().join(",")}`);
+    return {
+      target: mappingTargetFromKey(mappingKey),
+      namespace,
+      warnings,
+      fields,
+      source: "draft",
+    };
+  }
+
+  function renderCreatePreview(mapping) {
+    const preview = buildDraftCreatePreview(mapping || findMapping(selectedMappingKey));
+    const target = preview.target || {};
+    document.getElementById("mapping-create-target").textContent =
+      target.division || target.case_type ? `${target.division || "-"}:${target.case_type || "-"} / ${preview.source || "draft"}` : `No create target / ${preview.source || "draft"}`;
+    const warnings = preview.warnings || [];
+    document.getElementById("mapping-create-warnings").innerHTML = warnings.length
+      ? warnings.map((warning) => `<span class="badge text-bg-warning me-1">${escapeHtml(warning)}</span>`).join("")
+      : '<span class="text-success">No create warnings for draft mapping.</span>';
+    document.getElementById("mapping-create-preview").innerHTML = (preview.fields || []).map((field) => `
+      <tr>
+        <td>${escapeHtml(field.order ?? "")}</td>
+        <td>${Number(field.col || 1) === 2 ? "Right" : "Left"}</td>
+        <td>${escapeHtml(field.group || "")}</td>
+        <td>${escapeHtml(field.group_order ?? "")}</td>
+        <td><code>${escapeHtml(field.key)}</code></td>
+        <td>${escapeHtml(field.label)}</td>
+        <td>${escapeHtml(field.widget)}</td>
+        <td>${field.required ? "Yes" : ""}</td>
+      </tr>
+    `).join("") || '<tr><td colspan="8" class="text-muted text-center py-3">No saved create preview.</td></tr>';
+  }
+
+  function renderMappingFields() {
+    const disabledAttr = selectedMappingReadOnly ? "disabled" : "";
+    document.getElementById("param-mapping-field-list").innerHTML = selectedMappingFields.map((field, index) => `
+      <tr data-index="${index}">
+        <td><select class="form-select form-select-sm" data-map-prop="key" ${disabledAttr}>${fieldSelectOptions(field.key)}</select></td>
+        <td><input class="form-control form-control-sm" type="number" step="0.1" data-map-prop="order" value="${escapeHtml(field.order ?? index + 1)}" ${disabledAttr}></td>
+        <td>
+          <select class="form-select form-select-sm" data-map-prop="col" ${disabledAttr}>
+            <option value="1" ${Number(field.col || 1) === 1 ? "selected" : ""}>Left</option>
+            <option value="2" ${Number(field.col || 1) === 2 ? "selected" : ""}>Right</option>
+          </select>
+        </td>
+        <td><input class="form-control form-control-sm" data-map-prop="group" list="mapping-group-options" value="${escapeHtml(field.group || "")}" placeholder="Default/Responsible" ${disabledAttr}></td>
+        <td><input class="form-control form-control-sm" type="number" step="0.1" data-map-prop="group_order" value="${escapeHtml(field.group_order ?? "")}" placeholder="10" ${disabledAttr}></td>
+        <td class="text-center"><input class="form-check-input" type="checkbox" data-map-prop="required" ${field.required ? "checked" : ""} ${disabledAttr}></td>
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-map-action="up" ${disabledAttr}><i class="bi bi-arrow-up"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-map-action="down" ${disabledAttr}><i class="bi bi-arrow-down"></i></button>
+            <button type="button" class="btn btn-outline-danger" data-map-action="delete" ${disabledAttr}><i class="bi bi-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `).join("") || '<tr><td colspan="7" class="text-muted text-center py-3">No fields configured.</td></tr>';
+  }
+
+  function collectMappingPayload() {
+    const fields = [...document.querySelectorAll("#param-mapping-field-list tr[data-index]")].map((row) => {
+      const rawGroupOrder = row.querySelector('[data-map-prop="group_order"]').value.trim();
+      return {
+        key: row.querySelector('[data-map-prop="key"]').value,
+        order: Number(row.querySelector('[data-map-prop="order"]').value || 0),
+        col: Number(row.querySelector('[data-map-prop="col"]').value || 1),
+        group: row.querySelector('[data-map-prop="group"]').value.trim(),
+        group_order: rawGroupOrder === "" ? null : Number(rawGroupOrder),
+        required: row.querySelector('[data-map-prop="required"]').checked,
+      };
+    });
+    return {
+      current_key: document.getElementById("mapping-current-key").value.trim(),
+      key: document.getElementById("mapping-key").value.trim(),
+      namespace: document.getElementById("mapping-namespace").value.trim(),
+      inherit: document.getElementById("mapping-inherit").value.trim(),
+      extra_allowed: document.getElementById("mapping-extra-allowed").value.split(/[\n,]+/).map((v) => v.trim()).filter(Boolean),
+      fields,
+    };
+  }
+
+  function renderAll() {
+    renderSummary();
+    renderDatalists();
+    renderFieldList();
+    renderMappingList();
+    if (selectedFieldKey) setFieldForm(findField(selectedFieldKey));
+    if (selectedMappingKey) setMappingForm(findMapping(selectedMappingKey));
+  }
+
+  document.getElementById("param-field-filter").addEventListener("input", renderFieldList);
+  document.getElementById("param-mapping-filter").addEventListener("input", renderMappingList);
+  document.getElementById("field-input-preview").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-field-preview-today]");
+    if (!button) return;
+    const input = button.closest(".input-group")?.querySelector("[data-field-preview-date]");
+    if (input) {
+      input.value = todayIso();
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.focus();
+    }
+  });
+  document.getElementById("field-input-preset").addEventListener("change", (event) => {
+    applyFieldPreset(event.target.value);
+  });
+  ["field-key", "field-input-type", "field-options-source", "field-options", "field-default-value"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", refreshFieldInputControls);
+  });
+  document.getElementById("field-serializer").addEventListener("input", syncFieldPresetSelection);
+  document.getElementById("param-field-list").addEventListener("click", (event) => {
+    const row = event.target.closest("[data-field-key]");
+    if (row) setFieldForm(findField(row.getAttribute("data-field-key")));
+  });
+  document.getElementById("param-mapping-list").addEventListener("click", (event) => {
+    const row = event.target.closest("[data-mapping-key]");
+    if (row) setMappingForm(findMapping(row.getAttribute("data-mapping-key")));
+  });
+  document.getElementById("param-new-field-btn").addEventListener("click", () => setFieldForm(null));
+  document.getElementById("param-new-mapping-btn").addEventListener("click", () => setMappingForm(null));
+  document.getElementById("param-refresh-btn").addEventListener("click", () => parameterRequest(parameterApiUrl));
+  document.getElementById("param-repair-btn").addEventListener("click", async () => {
+    if (!(await window.AppConfirm("Merge missing bundled baseline parameters into the active registry?"))) return;
+    try {
+      await parameterRequest(repairBaselineApiUrl, { method: "POST", body: "{}" });
+      try { await window.AppAlert("Baseline repaired.", { title: "Done" }); } catch (ignored) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Repair failed.", { title: "Error" }); } catch (ignored) {}
+    }
+  });
+
+  document.getElementById("param-field-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const payload = collectFieldPayload();
+    try {
+      await parameterRequest(fieldApiUrl, { method: "POST", body: JSON.stringify(payload) });
+      setFieldForm(findField(payload.key));
+      try { await window.AppAlert("Field saved.", { title: "Done" }); } catch (ignored) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Save failed.", { title: "Error" }); } catch (ignored) {}
+    }
+  });
+
+  document.getElementById("param-delete-field-btn").addEventListener("click", async () => {
+    const key = document.getElementById("field-current-key").value.trim();
+    if (!key) return;
+    if (!(await window.AppConfirm(`Delete field '${key}'?`))) return;
+    try {
+      await parameterRequest(`${fieldApiUrl}/${encodeURIComponent(key)}`, { method: "DELETE" });
+      setFieldForm(null);
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Delete failed.", { title: "Error" }); } catch (ignored) {}
+    }
+  });
+
+  document.getElementById("param-add-mapping-field-btn").addEventListener("click", () => {
+    const first = (parameterState.fields || []).find((field) => field.key !== "__blank__");
+    selectedMappingFields.push({ key: first?.key || "", order: selectedMappingFields.length + 1, col: selectedMappingFields.length % 2 === 0 ? 1 : 2, group: "", group_order: "", required: false });
+    renderDatalists();
+    renderMappingFields();
+    renderCreatePreview(findMapping(selectedMappingKey));
+  });
+  document.getElementById("param-load-effective-fields-btn").addEventListener("click", () => {
+    const mapping = findMapping(selectedMappingKey);
+    const rows = mapping?.create_preview?.fields || [];
+    if (!rows.length) return;
+    selectedMappingFields = rows.map((field, index) => ({
+      key: field.key || "",
+      order: Number(field.order || index + 1),
+      col: Number(field.col || 1) === 2 ? 2 : 1,
+      group: field.group || "",
+      group_order: field.group_order ?? "",
+      required: Boolean(field.required),
+    }));
+    renderDatalists();
+    renderMappingFields();
+    renderCreatePreview(mapping);
+  });
+  document.getElementById("param-mapping-field-list").addEventListener("input", (event) => {
+    const row = event.target.closest("[data-index]");
+    if (!row) return;
+    const index = Number(row.getAttribute("data-index"));
+    const prop = event.target.getAttribute("data-map-prop");
+    if (!prop || !selectedMappingFields[index]) return;
+    selectedMappingFields[index][prop] = event.target.type === "checkbox" ? event.target.checked : event.target.value;
+    renderDatalists();
+    renderCreatePreview(findMapping(selectedMappingKey));
+  });
+  document.getElementById("param-mapping-field-list").addEventListener("change", (event) => {
+    event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  document.getElementById("param-mapping-field-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-map-action]");
+    if (!button) return;
+    const row = button.closest("[data-index]");
+    const index = Number(row.getAttribute("data-index"));
+    const action = button.getAttribute("data-map-action");
+    if (action === "delete") selectedMappingFields.splice(index, 1);
+    if (action === "up" && index > 0) [selectedMappingFields[index - 1], selectedMappingFields[index]] = [selectedMappingFields[index], selectedMappingFields[index - 1]];
+    if (action === "down" && index < selectedMappingFields.length - 1) [selectedMappingFields[index + 1], selectedMappingFields[index]] = [selectedMappingFields[index], selectedMappingFields[index + 1]];
+    selectedMappingFields.forEach((field, fieldIndex) => { field.order = fieldIndex + 1; });
+    renderDatalists();
+    renderMappingFields();
+    renderCreatePreview(findMapping(selectedMappingKey));
+  });
+
+  ["mapping-key", "mapping-namespace", "mapping-inherit"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => renderCreatePreview(findMapping(selectedMappingKey)));
+  });
+
+  document.getElementById("param-mapping-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (selectedMappingReadOnly) {
+      try { await window.AppAlert("This mapping is controlled by Matter Create Menu.", { title: "Read only" }); } catch (ignored) {}
+      return;
+    }
+    const payload = collectMappingPayload();
+    try {
+      await parameterRequest(mappingApiUrl, { method: "POST", body: JSON.stringify(payload) });
+      setMappingForm(findMapping(payload.key.toUpperCase()));
+      try { await window.AppAlert("Mapping saved.", { title: "Done" }); } catch (ignored) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Save failed.", { title: "Error" }); } catch (ignored) {}
+    }
+  });
+
+  renderAll();
+  if ((parameterState.fields || []).length) setFieldForm(parameterState.fields[0]);
+  if ((parameterState.mappings || []).length) setMappingForm(parameterState.mappings[0]);
+</script>
+{% endblock %}

@@ -1,0 +1,744 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ {% if maintenance_active %}
+ <div class="card alert-warning mb-12">
+  <div class="row align-center m-0">
+   <div class="flex-1">
+    <h3 class="m-0 mb-8 text-warning">⚠️  active</h3>
+    <p class="m-0 text-warning-strong">
+     {% if maintenance_info and maintenance_info.reason %}
+      {{ maintenance_info.reason }}
+     {% else %}
+       .
+     {% endif %}
+     <br>
+     <small>
+      {% if maintenance_info.started_by %}Actions: {{ maintenance_info.started_by }} | {% endif %}
+       User  none.
+     </small>
+    </p>
+   </div>
+   <form method="post" action="{{ url_for('billing_invoices.admin.disable_maintenance') }}" data-confirm=" ?" class="m-0">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-warning" type="submit">🔓  </button>
+   </form>
+  </div>
+ </div>
+ {% endif %}
+
+ <div class="card mb-12">
+  <div class="d-flex align-center justify-between gap-16 flex-wrap">
+   <div class="flex-1">
+    <h2 class="mt-0">📋  (Audit Log)</h2>
+    <p class="muted mb-0">  Actions . Administrator times .</p>
+   </div>
+   <div class="btn-group" role="group">
+    <button type="button" class="btn btn-primary" data-log-tab="audit"> </button>
+    <button type="button" class="btn btn-ghost" data-log-tab="deletions">Delete </button>
+   </div>
+  </div>
+ </div>
+ <div class="page-header mt-0 mb-8">
+  <a class="btn" href="{{ url_for('billing_invoices.admin.list_backups') }}">📚 Backup</a>
+  <div class="page-actions">
+   <div class="filter-actions">
+    <form method="post" action="{{ url_for('billing_invoices.admin.create_backup') }}" data-confirm="Current Status Restore ?" class="m-0">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <button class="btn btn-primary" type="submit">📦 Create restore point</button>
+    </form>
+    <form method="post" action="{{ url_for('billing_invoices.admin.create_backup_with_attachments') }}" data-confirm="DB Backup File ZIP ?   exists." class="m-0">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <button class="btn" type="submit">📦+📎  Backup</button>
+    </form>
+    <form method="post" action="{{ url_for('billing_invoices.admin.cleanup_orphan_attachments') }}" data-confirm="DB File( File) ?  none." class="m-0">
+     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+     <button class="btn btn-warning" type="submit">🧹 File </button>
+    </form>
+   </div>
+  </div>
+ </div>
+
+ <div id="audit-log-section">
+ <div class="card mb-12">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>User</label>
+    <select name="user_id">
+     <option value="">All</option>
+     {% for u in all_users %}
+     <option value="{{ u.id }}" {% if user_id==u.id %}selected{% endif %}>{{ u.display_name or u.username or u.email }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>Actions </label>
+    <select name="action">
+     <option value="">All</option>
+     {% for a in all_actions %}
+     <option value="{{ a }}" {% if action==a %}selected{% endif %}>{{ a }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-sm-6 col-lg-3">
+    <label>target </label>
+    <select name="target_type">
+     <option value="">All</option>
+     {% for t in all_targets %}
+     <option value="{{ t }}" {% if target_type==t %}selected{% endif %}>{{ t }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Search</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.admin.audit_log') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card">
+  <div class="mb-12">
+   <strong>Total {{ total_count }}items </strong>
+   <span class="muted"> | page {{ page }} / {{ total_pages }}</span>
+  </div>
+
+  <div class="table-card scroll-70vh">
+   <table class="responsive table-compact">
+    <thead>
+     <tr>
+      <th class="w-180"></th>
+      <th class="w-120">User</th>
+      <th class="w-200">Actions</th>
+      <th class="w-100">target </th>
+      <th class="w-80">target ID</th>
+      <th>Details </th>
+      <th class="w-120 right">Restore</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for log in logs %}
+     <tr>
+      <td class="text-sm" data-label="">{{ log['created_at']|local_dt }}</td>
+      <td data-label="User">
+       {% if log['username'] %}
+        <strong>{{ log['username'] }}</strong>
+       {% else %}
+        <span class="muted"></span>
+       {% endif %}
+      </td>
+      <td data-label="Actions">
+       {% if 'create' in log['action'] %}
+        <span class="pill pill-success">➕ {{ log['action'] }}</span>
+       {% elif 'update' in log['action'] or 'change' in log['action'] %}
+        <span class="pill pill-info">✏️ {{ log['action'] }}</span>
+       {% elif 'delete' in log['action'] %}
+        <span class="pill pill-danger">🗑️ {{ log['action'] }}</span>
+       {% elif 'login' in log['action'] or 'logout' in log['action'] %}
+        <span class="pill pill-warning">🔐 {{ log['action'] }}</span>
+       {% else %}
+        <span class="pill">{{ log['action'] }}</span>
+       {% endif %}
+      </td>
+      <td data-label="target ">
+       {% if log['target_type'] %}
+        <span class="pill btn-ghost">{{ log['target_type'] }}</span>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td class="right" data-label="target ID">
+       {% if log['target_id'] %}
+        {{ log['target_id'] }}
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td data-label="Details ">
+       {% if log['meta'] %}
+        <details>
+         <summary class="text-info cursor-pointer">DetailsView</summary>
+         <pre class="panel-neutral text-sm mt-6 overflow-x-auto">{{ log['meta'] }}</pre>
+        </details>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+      <td data-label="Restore" class="right">
+       <form method="post" action="{{ url_for('billing_invoices.admin.restore_to_time') }}" data-confirm=" to Restore Current DB Restore Snapshotto Save." class="m-0 d-inline-flex">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="restore_at" value="{{ log['created_at'] }}">
+        <button class="btn btn-warning btn-sm{% if not restore_ok.get(log['id']) %} is-disabled{% endif %}" type="submit"
+            {% if not restore_ok.get(log['id']) %}disabled title=" Previous Restore none"{% endif %}>⏪ Restore</button>
+       </form>
+      </td>
+     </tr>
+     {% else %}
+     <tr>
+      <td colspan="7" class="muted a_c"> none.</td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set billing_audit_pagination_args = request.args.to_dict(flat=True) %}
+ {{ ui.pagination('billing_invoices.admin.audit_log', page, total_pages, billing_audit_pagination_args, ' Pagination') }}
+ </div>
+
+ <div id="deletions-log-section" class="is-hidden">
+  <div class="card mb-12">
+   <h2 class="mt-0">🗑️ Delete </h2>
+   <p class="muted">Matterfrom Delete Item times Restore exists.</p>
+  </div>
+
+  <div class="card mb-12">
+   <h3 class="mt-0">Filters</h3>
+   <div class="row g-3">
+    <div class="col-md-2">
+     <label class="form-label small fw-semibold"></label>
+     <select id="del-f-type" class="form-select form-select-sm">
+      <option value="">All</option>
+      <option value="deadline">StatutoryDeadline</option>
+      <option value="renewal">Updated (Renewal)</option>
+      <option value="workflow">Task</option>
+      <option value="file">File</option>
+      <option value="person">people</option>
+      <option value="billing_invoice">Billing</option>
+      <option value="billing_expense"></option>
+      <option value="billing_payment"></option>
+      <option value="billing_link">Invoice link</option>
+     </select>
+    </div>
+
+    <div class="col-md-2">
+     <label class="form-label small fw-semibold">Restore status</label>
+     <select id="del-f-restored" class="form-select form-select-sm">
+      <option value="0">Not restored</option>
+      <option value="1">All (Restore )</option>
+     </select>
+    </div>
+
+    <div class="col-md-3">
+     <label class="form-label small fw-semibold">Search</label>
+     <input
+      type="text"
+      id="del-f-search"
+      class="form-control form-control-sm"
+      placeholder=", ID Search..."
+     />
+    </div>
+
+    <div class="col-md-2">
+     <label class="form-label small fw-semibold">Deletedays ()</label>
+     <input type="date" id="del-f-date-from" class="form-control form-control-sm" />
+    </div>
+
+    <div class="col-md-2">
+     <label class="form-label small fw-semibold">Deletedays (Closed)</label>
+     <input type="date" id="del-f-date-to" class="form-control form-control-sm" />
+    </div>
+
+    <div class="col-md-1 d-flex align-items-end">
+     <button id="del-btn-refresh" class="btn btn-primary btn-sm w-100">Search</button>
+    </div>
+   </div>
+
+   <div class="mt-8">
+    <button id="del-btn-clear" class="btn btn-sm btn-ghost">Filters Reset</button>
+   </div>
+  </div>
+
+  <div class="card">
+   <div class="d-flex align-center justify-between gap-8 mb-12">
+    <div class="d-flex align-center gap-8">
+     <strong>Delete List</strong>
+     <span id="del-result-count" class="pill">0</span>
+    </div>
+    <div id="del-pagination-info" class="muted text-sm"></div>
+   </div>
+
+   <div class="table-card scroll-70vh">
+    <table class="responsive table-compact" id="del-table">
+     <thead>
+      <tr>
+       <th class="w-60">ID</th>
+       <th class="w-120"></th>
+       <th class="w-120">Original ID</th>
+       <th></th>
+       <th class="w-120">Delete </th>
+       <th class="w-150">Delete days</th>
+       <th class="w-100">Restore status</th>
+       <th class="w-120">Restore </th>
+       <th class="w-140 right">Actions</th>
+      </tr>
+     </thead>
+     <tbody>
+      <tr>
+       <td colspan="9" class="muted a_c p-16">Loading...</td>
+      </tr>
+     </tbody>
+    </table>
+   </div>
+  </div>
+
+  <div id="del-pagination" class="app-pagination" aria-label="Delete Pagination"></div>
+ </div>
+
+ <div class="modal fade" id="deletionsDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title">Delete Details </h5>
+     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+     <div id="deletions-detail-content"></div>
+    </div>
+    <div class="modal-footer">
+     <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <script>
+  (function() {
+   const auditSection = document.getElementById("audit-log-section");
+   const deletionsSection = document.getElementById("deletions-log-section");
+   const tabButtons = document.querySelectorAll("[data-log-tab]");
+
+   function setHidden(element, hidden) {
+    if (!element) return;
+    element.classList.toggle("is-hidden", hidden);
+   }
+
+   function setTab(tab) {
+    const active = tab === "deletions" ? "deletions" : "audit";
+    setHidden(auditSection, active !== "audit");
+    setHidden(deletionsSection, active !== "deletions");
+    tabButtons.forEach(btn => {
+     const isActive = btn.dataset.logTab === active;
+     btn.classList.toggle("btn-primary", isActive);
+     btn.classList.toggle("btn-ghost", !isActive);
+    });
+    try {
+     const url = new URL(window.location.href);
+     if (active === "deletions") {
+      url.searchParams.set("tab", "deletions");
+     } else {
+      url.searchParams.delete("tab");
+     }
+     window.history.replaceState({}, "", url);
+    } catch (e) {
+     // ignore history errors
+    }
+   }
+
+   if (auditSection && deletionsSection && tabButtons.length) {
+    tabButtons.forEach(btn => {
+     btn.addEventListener("click", () => setTab(btn.dataset.logTab));
+    });
+    const initial = new URLSearchParams(window.location.search).get("tab");
+    setTab(initial === "deletions" ? "deletions" : "audit");
+   }
+
+   if (!deletionsSection) {
+    return;
+   }
+
+   let currentPage = 1;
+   let detailModal = null;
+
+    function parseIsoAsUtc(value) {
+     if (!value) return null;
+     let s = String(value).trim();
+     if (!s) return null;
+     if (/^\d+$/.test(s)) {
+      const ms = Number(s);
+      if (!Number.isNaN(ms)) return new Date(ms);
+     }
+     if (s.includes(" ")) {
+      s = s.replace(" ", "T");
+     }
+     s = s.replace(/\.(\d{3})\d+/, ".$1");
+     const hasTz = /[zZ]|[+-]\d{2}:\d{2}$/.test(s);
+     if (!hasTz) {
+      s = `${s}Z`;
+     }
+     const dt = new Date(s);
+     return Number.isNaN(dt.getTime()) ? null : dt;
+    }
+
+    function formatDateTime(isoString) {
+     if (!isoString) return "-";
+     const dt = parseIsoAsUtc(isoString);
+     if (!dt) return isoString;
+     if (window.AppDate && typeof window.AppDate.formatDisplayDateTime === "function") {
+      return window.AppDate.formatDisplayDateTime(dt);
+     }
+     return dt.toLocaleString("en-US", {
+      timeZone: (window.AppLocale && window.AppLocale.timeZone) || "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+     });
+    }
+
+   function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+     .replace(/&/g, "&amp;")
+     .replace(/</g, "&lt;")
+     .replace(/>/g, "&gt;")
+     .replace(/"/g, "&quot;")
+     .replace(/'/g, "&#39;");
+   }
+
+   function getEntityTypeBadge(type) {
+    const badges = {
+     "deadline": '<span class="badge badge-entity-type badge-deadline">StatutoryDeadline</span>',
+     "renewal": '<span class="badge badge-entity-type badge-renewal">Updated</span>',
+     "workflow": '<span class="badge badge-entity-type badge-workflow">Task</span>',
+     "file": '<span class="badge badge-entity-type bg-info text-dark">File</span>',
+     "person": '<span class="badge badge-entity-type bg-primary">people</span>',
+     "billing_invoice": '<span class="badge badge-entity-type bg-success">Billing</span>',
+     "billing_expense": '<span class="badge badge-entity-type bg-warning text-dark"></span>',
+     "billing_payment": '<span class="badge badge-entity-type bg-secondary"></span>',
+     "billing_link": '<span class="badge badge-entity-type bg-dark">Invoice link</span>'
+    };
+    const safeType = escapeHtml(type || "-");
+    return badges[type] || `<span class="badge bg-secondary">${safeType}</span>`;
+   }
+
+   function showDetail(log) {
+    const content = document.getElementById("deletions-detail-content");
+    const payload = log.payload || {};
+    const safeId = escapeHtml(log.id);
+    const safeEntityId = escapeHtml(log.entity_key || log.entity_id || "-");
+    const safeTitle = escapeHtml(log.title || "-");
+    const safeDeletedByName = escapeHtml(log.deleted_by_name || "-");
+    const safeDeletedById = escapeHtml(log.deleted_by || "-");
+    const safeDeletedAt = escapeHtml(formatDateTime(log.deleted_at));
+    const safePayload = escapeHtml(JSON.stringify(payload, null, 2));
+    let html = `
+     <div class="mb-3">
+      <h6 class="fw-bold text-primary">Default </h6>
+      <table class="table table-sm table-bordered">
+       <tr><th class="w-150">ID</th><td>${safeId}</td></tr>
+       <tr><th></th><td>${getEntityTypeBadge(log.entity_type)}</td></tr>
+       <tr><th>Original ID</th><td>${safeEntityId}</td></tr>
+       <tr><th></th><td>${safeTitle}</td></tr>
+       <tr><th>Delete </th><td>${safeDeletedByName} (ID: ${safeDeletedById})</td></tr>
+       <tr><th>Delete days</th><td>${safeDeletedAt}</td></tr>
+      </table>
+     </div>
+    `;
+
+    if (log.restored_at) {
+     const safeRestoredEntity = escapeHtml(log.restored_entity_key || log.restored_entity_id || "-");
+     const safeRestoredByName = escapeHtml(log.restored_by_name || "-");
+     const safeRestoredById = escapeHtml(log.restored_by || "-");
+     const safeRestoredAt = escapeHtml(formatDateTime(log.restored_at));
+     html += `
+      <div class="mb-3">
+       <h6 class="fw-bold text-success">Restore </h6>
+       <table class="table table-sm table-bordered">
+        <tr><th class="w-150">Restore ID</th><td>${safeRestoredEntity}</td></tr>
+        <tr><th>Restore </th><td>${safeRestoredByName} (ID: ${safeRestoredById})</td></tr>
+        <tr><th>Restore days</th><td>${safeRestoredAt}</td></tr>
+       </table>
+      </div>
+     `;
+    }
+
+    html += `
+     <div class="mb-3">
+      <h6 class="fw-bold text-secondary"> </h6>
+      <pre class="bg-light p-3 rounded small max-h-300 overflow-auto">${safePayload}</pre>
+     </div>
+    `;
+
+    content.innerHTML = html;
+    detailModal.show();
+   }
+
+   async function loadDeletionLogs(page = 1) {
+    currentPage = page;
+
+    const type = document.getElementById("del-f-type").value;
+    const includeRestored = document.getElementById("del-f-restored").value;
+    const search = document.getElementById("del-f-search").value.trim();
+    const dateFrom = document.getElementById("del-f-date-from").value;
+    const dateTo = document.getElementById("del-f-date-to").value;
+
+    const qs = new URLSearchParams();
+    if (type) qs.set("entity_type", type);
+    if (includeRestored === "1") qs.set("include_restored", "1");
+    if (search) qs.set("search", search);
+    if (dateFrom) qs.set("date_from", dateFrom);
+    if (dateTo) qs.set("date_to", dateTo);
+    qs.set("page", page);
+    qs.set("per_page", 50);
+
+    try {
+     const r = await fetch(`{{ url_for('admin.api_deletions') }}?${qs.toString()}`);
+     if (!r.ok) {
+      throw new Error("Failed to fetch deletion logs");
+     }
+
+     const data = await r.json();
+     const rows = data.items || [];
+
+     const total = data.total || 0;
+     const start = total ? ((data.page - 1) * data.per_page) + 1 : 0;
+     const end = total ? Math.min(data.page * data.per_page, total) : 0;
+
+     document.getElementById("del-result-count").textContent = total;
+     document.getElementById("del-pagination-info").textContent = `${start}-${end} / ${total}`;
+
+     const tb = document.querySelector("#del-table tbody");
+     tb.innerHTML = "";
+
+     if (rows.length === 0) {
+      tb.innerHTML = `
+       <tr>
+        <td colspan="9" class="muted a_c p-16">Delete none.</td>
+       </tr>
+      `;
+     } else {
+      const fragment = document.createDocumentFragment();
+
+      const buildBadge = (type) => {
+       const badge = document.createElement("span");
+       const labels = {
+        deadline: ["badge badge-entity-type badge-deadline", "StatutoryDeadline"],
+        renewal: ["badge badge-entity-type badge-renewal", "Updated"],
+        workflow: ["badge badge-entity-type badge-workflow", "Task"],
+        file: ["badge badge-entity-type bg-info text-dark", "File"],
+        person: ["badge badge-entity-type bg-primary", "people"],
+        billing_invoice: ["badge badge-entity-type bg-success", "Billing"],
+        billing_expense: ["badge badge-entity-type bg-warning text-dark", ""],
+        billing_payment: ["badge badge-entity-type bg-secondary", ""],
+        billing_link: ["badge badge-entity-type bg-dark", "Invoice link"],
+       };
+       const entry = labels[type];
+       if (entry) {
+        badge.className = entry[0];
+        badge.textContent = entry[1];
+       } else {
+        badge.className = "badge bg-secondary";
+        badge.textContent = type || "-";
+       }
+       return badge;
+      };
+
+      const setRestoreIcon = (btn) => {
+       btn.textContent = "";
+       const icon = document.createElement("i");
+       icon.className = "bi bi-arrow-counterclockwise";
+       btn.appendChild(icon);
+      };
+
+      rows.forEach(x => {
+       const tr = document.createElement("tr");
+       const entityId = x.entity_key || x.entity_id || "-";
+       const idText = x.id == null ? "" : String(x.id);
+
+       const tdId = document.createElement("td");
+       tdId.textContent = idText;
+       tr.appendChild(tdId);
+
+       const tdType = document.createElement("td");
+       tdType.appendChild(buildBadge(x.entity_type));
+       tr.appendChild(tdType);
+
+       const tdEntityId = document.createElement("td");
+       const code = document.createElement("code");
+       code.className = "small";
+       code.textContent = entityId;
+       tdEntityId.appendChild(code);
+       tr.appendChild(tdEntityId);
+
+       const tdTitle = document.createElement("td");
+       tdTitle.className = "text-start";
+       const titleDiv = document.createElement("div");
+       titleDiv.className = "text-truncate max-w-300";
+       titleDiv.title = x.title || "";
+       titleDiv.textContent = x.title || "-";
+       tdTitle.appendChild(titleDiv);
+       tr.appendChild(tdTitle);
+
+       const tdDeletedBy = document.createElement("td");
+       const deletedBy = document.createElement("small");
+       deletedBy.textContent = x.deleted_by_name || "-";
+       tdDeletedBy.appendChild(deletedBy);
+       tr.appendChild(tdDeletedBy);
+
+       const tdDeletedAt = document.createElement("td");
+       const deletedAt = document.createElement("small");
+       deletedAt.textContent = formatDateTime(x.deleted_at);
+       tdDeletedAt.appendChild(deletedAt);
+       tr.appendChild(tdDeletedAt);
+
+       const tdRestored = document.createElement("td");
+       const restored = document.createElement("span");
+       if (x.restored_at) {
+        restored.className = "status-restored";
+        restored.textContent = "Restore";
+       } else {
+        restored.className = "status-not-restored";
+        restored.textContent = "Not restored";
+       }
+       tdRestored.appendChild(restored);
+       tr.appendChild(tdRestored);
+
+       const tdRestoredBy = document.createElement("td");
+       const restoredBy = document.createElement("small");
+       restoredBy.textContent = x.restored_by_name || "-";
+       tdRestoredBy.appendChild(restoredBy);
+       tr.appendChild(tdRestoredBy);
+
+       const tdActions = document.createElement("td");
+       tdActions.className = "right";
+       const btnGroup = document.createElement("div");
+       btnGroup.className = "btn-group btn-group-sm";
+       btnGroup.setAttribute("role", "group");
+
+       const detailBtn = document.createElement("button");
+       detailBtn.className = "btn btn-ghost btn-detail";
+       detailBtn.type = "button";
+       detailBtn.title = "Details";
+       const detailIcon = document.createElement("i");
+       detailIcon.className = "bi bi-eye";
+       detailBtn.appendChild(detailIcon);
+       detailBtn.addEventListener("click", () => showDetail(x));
+       btnGroup.appendChild(detailBtn);
+
+       const restoreBtn = document.createElement("button");
+       restoreBtn.className = "btn btn-warning btn-restore";
+       restoreBtn.type = "button";
+       restoreBtn.title = "Restore";
+       restoreBtn.disabled = Boolean(x.restored_at);
+       setRestoreIcon(restoreBtn);
+       restoreBtn.addEventListener("click", async () => {
+        const ok = await window.AppConfirm(` ID ${idText} Restore\n\nRestore Item Matter StatutoryDeadline/Updated/Task Add.`);
+        if (!ok) return;
+
+        restoreBtn.disabled = true;
+        restoreBtn.textContent = "";
+        const spinner = document.createElement("span");
+        spinner.className = "spinner-border spinner-border-sm";
+        restoreBtn.appendChild(spinner);
+
+        try {
+         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+         const rr = await fetch(`{{ url_for('admin.api_deletions') }}/${idText}/restore`, {
+          method: "POST",
+          headers: {
+           "Content-Type": "application/json",
+           "X-CSRFToken": csrfToken
+          }
+         });
+
+         if (!rr.ok) {
+          const err = await rr.json().catch(() => ({}));
+          try { await window.AppAlert("Restore : " + (err.error || "  Error"), { title: "Error" }); } catch (e2) {}
+          restoreBtn.disabled = false;
+          setRestoreIcon(restoreBtn);
+          return;
+         }
+
+         const result = await rr.json();
+         if (result.link_url) {
+          const goToCase = await window.AppConfirm("Restore Done!\n\n Matterto Go ? ");
+          if (goToCase) {
+           window.location.href = result.link_url;
+           return;
+          }
+         } else {
+          try { await window.AppAlert("Restore Done!", { title: "Done" }); } catch (e2) {}
+         }
+
+         loadDeletionLogs(currentPage);
+        } catch (error) {
+         try { await window.AppAlert("Restore Error : " + error.message, { title: "Error" }); } catch (e2) {}
+         restoreBtn.disabled = false;
+         setRestoreIcon(restoreBtn);
+        }
+       });
+       btnGroup.appendChild(restoreBtn);
+
+       tdActions.appendChild(btnGroup);
+       tr.appendChild(tdActions);
+
+       fragment.appendChild(tr);
+      });
+
+      tb.appendChild(fragment);
+     }
+
+     renderPagination(data);
+    } catch (error) {
+     const tb = document.querySelector("#del-table tbody");
+     tb.innerHTML = "";
+     const tr = document.createElement("tr");
+     const td = document.createElement("td");
+     td.colSpan = 9;
+     td.className = "muted a_c p-16";
+     td.textContent = `Loading Error : ${error.message}`;
+     tr.appendChild(td);
+     tb.appendChild(tr);
+    }
+   }
+
+   function renderPagination(data) {
+    const pagination = document.getElementById("del-pagination");
+    if (!pagination) return;
+    if ((data.total || 0) <= 0) {
+     pagination.innerHTML = "";
+     return;
+    }
+    window.AppPagination.render(pagination, {
+     page: data.page,
+     totalPages: data.pages,
+     ariaLabel: "Delete Pagination",
+     onPageChange: (page) => {
+      if (page !== currentPage) loadDeletionLogs(page);
+     },
+    });
+   }
+
+   function initDeletionLogs() {
+    detailModal = new bootstrap.Modal(document.getElementById("deletionsDetailModal"));
+    document.getElementById("del-btn-refresh").onclick = () => loadDeletionLogs(1);
+    document.getElementById("del-f-type").onchange = () => loadDeletionLogs(1);
+    document.getElementById("del-f-restored").onchange = () => loadDeletionLogs(1);
+    document.getElementById("del-f-search").addEventListener("keypress", (e) => {
+     if (e.key === "Enter") loadDeletionLogs(1);
+    });
+    document.getElementById("del-btn-clear").onclick = () => {
+     document.getElementById("del-f-type").value = "";
+     document.getElementById("del-f-restored").value = "0";
+     document.getElementById("del-f-search").value = "";
+     document.getElementById("del-f-date-from").value = "";
+     document.getElementById("del-f-date-to").value = "";
+     loadDeletionLogs(1);
+    };
+
+    loadDeletionLogs(1);
+   }
+
+   if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initDeletionLogs);
+   } else {
+    initDeletionLogs();
+   }
+  })();
+ </script>
+{% endblock %}

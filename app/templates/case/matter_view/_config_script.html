@@ -1,0 +1,23 @@
+<script>
+  window.CASE_VIEW_CONFIG = {
+    caseId: {{ matter.matter_id|tojson }},
+    canEditCase: {{ (can_edit_case or False)|tojson }},
+    canInvoice: {{ (can_invoice or False)|tojson }},
+    deleteMatterUrl: {{ url_for('case_work.delete_matter', case_id=matter.matter_id)|tojson }},
+    csrfToken: {{ csrf_token()|tojson }},
+    moveFmItemUrl: {{ url_for('case_work.move_fm_item', case_id=matter.matter_id)|tojson }},
+    historyOrderUrl: {{ url_for('case_work.save_history_order', case_id=matter.matter_id)|tojson }},
+    historyOrderResetUrl: {{ url_for('case_work.reset_history_order', case_id=matter.matter_id)|tojson }},
+    historyMergeUrl: {{ url_for('case_work.save_history_merge', case_id=matter.matter_id)|tojson }},
+    historyMergeGroupUrlTemplate: {{ url_for('case_work.update_history_merge', case_id=matter.matter_id, group_id='__GROUP_ID__')|tojson }},
+    historyMergeAttachmentsUrlTemplate: {{ url_for('case_work.history_merge_attachments', case_id=matter.matter_id, group_id='__GROUP_ID__')|tojson }},
+    fmFolderId: {{ (fm_folder_id or '')|tojson }},
+    noticeSendSemiClosePrompt: {{ (notice_send_semi_close_prompt or none)|tojson }},
+    noticeSendSemiCloseAckUrl: {{ url_for('case_work.notice_send_semi_close_ack', case_id=matter.matter_id)|tojson }},
+    staffUsers: [
+      {% for u in (staff_users_all or []) %}
+        {"id": {{ u.id|tojson }}, "username": {{ u.username|tojson }}}{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ],
+  };
+</script>

@@ -1,0 +1,45 @@
+{% set modal_title = client_modal_title or "Search" %}
+{% set modal_placeholder = client_modal_placeholder or "Search..." %}
+{% set modal_search_label = client_modal_search_label or "Search" %}
+{% set modal_create_label = client_modal_create_label or "ClientRegistration" %}
+{% set modal_create_url = client_modal_create_url or url_for('customers.client_create', popup=1, modal=1) %}
+{% set modal_no_results = client_modal_no_results or " None" %}
+{% set modal_error = client_modal_error or "Error" %}
+
+<div class="modal fade" id="clientSearchModal" tabindex="-1" aria-hidden="true"
+     data-no-results="{{ modal_no_results }}" data-error="{{ modal_error }}">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ modal_title }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group mb-2">
+          <input type="text" id="clientSearchInput" class="form-control" placeholder="{{ modal_placeholder }}">
+          <button class="btn btn-outline-secondary" type="button" onclick="runClientSearch()">{{ modal_search_label }}</button>
+          <button class="btn btn-outline-success" type="button" onclick="openClientCreateModal()">{{ modal_create_label }}</button>
+        </div>
+        <div id="clientSearchResults" class="list-group small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="clientCreateModal" tabindex="-1" aria-hidden="true"
+     data-create-url="{{ modal_create_url }}">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ modal_create_label }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <iframe id="clientCreateFrame"
+                title="Client Create"
+                src="about:blank"
+                style="width: 100%; height: 80vh; border: 0;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>

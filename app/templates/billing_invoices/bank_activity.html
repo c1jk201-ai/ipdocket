@@ -1,0 +1,1611 @@
+{% extends 'invoice_base.html' %} {# moved local date helpers into the main
+<script>
+  block below #}
+
+ {# // ===== Matching UI logic =====
+ function dashDateFromYmd(ymd){
+  if(!ymd || ymd.length!==8) return '';
+  return `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`;
+ }
+
+ function buildDepositSummary(item){
+  const parts = [];
+  if (item.remark1) parts.push(item.remark1);
+  if (item.remark2) parts.push(item.remark2);
+  if (item.remark3) parts.push(item.remark3);
+  if (!parts.length && item.memo) parts.push(item.memo);
+  return parts.join(' | ');
+ }
+
+ async function loadMatchingInvoices(){
+  const token = ++MATCH_INV_TOKEN;
+  const sdate = document.getElementById('startDate').value;
+  const edate = document.getElementById('endDate').value;
+  const url = `${scriptRoot}/bank_activity/matching/invoices?date_from=${encodeURIComponent(sdate)}&date_to=${encodeURIComponent(edate)}&currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&limit=200`;
+  const res = await fetchJSON(url);
+  if (token !== MATCH_INV_TOKEN) return;
+  const tbody = document.querySelector('#matchInvoicesTable tbody');
+  tbody.innerHTML = '';
+  (res.items||[]).forEach((it, idx)=>{
+   const tr = document.createElement('tr');
+   tr.dataset.invoiceId = it.id;
+   tr.innerHTML = `
+    <td class="a_c">${idx+1}</td>
+    <td class="a_c">${it.number||''}</td>
+    <td class="a_c">${it.client_name||''}</td>
+    <td class="a_c">${it.issue_date||''}</td>
+    <td class="a_r">${formatBankActivityMoney(it.total||0)}</td>
+   `;
+   // drop targets
+   tr.addEventListener('dragover', (ev)=>{ ev.preventDefault(); tr.classList.add('drop-ready'); });
+   tr.addEventListener('dragleave', ()=> tr.classList.remove('drop-ready'));
+   tr.addEventListener('drop', async (ev)=>{
+    ev.preventDefault(); tr.classList.remove('drop-ready');
+    try{
+     const data = ev.dataTransfer.getData('text/plain');
+     const dep = JSON.parse(data);
+     await matchDepositToInvoice(it.id, dep, tr);
+    }catch(e){ try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){} }
+   });
+   tbody.appendChild(tr);
+  });
+ }
+
+ async function loadMatchingDeposits(){
+  const token = ++MATCH_DEP_TOKEN;
+  const sdateStr = document.getElementById('startDate').value.replaceAll('-','');
+  const edateStr = document.getElementById('endDate').value.replaceAll('-','');
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  if (!accs.length) return;
+  const url = `${scriptRoot}/bank_activity/matching/deposits?sdate=${encodeURIComponent(sdateStr)}&edate=${encodeURIComponent(edateStr)}&accounts=${encodeURIComponent(accs.join(','))}&currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&limit=500`;
+  const res = await fetchJSON(url);
+  if (token !== MATCH_DEP_TOKEN) return;
+  const tbody = document.querySelector('#matchDepositsTable tbody');
+  tbody.innerHTML = '';
+  (res.items||[]).forEach((r)=>{
+   const tr = document.createElement('tr');
+   const alias = `${r.bankCode||''} ${r.accountNumber||''}`.trim();
+   const summary = buildDepositSummary(r);
+   tr.draggable = true;
+   tr.addEventListener('dragstart', (ev)=>{
+    tr.classList.add('dragging');
+    const payload = {
+     tid: r.tid, accIn: parseMoney(r.accIn||0), trdt: r.trdt||r.trdate, bankCode: r.bankCode, accountNumber: r.accountNumber,
+     alias: alias, summary: summary
+    };
+    ev.dataTransfer.setData('text/plain', JSON.stringify(payload));
+   });
+   tr.addEventListener('dragend', ()=> tr.classList.remove('dragging'));
+   tr.innerHTML = `
+    <td class="a_c">${formatTrdt(r.trdt || r.trdate)}</td>
+    <td class="a_r">${formatBankActivityMoney(r.accIn||0)}</td>
+    <td class="a_c">${escapeHtml(alias)}</td>
+    <td class="a_c">${escapeHtml(summary)||'-'}</td>
+   `;
+   tbody.appendChild(tr);
+  });
+ }
+
+ async function matchDepositToInvoice(invoiceId, dep, trEl){
+  // Build payment_meta for the selected invoice currency
+  const dateStr = (function(){
+   const dt = parseTrdtToDate(dep.trdt);
+   if (!dt) return '';
+   return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
+  })();
+  const meta = {
+   currency: BANK_ACTIVITY_CURRENCY,
+   date: dateStr,
+   account_alias: dep.alias || `${dep.bankCode||''} ${dep.accountNumber||''}`.trim(),
+   deposit: parseMoney(dep.accIn||0),
+   summary: dep.summary || ''
+  };
+  // Save then verify
+  const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+  await fetchJSON(`${scriptRoot}/invoices/${invoiceId}/save_payment_meta`, {method:'POST', body: JSON.stringify({payment_meta: meta})});
+  const v = await fetchJSON(`${scriptRoot}/invoices/${invoiceId}/verify_payment`, {method:'POST', body: JSON.stringify({payment_meta: meta})});
+  if (v && v.ok){
+   // Visually mark invoice row as matched
+   try{
+    const row = document.querySelector(`#matchInvoicesTable tr[data-invoice-id="${invoiceId}"]`);
+    if (row){ row.style.background = '#ecfdf5'; row.title = ' Done (paid)'; }
+  }catch(e){}
+ } else {
+   try{ await window.AppAlert(` : ${(v && v.reason) || ' people'}`, { title: "Confirm" }); }catch(e2){}
+  }
+ }
+
+ async function refreshMatching(){
+  await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+ }
+ #}
+ {% block invoice_content %}
+ <style>
+  .bank_activity-currency-switch {
+   display: inline-flex;
+   align-items: center;
+   border: 1px solid #d1d5db;
+   border-radius: 6px;
+   overflow: hidden;
+   background: #fff;
+  }
+  .bank_activity-currency-switch__option {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   min-width: 54px;
+   min-height: 32px;
+   padding: 6px 12px;
+   border: 0;
+   background: #f9fafb;
+   color: #374151;
+   font-size: 13px;
+   font-weight: 600;
+   line-height: 1;
+   text-decoration: none;
+  }
+  .bank_activity-currency-switch__option + .bank_activity-currency-switch__option {
+   border-left: 1px solid #d1d5db;
+  }
+  .bank_activity-currency-switch__option.is-active {
+   background: #005EA8;
+   color: #fff;
+  }
+  .bank_activity-currency-switch__option:not(.is-active):hover {
+   background: #e5e7eb;
+   color: #111827;
+  }
+  .manual-tx-grid {
+   display: grid;
+   grid-template-columns: repeat(6, minmax(120px, 1fr));
+   gap: 8px;
+   align-items: end;
+  }
+  .manual-tx-grid label {
+   display: grid;
+   gap: 4px;
+   font-size: 12px;
+   color: #4b5563;
+  }
+  .manual-tx-grid input {
+   width: 100%;
+  }
+  @media (max-width: 900px) {
+   .manual-tx-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+   }
+  }
+ </style>
+ <div class="page-header gap-2">
+  <h2 class="mb-0">Bank activity</h2>
+  <div class="bank_activity-currency-switch" role="group" aria-label="Currency ">
+   {%- for cur in currency_options %}
+   <a
+    class="bank_activity-currency-switch__option{% if cur == selected_currency %} is-active{% endif %}"
+    href="{{ url_for('billing_invoices.bank_activity.page', currency=cur) }}"
+  >{{ cur }}</a>
+   {%- endfor %}
+  </div>
+  <div class="page-actions">
+   <a class="btn" href="{{ request.script_root }}/accounting/invoice-system/bank_activity/matching?currency={{ selected_currency }}">Deposit Matching page</a>
+  </div>
+ </div>
+
+ <!-- Search form (UX table style) -->
+ <div class="card mt-3">
+  <table class="table-content table-style4">
+   <colgroup>
+    <col class="w-13p" />
+    <col />
+    <col class="w-10p" />
+   </colgroup>
+   <thead>
+   <tr>
+    <th>Search</th>
+    <td>
+     <div class="inline-controls">
+      <span class="muted">Period</span>
+      <input type="date" id="startDate" class="w-128" value="{{ default_start or '' }}" /> ~
+      <input type="date" id="endDate" class="w-128" value="{{ default_end or '' }}" />
+      <select id="rangePreset" class="form-s">
+       <option value="" selected>Period </option>
+       <option value="3">Q1</option>
+       <option value="4">Q2</option>
+       <option value="5">3quarter</option>
+       <option value="6">4quarter</option>
+       <option value="1">1</option>
+       <option value="2">2</option>
+       <option value="0">1</option>
+      </select>
+      <span class="muted ms-2">Search</span>
+      <input type="text" id="remarkInput" class="form-s w-150" placeholder="" />
+      <input type="text" id="memoInput" class="form-s w-150" placeholder="Notes" />
+      <span class="muted ms-2"></span>
+      <label class="search-item search-item-6piece"><input type="checkbox" id="chkDeposit" checked /> <span class="blue3">Deposit</span></label>
+      <label class="search-item search-item-6piece"><input type="checkbox" id="chkWithdraw" /> <span class="red3"></span></label>
+      <label class="search-item search-item-6piece"><input type="checkbox" id="chkEtc" /> <span class="gray2">Other</span></label>
+     </div>
+    </td>
+    <td class="a_c">
+     <a class="btn btn-blue3 pl10 pr10" href="#" id="btnSearchMain">Search</a>
+    </td>
+   </tr>
+   </thead>
+   <tbody>
+    <tr>
+     <th class="th-checkbox"><label>&nbsp;Bank account</label></th>
+     <td colspan="2">
+      <div class="filter-actions">
+       <span class="muted">Select</span>
+       <a class="btn btn-s" id="accAll">All</a>
+       <a class="btn btn-s" id="accNone"></a>
+       <a class="btn btn-s" id="accInvert"></a>
+       <span class="muted ms-2" id="accSummary"></span>
+       <a class="btn btn-s ms-3" id="accToggle">Bank account Expand</a>
+      </div>
+      <div id="accPanel" class="mt-2 is-hidden">
+       <div class="muted mb-1"> Bank account</div>
+       <div id="activeAccountsList" class="accounts-grid"></div>
+       <div class="muted my-2"> Bank account</div>
+       <div id="closedAccountsList" class="accounts-grid muted"></div>
+      </div>
+     </td>
+    </tr>
+    <tr>
+     <td></td>
+     <td colspan="2">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+       <div id="coverageInfo" class="gray2 f11 text-start mb-0"></div>
+       <button class="btn btn-primary" type="button" id="btnRequest"></button>
+      </div>
+     </td>
+    </tr>
+   </tbody>
+  </table>
+ </div>
+
+ <div class="card mt-3" id="manualTransactionCard">
+  <div class="row align-items-center mb-2">
+   <h4 class="mb-0">Manual {{ selected_currency or 'USD' }} Transaction</h4>
+   <div class="spacer"></div>
+   <span class="gray2 f11">Stored locally for matching; no Bank activity API required.</span>
+  </div>
+  <form id="manualTransactionForm" class="manual-tx-grid">
+   <label>
+    Date
+    <input type="date" id="manualTxDate" class="form-s" required />
+   </label>
+   <label>
+    Account
+    <input type="text" id="manualTxAccount" class="form-s" placeholder="Operating USD" required />
+   </label>
+   <label>
+    Account Name
+    <input type="text" id="manualTxAccountName" class="form-s" placeholder="Bank / account alias" />
+   </label>
+   <label>
+    Deposit
+    <input type="number" id="manualTxIn" class="form-s" min="0" step="0.01" placeholder="0.00" />
+   </label>
+   <label>
+    Withdraw
+    <input type="number" id="manualTxOut" class="form-s" min="0" step="0.01" placeholder="0.00" />
+   </label>
+   <label>
+    Balance
+    <input type="number" id="manualTxBalance" class="form-s" min="0" step="0.01" placeholder="0.00" />
+   </label>
+   <label>
+    Payer / Payee
+    <input type="text" id="manualTxPayer" class="form-s" />
+   </label>
+   <label>
+    Reference
+    <input type="text" id="manualTxReference" class="form-s" />
+   </label>
+   <label>
+    Description
+    <input type="text" id="manualTxDescription" class="form-s" />
+   </label>
+   <div>
+    <button class="btn btn-primary" type="submit">Save Transaction</button>
+   </div>
+  </form>
+ </div>
+
+ <div class="card mt-3 is-hidden" id="summaryCard"></div>
+
+ <div class="card mt-3">
+  <div class="row align-items-center">
+   <div>
+    <b>Search&nbsp;[&nbsp;<span class="blue2 f14" id="resultCount">0 items</span>&nbsp;]</b>
+    &nbsp;&nbsp;
+    <a class="btn desktop-preferred-action" onclick="downloadExcel();">
+     <svg class="icon-excel" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"></rect>
+      <path d="M8 8l8 8M16 8l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+     </svg>
+     Search Save
+    </a>
+   </div>
+   <div class="spacer"></div>
+   <div class="a_r">
+    <b>Sort</b>&nbsp;
+    <select id="sortDirection" class="form-s">
+     <option value="desc" selected></option>
+     <option value="asc"></option>
+    </select>
+   </div>
+  </div>
+  <div class="table-card">
+   <table class="table-list table-no-zebra" id="resultTable">
+    <colgroup>
+     <col class="w-5p" />
+     <col class="w-16p" />
+     <col class="w-12p" />
+     <col class="w-9p" />
+     <col class="w-9p" />
+     <col class="w-9p" />
+     <col class="w-6p" />
+     <col />
+     <col class="w-18p" />
+     <col class="w-8p" />
+    </colgroup>
+    <thead>
+     <tr>
+      <th></th>
+      <th>Bank account</th>
+      <th>days</th>
+      <th>Deposit amount</th>
+      <th>Amount</th>
+      <th></th>
+      <th>Currency<br></th>
+      <th><br><span class="gray2">()</span><br><span class="gray2">CMS</span></th>
+      <th>Notes</th>
+      <th>Tax documentation</th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+  </div>
+
+  <div class="row align-items-center mt-2">
+   <div class="spacer"></div>
+   <div id="paging" class="app-pagination" aria-label=" Pagination"></div>
+   <div class="a_r min-w-220">
+    <select id="pageSize" class="form-s">
+     <option value="10">View 10 items</option>
+     <option value="20">View 20 items</option>
+     <option value="50" selected>View 50 items</option>
+     <option value="100">View 100 items</option>
+    </select>
+    <input type="hidden" id="page" value="1" />
+   </div>
+  </div>
+ </div>
+
+ <!-- Account Summary (per-account aggregates) -->
+ <div class="card mt-3 is-hidden" id="accountSummaryCard">
+  <div class="row align-items-center">
+   <h4 class="mb-0">Bank account </h4>
+   <div class="spacer"></div>
+  </div>
+  <div class="table-card mt-2">
+   <table class="table-list table-style3" id="SummaryTab">
+    <colgroup>
+     <col />
+     <col class="w-15p" />
+     <col class="w-15p" />
+     <col class="w-15p" />
+     <col class="w-15p" />
+    </colgroup>
+    <thead>
+     <tr>
+      <th>Bank account</th>
+      <th> items</th>
+      <th>Deposit amount</th>
+      <th>Amount</th>
+      <th></th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+  </div>
+  <div id="summaryEmpty" class="gray2 mt-2 is-hidden"> No data.</div>
+  <div class="gray2 f11 mt-2">Current selected Period/Bank account/Search/ to DBfrom .</div>
+
+ </div>
+
+ <!-- Matching UI removed on this page; use dedicated /bank_activity/matching -->
+
+ <script>
+ const CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+ const BANK_ACTIVITY_CURRENCY = "{{ selected_currency or 'USD' }}";
+ const BANK_ACCOUNT_PROVIDER = "{{ bank_account_provider or 'manual' }}";
+ let CURRENT_JOB_ID = null; // kept for backward compatibility (single-job flows)
+ let SELECTED_ACCOUNT_LABEL = '';
+ let LAST_JOB_IDS = []; // aggregated job IDs from last collection
+ let JOB_ALIAS = {}; // jobId -> alias label
+ let ALIAS_BY_ACC = {}; // bankCode|accountNumber -> preferred alias (accountName + bankCode)
+ let RENDER_MODE = 'local'; // 'local' | 'jobs'
+ let ACCOUNTS_LOAD_TOKEN = 0;
+ let COVERAGE_LOAD_TOKEN = 0;
+ let LOCAL_RENDER_TOKEN = 0;
+ let LOCAL_SUMMARY_TOKEN = 0;
+ let AGG_RENDER_TOKEN = 0;
+ let COLLECT_TOKEN = 0;
+ let SEARCH_TOKEN = 0;
+ let MATCH_INV_TOKEN = 0;
+ let MATCH_DEP_TOKEN = 0;
+ let ACCOUNT_CHANGE_BOUND = false;
+
+ function escapeHtml(text) {
+  if (text === null || typeof text === "undefined") return "";
+  return String(text)
+   .replace(/&/g, "&amp;")
+   .replace(/</g, "&lt;")
+   .replace(/>/g, "&gt;")
+   .replace(/"/g, "&quot;")
+   .replace(/'/g, "&#039;");
+ }
+
+ function getInvoiceRoot() {
+  return document.querySelector('.invoice-theme') || document.body;
+ }
+
+ function parseMoney(value) {
+  const n = Number(String(value == null ? "0" : value).replaceAll(",", ""));
+  return Number.isFinite(n) ? n : 0;
+ }
+
+ function formatBankActivityMoney(value) {
+  const scale = BANK_ACTIVITY_CURRENCY === "USD" ? 0 : 2;
+  const n = parseMoney(value);
+  return `${n.toLocaleString(undefined, {
+   minimumFractionDigits: scale === 0 || Number.isInteger(n) ? 0 : scale,
+   maximumFractionDigits: scale,
+  })} ${BANK_ACTIVITY_CURRENCY}`;
+ }
+
+ function setHidden(el, hidden) {
+  if (!el) return;
+  el.classList.toggle('is-hidden', hidden);
+ }
+
+	 async function fetchJSON(url, opts={}){
+	  const res = await fetch(url, {headers: {'X-CSRFToken': CSRF, 'Content-Type':'application/json', 'Accept':'application/json'}, credentials:'same-origin', ...opts});
+	  if(!res.ok){
+   const text = await res.text().catch(()=> '');
+   let msg = res.statusText;
+   let codeInfo = ` (HTTP ${res.status})`;
+   if (text){
+    try {
+     const j = JSON.parse(text);
+     msg = (j.message || j.msg || j.error || msg);
+     if (j.code !== undefined) codeInfo = ` (code ${j.code})`;
+    } catch(_){
+     msg = text;
+    }
+   }
+   throw new Error(`${msg}${codeInfo}`);
+	  }
+	  return res.json();
+	 }
+
+ async function saveManualTransactionFromForm(){
+  const payload = {
+   currency: BANK_ACTIVITY_CURRENCY,
+   transactionDate: document.getElementById('manualTxDate').value,
+   bankCode: 'MANUAL',
+   accountNumber: document.getElementById('manualTxAccount').value.trim(),
+   accountName: document.getElementById('manualTxAccountName').value.trim(),
+   accIn: document.getElementById('manualTxIn').value,
+   accOut: document.getElementById('manualTxOut').value,
+   balance: document.getElementById('manualTxBalance').value,
+   payerName: document.getElementById('manualTxPayer').value.trim(),
+   reference: document.getElementById('manualTxReference').value.trim(),
+   description: document.getElementById('manualTxDescription').value.trim(),
+  };
+  const result = await fetchJSON(`${scriptRoot}/bank_activity/manual_transaction`, {
+   method: 'POST',
+   body: JSON.stringify(payload)
+  });
+  document.getElementById('manualTxIn').value = '';
+  document.getElementById('manualTxOut').value = '';
+  document.getElementById('manualTxBalance').value = '';
+  document.getElementById('manualTxPayer').value = '';
+  document.getElementById('manualTxReference').value = '';
+  document.getElementById('manualTxDescription').value = '';
+  await loadAccounts();
+  try {
+   const key = `${result.bankCode || 'MANUAL'}|${result.accountNumber || payload.accountNumber}`;
+   const cb = document.querySelector(`input[name="activeAccount"][value="${CSS.escape(key)}"]`);
+   if (cb) cb.checked = true;
+  } catch (_) {}
+  document.getElementById('page').value = '1';
+  await renderLocal();
+  await updateCoverage();
+  return result;
+ }
+
+	 function showPagingError(error) {
+	  const message = error && error.message ? error.message : String(error);
+	  if (window.AppAlert) {
+	   window.AppAlert(message, { title: "Error" }).catch(() => {});
+	   return;
+	  }
+	  console.error(error);
+	 }
+
+	 function renderBankActivityPaging(pageNum, pageCount, reloadFn) {
+	  const paging = document.getElementById('paging');
+	  if (!paging) return;
+	  window.AppPagination.render(paging, {
+	   page: pageNum,
+	   totalPages: pageCount,
+	   ariaLabel: ' Pagination',
+	   onPageChange: async (nextPage) => {
+	    document.getElementById('page').value = String(nextPage);
+	    try {
+	     await (reloadFn || renderBasedOnMode)();
+	    } catch (error) {
+	     showPagingError(error);
+	    }
+	   },
+	  });
+	 }
+
+	 // ----- Date/Time formatting helpers -----
+ function pad2(n){ return String(n).padStart(2,'0'); }
+ function formatLocalDate(d){
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth()+1);
+  const da = pad2(d.getDate());
+  return `${y}-${m}-${da}`;
+ }
+ function parseTrdtToDate(trdt){
+  if(!trdt) return null;
+  if (/^\d{14}$/.test(trdt)){
+   const y = parseInt(trdt.slice(0,4),10);
+   const m = parseInt(trdt.slice(4,6),10)-1;
+   const d = parseInt(trdt.slice(6,8),10);
+   const hh = parseInt(trdt.slice(8,10),10);
+   const mm = parseInt(trdt.slice(10,12),10);
+   const ss = parseInt(trdt.slice(12,14),10);
+   return new Date(y, m, d, hh, mm, ss);
+  }
+  const dt = new Date(trdt);
+  if (!isNaN(dt.getTime())) return dt;
+  return null;
+ }
+ function formatTrdt(trdt){
+  const dt = parseTrdtToDate(trdt);
+  if(!dt){
+   const safe = (trdt||'').toString().replace('T',' ').replace('Z','');
+   if (safe.length>=10) return `${safe.slice(0,10)}<br>${safe.slice(11,19)}`;
+   return safe || '-';
+  }
+  const y = dt.getFullYear();
+  const m = pad2(dt.getMonth()+1);
+  const d = pad2(dt.getDate());
+  const hh = pad2(dt.getHours());
+  const mm = pad2(dt.getMinutes());
+  const ss = pad2(dt.getSeconds());
+  return `${y}-${m}-${d}<br>${hh}:${mm}:${ss}`;
+ }
+ function toTimestamp(trdt){
+  const dt = parseTrdtToDate(trdt);
+  if(!dt){
+   if (/^\d{8}$/.test(trdt)){
+    const y = parseInt(trdt.slice(0,4),10); const m = parseInt(trdt.slice(4,6),10)-1; const d = parseInt(trdt.slice(6,8),10);
+    return new Date(y, m, d).getTime();
+   }
+   return 0;
+  }
+  return dt.getTime();
+ }
+
+ // Convert SQL UTC timestamp (e.g., 'YYYY-MM-DD HH:MM:SS' or ISO) to Eastern display string.
+ function utcSqlToKstString(s){
+  if(!s) return '';
+  try{
+   const raw = String(s).trim();
+   const formatEastern = (dt) => {
+    if (window.AppDate && typeof window.AppDate.formatDisplayDateTime === 'function') {
+     return window.AppDate.formatDisplayDateTime(dt, { seconds: true });
+    }
+    return dt.toLocaleString('en-US', {
+     timeZone: 'America/New_York',
+     year: 'numeric',
+     month: '2-digit',
+     day: '2-digit',
+     hour: '2-digit',
+     minute: '2-digit',
+     second: '2-digit'
+    });
+   };
+   const hasTz = /(?:GMT|UTC|[+-]\d{2}:?\d{2}|T|Z$)/i.test(raw);
+   const parsed = new Date(hasTz ? raw : `${raw.replace(' ', 'T')}Z`);
+   if (!Number.isNaN(parsed.getTime())){
+    return formatEastern(parsed);
+   }
+
+   const t = raw.replace('T',' ').replace('Z','');
+   const m = t.match(/^(\d{4})-(\d{2})-(\d{2})[ ](\d{2}):(\d{2}):(\d{2})/);
+   if(!m) return raw;
+   const y = parseInt(m[1],10), mo = parseInt(m[2],10)-1, d = parseInt(m[3],10);
+   const hh = parseInt(m[4],10), mm = parseInt(m[5],10), ss = parseInt(m[6],10);
+   return formatEastern(new Date(Date.UTC(y, mo, d, hh, mm, ss)));
+  }catch(e){ return String(s); }
+ }
+
+ // ----- Row background color per account alias -----
+ function _aliasHue(alias){
+  let h = 0;
+  const s = (alias || '').toString();
+  for (let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i))>>> 0; }
+  return h % 360;
+ }
+ function aliasColor(alias){
+  const hue = _aliasHue(alias);
+  return `hsl(${hue}, 78%, 94%)`;
+ }
+ function aliasAccentColor(alias){
+  const hue = _aliasHue(alias);
+  return `hsl(${hue}, 72%, 42%)`;
+ }
+
+ async function loadAccounts(){
+  const token = ++ACCOUNTS_LOAD_TOKEN;
+  const activeWrap = document.getElementById('activeAccountsList');
+  const closedWrap = document.getElementById('closedAccountsList');
+  activeWrap.innerHTML = '';
+  closedWrap.innerHTML = '';
+  let data = null;
+  try{
+   data = await fetchJSON(`${scriptRoot}/bank_activity/accounts?currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&provider=${encodeURIComponent(BANK_ACCOUNT_PROVIDER)}`);
+  }catch(e){
+   if (token !== ACCOUNTS_LOAD_TOKEN) return;
+   const msg = document.createElement('div');
+   msg.className = 'gray2';
+   msg.style.padding = '6px 0';
+   msg.textContent = `Bank account List could not load.  Retry. (${e.message||e})`;
+   activeWrap.appendChild(msg);
+   try{
+    document.getElementById('resultCount').textContent = '0 items';
+    document.querySelector('#resultTable tbody').innerHTML = '';
+   }catch(_){ }
+   return;
+  }
+  if (token !== ACCOUNTS_LOAD_TOKEN) return;
+
+  const makeItem = (a, isActive, idx) => {
+   const id = `${isActive ? 'act' : 'cls'}_${idx}`;
+   const labelText = `${escapeHtml(a.accountName||'')} <span class=\"gray2\">(${escapeHtml(a.bankCode)})</span><br><span class=\"pl18 gray2\">${escapeHtml(a.accountNumber)}</span>`;
+   const div = document.createElement('div');
+   div.className = 'floatl account-item';
+   div.innerHTML = `
+    <label>
+     <input type=\"checkbox\" name=\"${isActive ? 'activeAccount' : 'closedAccount'}\" value=\"${a.bankCode}|${a.accountNumber}\" data-base=\"${a.baseDate||''}\" ${isActive ? 'checked' : ''} />
+     ${labelText}
+    </label>`;
+   return { div, labelText };
+  };
+
+  (data.active||[]).forEach((a, i) => {
+   const { div, labelText } = makeItem(a, true, i);
+   activeWrap.appendChild(div);
+   if (i === 0) { SELECTED_ACCOUNT_LABEL = labelText; }
+   // store alias preference: accountName + last 4 digits of account number
+   ALIAS_BY_ACC[`${a.bankCode}|${a.accountNumber}`] = `${a.accountName||''} (${(a.accountNumber||'').slice(-4)})`;
+  });
+
+  if ((data.closed||[]).length === 0) {
+   const span = document.createElement('span');
+   span.className = 'gray2';
+   span.textContent = ' Bank account none.';
+   closedWrap.appendChild(span);
+  } else {
+   (data.closed||[]).forEach((a, i) => {
+    const { div } = makeItem(a, false, i);
+    closedWrap.appendChild(div);
+    // also store for closed in case needed
+    ALIAS_BY_ACC[`${a.bankCode}|${a.accountNumber}`] = `${a.accountName||''} (${(a.accountNumber||'').slice(-4)})`;
+   });
+  }
+
+  // Multi-selection allowed; refresh view and coverage on change
+  if (!ACCOUNT_CHANGE_BOUND) {
+   activeWrap.addEventListener('change', async (e) => {
+    updateAccSummary();
+    try{ await renderBasedOnMode(); }catch(err){ console.error(err); }
+    try{ await updateCoverage(); }catch(err){ console.error(err); }
+   });
+   ACCOUNT_CHANGE_BOUND = true;
+  }
+
+  // initial summary
+  updateAccSummary();
+ }
+
+ function ymd(date){
+  const y = date.getFullYear();
+  const m = pad2(date.getMonth()+1);
+  const da = pad2(date.getDate());
+  return `${y}${m}${da}`;
+ }
+
+ function setDTQuarter(code){
+  const now = new Date();
+  const y = now.getFullYear();
+  let start, end;
+  if (code === 0) {
+   // This year
+   start = new Date(y, 0, 1);
+   end = new Date(y, 11, 31);
+  } else if (code === 1) {
+   // 1 (H1)
+   start = new Date(y, 0, 1);
+   end = new Date(y, 5, 30);
+  } else if (code === 2) {
+   // 2 (H2)
+   start = new Date(y, 6, 1);
+   end = new Date(y, 11, 31);
+  } else {
+   // 3:Q1, 4:Q2, 5:Q3, 6:Q4
+   const q = code - 2; // 1..4
+   const qStartMonth = (q-1)*3; // 0,3,6,9
+   start = new Date(y, qStartMonth, 1);
+   end = new Date(y, qStartMonth + 3, 0);
+  }
+  document.getElementById('startDate').value = formatLocalDate(start);
+  document.getElementById('endDate').value = formatLocalDate(end);
+ }
+
+ function toYmd(d){
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth()+1);
+  const da = pad2(d.getDate());
+  return `${y}${m}${da}`;
+ }
+
+ function addMonthsClamped(date, months){
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const d = date.getDate();
+  const targetMonthIndex = m + months;
+  const targetYear = y + Math.floor(targetMonthIndex / 12);
+  const normalizedMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+  return new Date(targetYear, normalizedMonth, Math.min(d, lastDay));
+ }
+
+ function parseInputYmd(id){
+  const v = document.getElementById(id).value;
+  const [y,m,dd] = v.split('-').map(x=>parseInt(x,10));
+  return new Date(y, m-1, dd);
+ }
+
+ function addDays(date, days){ const d = new Date(date.getTime()); d.setDate(d.getDate()+days); return d; }
+
+ function clampToLast3Months(start, end){
+  const minStart = addMonthsClamped(end, -3);
+  if (start < minStart) return minStart; else return start;
+ }
+
+ function sliceMonthlyWindows(sdateStr, edateStr){
+  // Return array of {s,e} in yyyymmdd, each window <= 1 calendar month.
+  const sInput = new Date(sdateStr.slice(0,4), parseInt(sdateStr.slice(4,6))-1, parseInt(sdateStr.slice(6,8)));
+  const eInput = new Date(edateStr.slice(0,4), parseInt(edateStr.slice(4,6))-1, parseInt(edateStr.slice(6,8)));
+  let start = clampToLast3Months(sInput, eInput);
+  let end = eInput;
+  const wins = [];
+  let cur = new Date(start.getTime());
+  while (cur <= end){
+   const ewin = addMonthsClamped(cur, 1);
+   const e = ewin < end ? ewin : end;
+   wins.push({ s: toYmd(cur), e: toYmd(e) });
+   cur = addDays(e, 1);
+  }
+  return wins;
+ }
+
+ function getSelectedActiveAccounts(){
+  const list = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk => {
+   const [bankCode, accountNumber] = chk.value.split('|');
+   const alias = chk.parentElement.innerHTML.replace(/<input[^>]*>/, '').trim();
+   list.push({ bankCode, accountNumber, alias });
+  });
+  return list;
+ }
+
+ function updateAccSummary(){
+  const total = document.querySelectorAll('input[name="activeAccount"]').length;
+  const selected = document.querySelectorAll('input[name="activeAccount"]:checked').length;
+  const el = document.getElementById('accSummary');
+  if (el) el.textContent = total ? `Select ${selected}/${total}` : '';
+ }
+
+ async function requestJob(bankCode, accountNumber, sdate, edate){
+  throw new Error('Remote bank job collection is not configured. Use manual entry or Plaid sync.');
+ }
+
+ async function getJobState(jobId){
+  throw new Error('Remote bank job collection is not configured.');
+ }
+
+ async function waitJobReady(jobId){
+  return;
+ }
+
+ async function refreshSummary(){
+  return loadLocalSummary();
+ }
+
+ async function refreshSummaryFor(jobId){
+  await loadLocalSummary();
+  return { totalAccIn: 0, totalAccOut: 0 };
+ }
+
+ // Remote job rendering is intentionally disabled; all table rendering is local.
+ async function searchJob(jobId, alias){
+  throw new Error('Remote bank job collection is not configured.');
+ }
+
+ async function rerenderAggregated(){
+  RENDER_MODE = 'local';
+  return renderLocal();
+ }
+
+ // Coverage: DB range and last collection
+ async function updateCoverage(){
+  const token = ++COVERAGE_LOAD_TOKEN;
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  const el = document.getElementById('coverageInfo');
+  if(!el) return;
+  if(!accs.length){ el.textContent = 'Bank account Select.'; return; }
+  const params = encodeURIComponent(accs.join(','));
+  try{
+   const [res, sched] = await Promise.all([
+    fetchJSON(`${scriptRoot}/bank_activity/coverage?accounts=${params}`),
+    fetchJSON(`${scriptRoot}/bank_activity/scheduler_status`).catch(()=> null)
+   ]);
+   if (token !== COVERAGE_LOAD_TOKEN) return;
+   const dash = (s)=> (s && s.length===8) ? `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}` : (s||'-');
+   const safe = (s)=> escapeHtml((s || '').toString());
+   const easternLabel = (s)=>{
+    const raw = (s || '').toString().trim();
+    if (!raw) return '';
+    if (/\b(?:GMT|UTC|ET)\b/i.test(raw)) return safe(raw);
+    return `${safe(raw)} ET`;
+   };
+   const dbRange = (res.dbMinTrdate || res.dbMaxTrdate) ? `${dash(res.dbMinTrdate)} ~ ${dash(res.dbMaxTrdate)}` : '-';
+   const j = res.lastJob || null;
+   let upd = '';
+   if (j) {
+    if (j.updatedAtKst) upd = j.updatedAtKst;
+    else if (j.updatedAt) upd = utcSqlToKstString(j.updatedAt);
+   }
+
+   const lastStr = j
+    ? `${safe(dash(j.sdate||''))} ~ ${safe(dash(j.edate||''))}${upd ? ` (: ${easternLabel(upd)})` : ''}`
+    : '-';
+
+   const dbUpd = res.dbMaxUpdatedAtKst || (res.dbMaxUpdatedAt ? utcSqlToKstString(res.dbMaxUpdatedAt) : '');
+   const tx = res.lastJobTx || null;
+   const txUpdated = tx ? (tx.maxUpdatedAtKst || (tx.maxUpdatedAt ? utcSqlToKstString(tx.maxUpdatedAt) : '')) : '';
+   const txInfo = tx
+    ? ` | DB: <b>${(tx.count||0).toLocaleString()}items</b>${txUpdated ? ` (Save: ${easternLabel(txUpdated)})` : ''}`
+    : '';
+
+   let schedStr = '';
+   let lastRunStr = '';
+   try{
+    const e = sched && sched.bank_activity ? sched.bank_activity : null;
+    if (sched && sched.running !== undefined){
+     const runStr = sched.running ? 'ON' : 'OFF';
+     const nextStr = (e && (e.nextRunTimeKst || e.nextRunTime)) ? (e.nextRunTimeKst || e.nextRunTime) : '-';
+     schedStr = ` | Auto: <b>${safe(runStr)}</b> (Next: ${nextStr === '-' ? '-' : easternLabel(nextStr)})`;
+    }
+
+    const lr = sched && sched.bank_activityLastRun ? sched.bank_activityLastRun : null;
+    if (lr && (lr.startedAt || lr.endedAt)){
+     const ok = !!lr.ok;
+     const start = safe(lr.startedAt || '-');
+     const end = safe(lr.endedAt || '-');
+     const rows = (lr.rowsPersisted !== undefined && lr.rowsPersisted !== null) ? Number(lr.rowsPersisted||0).toLocaleString() : '-';
+     const req = (lr.requested !== undefined && lr.requested !== null) ? Number(lr.requested||0).toLocaleString() : '-';
+     const err = lr.error ? safe(lr.error) : '';
+     if (ok){
+      lastRunStr = ` | Auto: <b class="blue3">success</b> (${start} ~ ${end}, :${req}, Save:${rows})`;
+     } else {
+      lastRunStr = ` | Auto: <b class="red3"></b> (${start} ~ ${end}${err ? `, ${err}` : ''})`;
+     }
+    }
+   }catch(_){ schedStr = ''; }
+
+   // Per-account diagnostic line: jobState/error + persisted row count
+   let perAcc = '';
+   const items = Array.isArray(res.accountStatuses) ? res.accountStatuses : [];
+   if (items.length){
+    const parts = items.map(it=>{
+     const key = `${it.bankCode||''}|${it.accountNumber||''}`;
+     const alias = escapeHtml(ALIAS_BY_ACC[key] || key);
+     const lj = it.lastJob || null;
+     const ljtx = it.lastJobTx || null;
+     const st = lj ? `state:${(lj.jobState || '-')}/err:${(lj.errorCode || '-')}` : 'nojob';
+     const cnt = ljtx ? `${(ljtx.count||0).toLocaleString()}items` : '-';
+     const reason = (lj && lj.errorCode && String(lj.errorCode) !== '1' && lj.errorReason) ? ` (${escapeHtml(lj.errorReason)})` : '';
+     return `${alias}: ${escapeHtml(st)}, DB:${escapeHtml(cnt)}${reason}`;
+    });
+    perAcc = `<br><span class="gray2 f11">${parts.join(' | ')}</span>`;
+   }
+
+   const dbUpdInfo = dbUpd ? ` | DBSave: <b>${easternLabel(dbUpd)}</b>` : '';
+   el.innerHTML = `DB : <b>${safe(dbRange)}</b>${dbUpdInfo} | (job): <b>${lastStr}</b>${txInfo}${schedStr}${lastRunStr}${perAcc}`;
+  }catch(err){
+   if (token !== COVERAGE_LOAD_TOKEN) return;
+   el.textContent = '';
+  }
+ }
+
+ // Render from local DB from local transaction data
+ async function renderLocal(){
+  const token = ++LOCAL_RENDER_TOKEN;
+  AGG_RENDER_TOKEN++;
+  const sdateStr = document.getElementById('startDate').value.replaceAll('-','');
+  const edateStr = document.getElementById('endDate').value.replaceAll('-','');
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  if (!accs.length){
+   document.getElementById('resultCount').textContent = '0 items';
+   document.querySelector('#resultTable tbody').innerHTML = '';
+   document.getElementById('paging').innerHTML = '';
+   return;
+  }
+  const d = document.getElementById('chkDeposit').checked;
+  const w = document.getElementById('chkWithdraw').checked;
+  const tradeType = (d && !w) ? 'I' : ((!d && w) ? 'O' : '');
+  const remark = document.getElementById('remarkInput').value.trim();
+  const memo = document.getElementById('memoInput').value.trim();
+  const searchString = [remark, memo].filter(Boolean).join(' ');
+  const page = document.getElementById('page').value || '1';
+  const perPage = document.getElementById('pageSize').value || '50';
+  const dir = document.getElementById('sortDirection').value || 'desc';
+  const order = (dir === 'asc') ? 'A' : 'D';
+
+  const url = `${scriptRoot}/bank_activity/local_search?sdate=${encodeURIComponent(sdateStr)}&edate=${encodeURIComponent(edateStr)}&accounts=${encodeURIComponent(accs.join(','))}&tradeType=${encodeURIComponent(tradeType)}&searchString=${encodeURIComponent(searchString)}&currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&page=${encodeURIComponent(page)}&perPage=${encodeURIComponent(perPage)}&order=${order}`;
+  const res = await fetchJSON(url);
+  if (token !== LOCAL_RENDER_TOKEN) return;
+  document.getElementById('resultCount').textContent = `${(res.total||0).toLocaleString()} items`;
+  const tbody = document.querySelector('#resultTable tbody');
+  tbody.innerHTML = '';
+  const dirAlias = {};
+  let idxStart = ((res.pageNum||1) - 1) * (res.perPage||0);
+  (res.list||[]).forEach((r, i)=>{
+   const tr = document.createElement('tr');
+   const key = `${r.bankCode||''}|${r.accountNumber||''}`;
+   const alias = ALIAS_BY_ACC[key] || `${r.bankCode||''} ${r.accountNumber||''}`.trim();
+   tr.style.backgroundColor = aliasColor(alias);
+   tr.style.boxShadow = `inset 6px 0 0 ${aliasAccentColor(alias)}`;
+   const inAmt = parseMoney(r.accIn||'0');
+   const outAmt = parseMoney(r.accOut||'0');
+   const desc1 = (r.remark1||'') || '-';
+   const desc2 = (r.remark2||'') ? `<br><span class="gray2 f11">${r.remark2}</span>` : '<br><span class="gray2 f11">-</span>';
+   const desc3 = (r.remark3||'') ? `<br><span class="gray1">${r.remark3}</span>` : '<br><span class="gray1">-</span>';
+   const taxIssued = (parseInt(r.taxInvoiceIssued||0, 10) || 0) ? 1 : 0;
+   const taxIssuedAt = (r.taxInvoiceIssuedAt || '').toString();
+   const taxAllowed = !(outAmt && outAmt> 0);
+   tr.innerHTML = `
+    <td class="a_c">${(idxStart + i + 1).toLocaleString()}</td>
+    <td class="a_c">${alias}</td>
+    <td class="a_c">${formatTrdt(r.trdt || r.trdate)}</td>
+    <td class="a_r pr5"><span class="blue3">${formatBankActivityMoney(inAmt)}</span></td>
+    <td class="a_r pr5"><span class="red3">${formatBankActivityMoney(outAmt)}</span></td>
+    <td class="a_r pr5">${formatBankActivityMoney(r.balance||0)}</td>
+    <td class="a_c">${BANK_ACTIVITY_CURRENCY}</td>
+    <td class="a_c">${desc1}${desc2}${desc3}</td>
+    <td class="a_c">
+     <div class="bank_activity-cell-actions">
+      <input type="text" class="form-s bank_activity-memo-input" value="${r.memo||''}" data-tid="${r.tid}" />
+      <a class="btn btn-s btn-green bank_activity-action-btn" data-save="${r.tid}">Save</a>
+     </div>
+    </td>
+    <td class="a_c">
+     ${taxAllowed
+      ? `<button type="button" class="btn btn-s bank_activity-action-btn ${taxIssued ? 'btn-ghost' : 'btn-blue3'}" data-tax="${r.tid}" data-issued="${taxIssued}" title="${taxIssuedAt ? ('days: ' + taxIssuedAt) : ''}">${taxIssued ? '' : ''}</button>`
+      : `<button type="button" class="btn btn-s bank_activity-action-btn btn-ghost" disabled title="items "></button>`
+     }
+    </td>`;
+   tbody.appendChild(tr);
+  });
+
+	  const pageCount = res.pageCount || 1;
+	  const pageNum = res.pageNum || 1;
+	  renderBankActivityPaging(pageNum, pageCount, renderBasedOnMode);
+  if (token !== LOCAL_RENDER_TOKEN) return;
+  try{ await loadLocalSummary(); }catch(e){ console.error(e); }
+ }
+
+ async function renderBasedOnMode(){
+  if (RENDER_MODE === 'jobs' && LAST_JOB_IDS.length){
+   await rerenderAggregated();
+  } else {
+   RENDER_MODE = 'local';
+   await renderLocal();
+  }
+ }
+
+ // Collect for selected accounts across monthly windows; updates LAST_JOB_IDS
+ async function collectSelected(){
+  const token = ++COLLECT_TOKEN;
+  if (BANK_ACCOUNT_PROVIDER === 'manual') {
+   try{ await window.AppAlert('Manual provider uses the local transaction form.', { title: "Info" }); }catch(e2){}
+   return;
+  }
+
+  const sdateStr = document.getElementById('startDate').value.replaceAll('-','');
+  const edateStr = document.getElementById('endDate').value.replaceAll('-','');
+  if(!sdateStr || !edateStr || sdateStr.length!==8 || edateStr.length!==8){ try{ await window.AppAlert('Period Confirm.', { title: "Confirm" }); }catch(e2){} return; }
+
+  if (BANK_ACCOUNT_PROVIDER === 'plaid') {
+   const res = await fetchJSON(`${scriptRoot}/bank_activity/sync_provider`, {
+    method: 'POST',
+    body: JSON.stringify({
+     provider: 'plaid',
+     currency: BANK_ACTIVITY_CURRENCY,
+     startDate: sdateStr,
+     endDate: edateStr
+    })
+   });
+   if (token !== COLLECT_TOKEN) return;
+   RENDER_MODE = 'local';
+   await loadAccounts();
+   await renderLocal();
+   await updateCoverage();
+   try{ await window.AppAlert(`Imported ${res.rowsPersisted || 0} transaction(s).`, { title: "Complete" }); }catch(e2){}
+   return;
+  }
+
+  throw new Error('Unsupported bank account data provider.');
+ }
+
+ async function search(){
+  RENDER_MODE = 'local';
+  return renderLocal();
+ }
+
+ // Load per-account aggregates from local DB and render summary table // Load per-account aggregates from local DB and render summary table
+ async function loadLocalSummary(){
+  const token = ++LOCAL_SUMMARY_TOKEN;
+  const card = document.getElementById('accountSummaryCard');
+  const tbody = document.querySelector('#SummaryTab tbody');
+  const empty = document.getElementById('summaryEmpty');
+  if (!card || !tbody) return;
+  const sEl = document.getElementById('startDate');
+  const eEl = document.getElementById('endDate');
+  if (!sEl || !eEl || !sEl.value || !eEl.value){ setHidden(card, true); return; }
+  const sdateStr = sEl.value.replaceAll('-','');
+  const edateStr = eEl.value.replaceAll('-','');
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  if (!accs.length){ setHidden(card, true); return; }
+  const d = document.getElementById('chkDeposit').checked;
+  const w = document.getElementById('chkWithdraw').checked;
+  const tradeType = (d && !w) ? 'I' : ((!d && w) ? 'O' : '');
+  const remark = (document.getElementById('remarkInput')?.value || '').trim();
+  const memo = (document.getElementById('memoInput')?.value || '').trim();
+  const searchString = [remark, memo].filter(Boolean).join(' ');
+
+  const params = new URLSearchParams({
+   sdate: sdateStr,
+   edate: edateStr,
+   accounts: accs.join(','),
+   tradeType,
+   searchString,
+   currency: BANK_ACTIVITY_CURRENCY
+  });
+  let res;
+  try{
+   res = await fetchJSON(`${scriptRoot}/bank_activity/local_summary?${params.toString()}`);
+  }catch(e){
+   if (token !== LOCAL_SUMMARY_TOKEN) return;
+   console.error('local_summary failed', e);
+   setHidden(card, true);
+   return;
+  }
+  if (token !== LOCAL_SUMMARY_TOKEN) return;
+  const items = res && Array.isArray(res.items) ? res.items : [];
+  if (!items.length){
+   tbody.innerHTML = '';
+   if (empty) setHidden(empty, false);
+   setHidden(card, false);
+   return;
+  }
+  if (empty) setHidden(empty, true);
+
+  // Build rows and totals
+  let totalCnt=0, totalIn=0, totalOut=0, totalBal=0;
+  let html = '';
+  items.forEach(it=>{
+   const key = `${it.bankCode||''}|${it.accountNumber||''}`;
+   const alias = ALIAS_BY_ACC[key] || `${it.bankCode||''} ${it.accountNumber||''}`.trim();
+   const cnt = parseInt(it.count||0)||0;
+   const sumIn = parseMoney(it.totalIn||0)||0;
+   const sumOut = parseMoney(it.totalOut||0)||0;
+   const bal = parseMoney(it.lastBalance||0)||0;
+   totalCnt += cnt; totalIn += sumIn; totalOut += sumOut; totalBal += bal;
+   html += `
+   <tr>
+    <td class="a_c"><b>${alias}</b><br><span class="gray2 f11">${it.accountNumber||''}</span></td>
+    <td class="a_r pr5">${cnt.toLocaleString()} items</td>
+    <td class="a_r pr5 blue3">${formatBankActivityMoney(sumIn)}</td>
+    <td class="a_r pr5 red3">${formatBankActivityMoney(sumOut)}</td>
+    <td class="a_r pr5">${formatBankActivityMoney(bal)}</td>
+   </tr>`;
+  });
+  html += `
+  <tr>
+   <td class="a_c"><b>Total</b></td>
+   <td class="a_r pr5"><b>${totalCnt.toLocaleString()} items</b></td>
+   <td class="a_r pr5 blue3"><b>${formatBankActivityMoney(totalIn)}</b></td>
+   <td class="a_r pr5 red3"><b>${formatBankActivityMoney(totalOut)}</b></td>
+   <td class="a_r pr5"><b>${formatBankActivityMoney(totalBal)}</b></td>
+  </tr>`;
+  tbody.innerHTML = html;
+  setHidden(card, false);
+ }
+ async function saveMemo(tid, memo){
+  return fetchJSON(`${scriptRoot}/bank_activity/memo`, {method:'POST', body: JSON.stringify({tid, memo})});
+ }
+
+ async function saveTaxInvoiceIssued(tid, issued){
+  return fetchJSON(`${scriptRoot}/bank_activity/tax_invoice`, {method:'POST', body: JSON.stringify({tid, issued})});
+ }
+
+ function extractInvoiceNumberFromMemo(memo){
+  try{
+   const s = (memo || '').toString();
+   const matches = [...s.matchAll(/INV:([^\s|]+)/g)];
+   if (!matches.length) return null;
+   const last = (matches[matches.length - 1] && matches[matches.length - 1][1]) ? String(matches[matches.length - 1][1]).trim() : '';
+   return last || null;
+  }catch(_){
+   return null;
+  }
+ }
+
+ function confirmByTypingNumbers(title, invoiceNumbersText){
+  return new Promise(function(resolve){
+   try{
+    const existing = document.getElementById('invoiceConfirmOverlay');
+    if (existing){
+     existing.remove();
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'invoiceConfirmOverlay';
+    overlay.className = 'modal-overlay show';
+
+    const panel = document.createElement('div');
+    panel.className = 'modal-card is-wide confirm-panel';
+
+    panel.innerHTML = `
+     <h3 class="modal-title">${title}</h3>
+     <p class="modal-help">below Invoice number All  , below input field  .</p>
+     <div id="invoiceConfirmNumbersBox" class="confirm-box"></div>
+     <input type="text" id="invoiceConfirmInput" class="confirm-input input-inline" placeholder="  Paste" />
+     <div id="invoiceConfirmError" style="display:none; color:#b91c1c; font-size:13px; margin-top:6px;"></div>
+     <div class="confirm-actions">
+      <button type="button" id="invoiceConfirmCancelBtn" class="btn btn-ghost">Cancel</button>
+      <button type="button" id="invoiceConfirmOkBtn" class="btn btn-primary">Confirm</button>
+     </div>
+    `;
+
+    overlay.appendChild(panel);
+    getInvoiceRoot().appendChild(overlay);
+
+    const box = document.getElementById('invoiceConfirmNumbersBox');
+    if (box){
+     box.textContent = invoiceNumbersText;
+    }
+    const input = document.getElementById('invoiceConfirmInput');
+    if (input){
+     input.value = '';
+     input.focus();
+     input.addEventListener('input', function(){
+      const errEl = document.getElementById('invoiceConfirmError');
+      if (errEl) errEl.style.display = 'none';
+     });
+    }
+
+    const cleanup = function(result){
+     try{ overlay.remove(); }catch(_){ }
+     resolve(result);
+    };
+
+    document.getElementById('invoiceConfirmCancelBtn').addEventListener('click', function(ev){
+     ev.preventDefault();
+     cleanup(false);
+    });
+    document.getElementById('invoiceConfirmOkBtn').addEventListener('click', function(ev){
+     ev.preventDefault();
+     const v = (input && input.value ? input.value : '').trim();
+     if (v !== invoiceNumbersText){
+      const errEl = document.getElementById('invoiceConfirmError');
+      if (errEl){
+       errEl.textContent = 'Invoice number does not match. Confirm and try again.';
+       errEl.style.display = 'block';
+      }
+      if (input){
+       input.focus();
+       input.select();
+      }
+      return;
+     }
+     cleanup(true);
+    });
+
+    overlay.addEventListener('click', function(ev){
+     if (ev.target === overlay){
+      cleanup(false);
+     }
+    });
+   }catch(_){
+    resolve(false);
+   }
+  });
+ }
+
+ function downloadExcel(){
+  const d = document.getElementById('chkDeposit').checked;
+  const w = document.getElementById('chkWithdraw').checked;
+  const tradeType = (d && !w) ? 'I' : ((!d && w) ? 'O' : '');
+  const remark = document.getElementById('remarkInput').value.trim();
+  const memo = document.getElementById('memoInput').value.trim();
+  const searchString = [remark, memo].filter(Boolean).join(' ');
+  const dir = document.getElementById('sortDirection').value || 'desc';
+  const order = (dir === 'asc') ? 'A' : 'D';
+  const sdate = (document.getElementById('startDate')?.value || '').replaceAll('-','');
+  const edate = (document.getElementById('endDate')?.value || '').replaceAll('-','');
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  if (!sdate || !edate || !accs.length){
+   try{ if (window.AppAlert) window.AppAlert(' Download Bank account times Period Confirm.', { title: "Confirm" }); }catch(e2){}
+   return;
+  }
+
+  const params = new URLSearchParams({
+   sdate,
+   edate,
+   accounts: accs.join(','),
+   tradeType,
+   searchString,
+   order
+  });
+  window.location.href = `${scriptRoot}/bank_activity/export?${params.toString()}`;
+ }
+
+ // ===== Matching UI logic (in-script) =====
+ function dashDateFromYmd(ymd){
+  if(!ymd || ymd.length!==8) return '';
+  return `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`;
+ }
+
+ function buildDepositSummary(item){
+  const parts = [];
+  if (item.remark1) parts.push(item.remark1);
+  if (item.remark2) parts.push(item.remark2);
+  if (item.remark3) parts.push(item.remark3);
+  if (!parts.length && item.memo) parts.push(item.memo);
+  return parts.join(' | ');
+ }
+
+ async function loadMatchingInvoices(){
+  const sdate = document.getElementById('startDate').value;
+  const edate = document.getElementById('endDate').value;
+  const url = `${scriptRoot}/bank_activity/matching/invoices?date_from=${encodeURIComponent(sdate)}&date_to=${encodeURIComponent(edate)}&currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&limit=200`;
+  const res = await fetchJSON(url);
+  const tbody = document.querySelector('#matchInvoicesTable tbody');
+  tbody.innerHTML = '';
+  (res.items||[]).forEach((it, idx)=>{
+   const tr = document.createElement('tr');
+   tr.dataset.invoiceId = it.id;
+   tr.innerHTML = `
+    <td class="a_c">${idx+1}</td>
+    <td class="a_c">${it.number||''}</td>
+    <td class="a_c">${it.client_name||''}</td>
+    <td class="a_c">${it.issue_date||''}</td>
+    <td class="a_r">${formatBankActivityMoney(it.total||0)}</td>
+   `;
+   // drop targets
+   tr.addEventListener('dragover', (ev)=>{ ev.preventDefault(); tr.classList.add('drop-ready'); });
+   tr.addEventListener('dragleave', ()=> tr.classList.remove('drop-ready'));
+   tr.addEventListener('drop', async (ev)=>{
+    ev.preventDefault(); tr.classList.remove('drop-ready');
+    try{
+     const data = ev.dataTransfer.getData('text/plain');
+     const dep = JSON.parse(data);
+     await matchDepositToInvoice(it.id, dep, tr);
+    }catch(e){ try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){} }
+   });
+   tbody.appendChild(tr);
+  });
+ }
+
+ async function loadMatchingDeposits(){
+  const sdateStr = document.getElementById('startDate').value.replaceAll('-','');
+  const edateStr = document.getElementById('endDate').value.replaceAll('-','');
+  const accs = [];
+  document.querySelectorAll('input[name="activeAccount"]:checked').forEach(chk=> accs.push(chk.value));
+  if (!accs.length) return;
+  const url = `${scriptRoot}/bank_activity/matching/deposits?sdate=${encodeURIComponent(sdateStr)}&edate=${encodeURIComponent(edateStr)}&accounts=${encodeURIComponent(accs.join(','))}&currency=${encodeURIComponent(BANK_ACTIVITY_CURRENCY)}&limit=500`;
+  const res = await fetchJSON(url);
+  const tbody = document.querySelector('#matchDepositsTable tbody');
+  tbody.innerHTML = '';
+  (res.items||[]).forEach((r)=>{
+   const tr = document.createElement('tr');
+   const alias = `${r.bankCode||''} ${r.accountNumber||''}`.trim();
+   const summary = buildDepositSummary(r);
+   tr.draggable = true;
+   tr.addEventListener('dragstart', (ev)=>{
+    tr.classList.add('dragging');
+    const payload = {
+     tid: r.tid, accIn: parseMoney(r.accIn||0), trdt: r.trdt||r.trdate, bankCode: r.bankCode, accountNumber: r.accountNumber,
+     alias: alias, summary: summary
+    };
+    ev.dataTransfer.setData('text/plain', JSON.stringify(payload));
+   });
+   tr.addEventListener('dragend', ()=> tr.classList.remove('dragging'));
+   tr.innerHTML = `
+    <td class="a_c">${formatTrdt(r.trdt || r.trdate)}</td>
+    <td class="a_r">${formatBankActivityMoney(r.accIn||0)}</td>
+    <td class="a_c">${alias}</td>
+    <td class="a_c">${summary||'-'}</td>
+   `;
+   tbody.appendChild(tr);
+  });
+ }
+
+ async function matchDepositToInvoice(invoiceId, dep, trEl){
+  // Build payment_meta for the selected invoice currency
+  const dateStr = (function(){
+   const dt = parseTrdtToDate(dep.trdt);
+   if (!dt) return '';
+   return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}-${pad2(dt.getDate())}`;
+  })();
+  const meta = {
+   currency: BANK_ACTIVITY_CURRENCY,
+   date: dateStr,
+   account_alias: dep.alias || `${dep.bankCode||''} ${dep.accountNumber||''}`.trim(),
+   deposit: parseMoney(dep.accIn||0),
+   summary: dep.summary || ''
+  };
+  // Save then verify
+  await fetchJSON(`${scriptRoot}/invoices/${invoiceId}/save_payment_meta`, {method:'POST', body: JSON.stringify({payment_meta: meta})});
+  const v = await fetchJSON(`${scriptRoot}/invoices/${invoiceId}/verify_payment`, {method:'POST', body: JSON.stringify({payment_meta: meta})});
+  if (v && v.ok){
+   // Visually mark invoice row as matched
+   try{
+    const row = document.querySelector(`#matchInvoicesTable tr[data-invoice-id="${invoiceId}"]`);
+    if (row){ row.style.background = '#ecfdf5'; row.title = ' Done (paid)'; }
+  }catch(e){}
+ } else {
+   try{ await window.AppAlert(` : ${(v && v.reason) || ' people'}`, { title: "Confirm" }); }catch(e2){}
+  }
+ }
+
+ async function refreshMatching(){
+  await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+ }
+
+ const COVERAGE_AUTO_REFRESH_MS = 60 * 1000;
+ let coverageAutoRefreshTimer = null;
+
+ function startCoverageAutoRefresh(){
+  if (coverageAutoRefreshTimer) window.clearInterval(coverageAutoRefreshTimer);
+  // Keep scheduler/last-run info current even when the page stays open.
+  coverageAutoRefreshTimer = window.setInterval(async ()=>{
+   if (document.hidden) return;
+   try{ await updateCoverage(); }catch(e){ console.error(e); }
+  }, COVERAGE_AUTO_REFRESH_MS);
+ }
+
+ function stopCoverageAutoRefresh(){
+  if (!coverageAutoRefreshTimer) return;
+  window.clearInterval(coverageAutoRefreshTimer);
+  coverageAutoRefreshTimer = null;
+ }
+
+ // Event bindings
+
+ document.getElementById('btnRequest').addEventListener('click', async ()=>{
+  try{ await collectSelected(); }catch(e){ try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){} }
+ });
+
+ document.getElementById('manualTransactionForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  try{
+   await saveManualTransactionFromForm();
+   try{ await window.AppAlert('Saved', { title: "Complete" }); }catch(e2){}
+  }catch(err){
+   try{ await window.AppAlert((err && err.message) ? err.message : String(err), { title: "Error" }); }catch(e2){}
+  }
+ });
+
+ document.getElementById('btnSearchMain').addEventListener('click', async (e)=>{
+  e.preventDefault();
+  try{ await renderBasedOnMode(); }catch(e){ try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){} }
+ });
+
+ // Range preset (compact select) -> reuse existing setDTQuarter
+ const rangeSel = document.getElementById('rangePreset');
+ if (rangeSel){
+  rangeSel.addEventListener('change', (ev)=>{
+   const code = parseInt(ev.target.value || '', 10);
+   if (!isNaN(code)) setDTQuarter(code);
+  });
+ }
+
+ // Accounts panel toggle & tools
+ const accToggleBtn = document.getElementById('accToggle');
+ if (accToggleBtn){
+  accToggleBtn.addEventListener('click', (ev)=>{
+   ev.preventDefault();
+   const panel = document.getElementById('accPanel');
+   const open = panel && !panel.classList.contains('is-hidden');
+   setHidden(panel, open);
+   accToggleBtn.textContent = open ? 'Bank account Expand' : 'Bank account Collapse';
+  });
+ }
+ const accAllBtn = document.getElementById('accAll');
+ if (accAllBtn){
+  accAllBtn.addEventListener('click', async (ev)=>{
+   ev.preventDefault();
+   document.querySelectorAll('input[name="activeAccount"]').forEach(chk=> chk.checked = true);
+   updateAccSummary();
+   try{ await renderBasedOnMode(); }catch(e){ console.error(e); }
+   try{ await updateCoverage(); }catch(e){ console.error(e); }
+  });
+ }
+ const accNoneBtn = document.getElementById('accNone');
+ if (accNoneBtn){
+  accNoneBtn.addEventListener('click', async (ev)=>{
+   ev.preventDefault();
+   document.querySelectorAll('input[name="activeAccount"]').forEach(chk=> chk.checked = false);
+   updateAccSummary();
+   try{ await renderBasedOnMode(); }catch(e){ console.error(e); }
+   try{ await updateCoverage(); }catch(e){ console.error(e); }
+  });
+ }
+ const accInvertBtn = document.getElementById('accInvert');
+ if (accInvertBtn){
+  accInvertBtn.addEventListener('click', async (ev)=>{
+   ev.preventDefault();
+   document.querySelectorAll('input[name="activeAccount"]').forEach(chk=> chk.checked = !chk.checked);
+   updateAccSummary();
+   try{ await renderBasedOnMode(); }catch(e){ console.error(e); }
+   try{ await updateCoverage(); }catch(e){ console.error(e); }
+  });
+ }
+ document.getElementById('sortDirection').addEventListener('change', async ()=>{
+  try{ document.getElementById('page').value = '1'; await renderBasedOnMode(); }catch(e){ console.error(e); }
+ });
+
+ document.getElementById('pageSize').addEventListener('change', async ()=>{
+  try{ document.getElementById('page').value = '1'; await renderBasedOnMode(); }catch(e){ console.error(e); }
+ });
+
+	 // save memo click
+ document.querySelector('#resultTable').addEventListener('click', async (ev)=>{
+  const tid = ev.target.getAttribute('data-save');
+  if(!tid) return;
+  const inp = ev.target.closest('tr').querySelector('input[data-tid]');
+  try{
+   const res = await saveMemo(tid, inp.value);
+   try{
+    const row = ev.target.closest('tr');
+    const taxBtn = row ? row.querySelector('button[data-tax]') : null;
+    if (taxBtn && res && res.taxInvoiceIssued !== undefined) {
+     const issued = parseInt(res.taxInvoiceIssued || '0', 10) ? 1 : 0;
+     taxBtn.setAttribute('data-issued', String(issued));
+     taxBtn.textContent = issued ? '' : '';
+     const at = (res.taxInvoiceIssuedAt || '').toString();
+     taxBtn.title = at ? ('days: ' + at) : '';
+     if (issued){
+      taxBtn.classList.remove('btn-blue3');
+      taxBtn.classList.add('btn-ghost');
+     } else {
+      taxBtn.classList.remove('btn-ghost');
+      taxBtn.classList.add('btn-blue3');
+     }
+    }
+   }catch(_){ }
+   try{ await window.AppAlert('Saved', { title: "Done" }); }catch(e2){}
+  }catch(e){
+   try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){}
+  }
+ });
+
+ // tax-document status toggle click
+ document.querySelector('#resultTable').addEventListener('click', async (ev)=>{
+  const tid = ev.target.getAttribute('data-tax');
+  if(!tid) return;
+  const current = parseInt(ev.target.getAttribute('data-issued') || '0', 10) ? 1 : 0;
+  const next = current ? 0 : 1;
+  try{
+   if (current === 1 && next === 0){
+    const row = ev.target.closest('tr');
+    const inp = row ? row.querySelector('input[data-tid]') : null;
+    const memo = inp ? (inp.value || '') : '';
+    const invNo = extractInvoiceNumberFromMemo(memo);
+    if (invNo){
+     const ok = await confirmByTypingNumbers('Remove tax documentation status', String(invNo));
+     if (!ok){
+      return;
+     }
+    }
+   }
+   const res = await saveTaxInvoiceIssued(tid, next);
+   ev.target.setAttribute('data-issued', String(next));
+   ev.target.textContent = next ? '' : '';
+   try{
+    const at = (res && res.issuedAt ? String(res.issuedAt) : '');
+    ev.target.title = (next && at) ? ('days: ' + at) : '';
+   }catch(_){ }
+   try{
+    if (next){
+     ev.target.classList.remove('btn-blue3');
+     ev.target.classList.add('btn-ghost');
+    } else {
+     ev.target.classList.remove('btn-ghost');
+     ev.target.classList.add('btn-blue3');
+    }
+   }catch(_){ }
+
+   if (next && res && res.invoiceUpdated && res.invoiceNumber){
+    try{ await window.AppAlert(`Saved (Invoice ${res.invoiceNumber} Status Tax recordedto Changed)`, { title: "Done" }); }catch(e2){}
+   } else {
+    try{ await window.AppAlert('Saved', { title: "Done" }); }catch(e2){}
+   }
+  }catch(e){
+   try{ await window.AppAlert((e && e.message) ? e.message : String(e), { title: "Error" }); }catch(e2){}
+  }
+ });
+
+ // matching refresh removed on this page
+
+ window.addEventListener('beforeunload', ()=>{
+  stopCoverageAutoRefresh();
+ });
+
+ // On load
+  (async function(){
+  // default dates: last 1 month (only if server didn't provide)
+  const sEl = document.getElementById('startDate');
+  const eEl = document.getElementById('endDate');
+  if (!sEl.value || !eEl.value){
+   const end = new Date();
+   const start = addMonthsClamped(end, -1);
+   sEl.value = formatLocalDate(start);
+   eEl.value = formatLocalDate(end);
+  }
+  try{
+   const manualDate = document.getElementById('manualTxDate');
+   if (manualDate && !manualDate.value) manualDate.value = eEl.value || formatLocalDate(new Date());
+  }catch(_){}
+  try{
+   const requestBtn = document.getElementById('btnRequest');
+   if (requestBtn && BANK_ACCOUNT_PROVIDER === 'manual') requestBtn.classList.add('is-hidden');
+  }catch(_){}
+  try{ await loadAccounts(); }catch(e){ console.error(e); }
+  try{ await updateCoverage(); }catch(e){ console.error(e); }
+  try{ await renderLocal(); }catch(e){ console.error(e); }
+  startCoverageAutoRefresh();
+ })();
+</script>
+{% endblock %}

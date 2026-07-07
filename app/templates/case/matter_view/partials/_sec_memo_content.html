@@ -1,0 +1,97 @@
+<div class="legacy-section-header mb-2">
+  <div class="legacy-title">Matter Notes</div>
+  <div class="case-section-actions">
+    {% if can_edit_case %}
+      <button type="button" class="btnGreen" onclick="openMemoAdd()">NotesAdd</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if can_edit_case %}
+  <div id="memoAdd" class="border rounded p-2 mb-2" style="display:none;">
+    <form method="POST" action="{{ url_for('case_work.memo_add', case_id=matter.matter_id) }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <textarea class="form-control form-control-sm mb-2" name="body" rows="3" placeholder="Notes Content Input"></textarea>
+      <div class="mb-2 case-memo-attachment-dropzone" data-memo-attachment-dropzone="1">
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
+          <label class="form-label small mb-0"></label>
+          <button type="button" class="btn btn-sm btn-outline-secondary case-memo-attachment-dropzone__clear" data-memo-attachment-clear="1" hidden>
+            Select Clear
+          </button>
+        </div>
+        <div
+          class="case-memo-attachment-dropzone__surface"
+          data-memo-attachment-surface="1"
+          role="button"
+          tabindex="0"
+          aria-label="Notes  File    Select"
+        >
+          <i class="bi bi-cloud-arrow-up case-memo-attachment-dropzone__icon" aria-hidden="true"></i>
+          <div class="case-memo-attachment-dropzone__hint">
+            <div class="case-memo-attachment-dropzone__files text-muted" data-memo-attachment-files="1">Select File None</div>
+          </div>
+        </div>
+        <input type="file" name="attachments" class="case-memo-attachment-dropzone__input" data-memo-attachment-input="1" multiple>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button class="btnGreen" type="submit">Save</button>
+        <button class="btnConv" type="button" onclick="toggleBlock('memoAdd')">Close</button>
+      </div>
+    </form>
+  </div>
+{% endif %}
+
+<div class="legacy-grid-wrap">
+<table class="legacy-grid small">
+  <thead>
+    <tr>
+      <th style="width: 140px;"></th>
+      <th style="width: 160px;">Registration date</th>
+      <th>Notes</th>
+      <th style="width: 200px;"></th>
+    </tr>
+  </thead>
+  <tbody id="caseMemoList">
+    {% for m in (memos or []) %}
+    <tr class="legacy-row-hover">
+      <td align="center">{{ (m.created_by.username if m.created_by else '') or (m.created_by_name or '') }}</td>
+      <td align="center" title="{{ m.created_at|local_dt if m.created_at else '' }}">
+        {{ m.created_at|local_date if m.created_at else '' }}
+      </td>
+      <td style="text-align:left; white-space: pre-wrap;">{{ m.body or '-' }}</td>
+      <td style="text-align:left;">
+        {% if m.attachments %}
+          <div class="d-flex flex-column gap-1">
+            {% for a in m.attachments %}
+              <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('case_work.download_file_asset', case_id=matter.matter_id, file_asset_id=a.file_asset_id) }}">
+                  {{ a.original_name }}
+                </a>
+                {% if can_edit_case %}
+                  <form method="POST" action="{{ url_for('case_work.memo_attachment_delete', case_id=matter.matter_id, memo_id=m.id, memo_file_id=a.memo_file_id) }}" class="edit-only" data-confirm="File Delete">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button type="submit" class="btnRed" title=" Delete">x</button>
+                  </form>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <span class="text-muted small">-</span>
+        {% endif %}
+        {% if can_edit_case %}
+          <form method="POST" action="{{ url_for('case_work.memo_delete', case_id=matter.matter_id, memo_id=m.id) }}" class="edit-only mt-1" data-confirm="Notes Delete">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="btnRed">Notes Delete</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr data-empty="1">
+      <td colspan="4" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-inbox"></i><span> Data none.</span></div></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

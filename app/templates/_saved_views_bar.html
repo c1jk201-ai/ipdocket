@@ -1,0 +1,9 @@
+{# Save  toolbar (list pages) #}
+<div class="d-flex align-items-center gap-2 mb-2 flex-wrap app-views-bar" data-view-module="{{ view_module }}" data-view-auto="{{ view_auto or '1' }}">
+  <select class="form-select form-select-sm w-auto" data-view-select>
+    <option value="">Default</option>
+  </select>
+  <button type="button" class="btn btn-outline-secondary btn-sm" data-view-save>Current Filter Save</button>
+  <button type="button" class="btn btn-outline-primary btn-sm" data-view-default>Defaultto </button>
+  <button type="button" class="btn btn-outline-danger btn-sm" data-view-delete disabled>Delete</button>
+</div>

@@ -1,0 +1,459 @@
+{% extends "admin/layout.html" %}
+
+{% macro permission_picker(prefix, perm_groups, selected_permissions=[]) %}
+<div class="permission-picker" data-picker="{{ prefix }}">
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+        <input
+            type="search"
+            class="form-control form-control-sm permission-search"
+            data-target="{{ prefix }}"
+            placeholder="Search permissions, e.g. case.view / invoice.manage"
+            style="max-width: 320px;"
+        >
+        <div class="small text-muted">
+            <span class="fw-semibold" data-selected-count>0</span> selected
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-action="select-all" data-target="{{ prefix }}">Select all</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-action="clear-all" data-target="{{ prefix }}">Clear all</button>
+    </div>
+
+    <div class="permission-groups">
+        {% for group_name, perms in perm_groups|dictsort %}
+        {% set group_label = "Other" %}
+        {% if group_name == "menu" %}
+            {% set group_label = "Menu" %}
+        {% elif group_name == "case" %}
+            {% set group_label = "Matter" %}
+        {% elif group_name == "invoice" %}
+            {% set group_label = "Invoice Process" %}
+        {% endif %}
+        <div class="permission-group border rounded mb-2" data-group="{{ group_name }}">
+            <div class="permission-group-header px-2 py-2 d-flex justify-content-between align-items-center bg-light border-bottom">
+                <div class="small fw-semibold">
+                    {{ group_label }}
+                    <span class="badge text-bg-light border ms-1">{{ perms|length }}</span>
+                </div>
+                <div class="form-check m-0">
+                    <input
+                        type="checkbox"
+                        class="form-check-input group-toggle"
+                        data-target="{{ prefix }}"
+                        data-group="{{ group_name }}"
+                        id="{{ prefix }}-group-{{ loop.index }}"
+                    >
+                    <label class="form-check-label small text-muted" for="{{ prefix }}-group-{{ loop.index }}">All</label>
+                </div>
+            </div>
+            <div class="p-2">
+                {% for p_key, p_desc in perms %}
+                {% set checked = p_key in selected_permissions %}
+                <label class="perm-item border rounded d-flex align-items-center gap-2 px-2 py-2 mb-2" data-perm-text="{{ (p_key ~ ' ' ~ p_desc)|lower }}">
+                    <input
+                        type="checkbox"
+                        class="form-check-input perm-checkbox m-0"
+                        name="permissions"
+                        value="{{ p_key }}"
+                        data-target="{{ prefix }}"
+                        data-group="{{ group_name }}"
+                        {% if checked %}checked{% endif %}
+                    >
+                    <span class="small flex-grow-1">{{ p_desc }}</span>
+                    <code class="small text-muted">{{ p_key }}</code>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endmacro %}
+
+{% block title %}Roles & Permissions{% endblock %}
+
+{% block admin_content %}
+{% set perm_groups = {} %}
+{% for p_key, p_desc in all_perms %}
+    {% set group_key = (p_key.split('.')[0] if '.' in p_key else 'other') %}
+    {% if group_key not in perm_groups %}
+        {% set _ = perm_groups.update({group_key: []}) %}
+    {% endif %}
+    {% set _ = perm_groups[group_key].append((p_key, p_desc)) %}
+{% endfor %}
+
+<div class="row g-4 align-items-start">
+    <div class="col-xl-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white py-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <h5 class="mb-0">Registered Roles</h5>
+                        <div class="small text-muted mt-1">Search, review, and edit role permissions.</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <input id="roleSearchInput" type="search" class="form-control form-control-sm" placeholder="Search roles, descriptions, permissions" style="width: 240px;">
+                        <span class="badge text-bg-light border" id="roleCountBadge">{{ roles|length }} roles</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 role-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3 py-3" style="width: 24%">Role</th>
+                                <th style="width: 35%">Description</th>
+                                <th style="width: 26%">Permissions Preview</th>
+                                <th style="width: 15%" class="text-end pe-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTableBody">
+                            {% for role in roles %}
+                            {% set role_perms = role.permissions or [] %}
+                            {% set role_search_text = ((role.name or '') ~ ' ' ~ (role.description or '') ~ ' ' ~ (role_perms|join(' ')))|lower %}
+                            <tr data-role-row data-search-text="{{ role_search_text }}">
+                                <td class="ps-3">
+                                    <div class="fw-semibold">{{ role.name }}</div>
+                                    <div class="small text-muted">{{ role_perms|length }} permissions</div>
+                                </td>
+                                <td class="text-muted small">
+                                    {{ role.description or '-' }}
+                                </td>
+                                <td>
+                                    {% if role_perms %}
+                                        {% for perm in role_perms[:3] %}
+                                        <span class="badge rounded-pill text-bg-light border me-1 mb-1">{{ perm }}</span>
+                                        {% endfor %}
+                                        {% if role_perms|length > 3 %}
+                                        <span class="badge rounded-pill text-bg-secondary">+{{ role_perms|length - 3 }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted small">No permissions</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline-primary js-edit-role"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editRoleModal"
+                                        data-role-id="{{ role.id }}"
+                                        data-role-name="{{ role.name|e }}"
+                                        data-role-description="{{ (role.description or '')|e }}"
+                                        data-role-permissions='{{ (role_perms)|tojson|forceescape }}'
+                                        data-role-edit-url="{{ url_for('admin.edit_role', role_id=role.id) }}"
+                                        data-role-delete-url="{{ url_for('admin.delete_role', role_id=role.id) }}"
+                                    >Edit</button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-4 text-muted">No roles registered.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card shadow-sm border-primary border-opacity-25 position-sticky role-create-card">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">Create Role</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-light border small py-2 mb-3">
+                    Group permissions by menu, matter, invoice, and other categories.
+                    Add granular permissions such as <code>case.view.all</code> when needed.
+                </div>
+
+                <form method="POST" action="{{ url_for('admin.create_role') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Role Title <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" placeholder="patent_staff_all_view" required>
+                        <div class="form-text small">Role names must be unique.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea name="description" class="form-control" rows="2" placeholder="Describe what this role can do."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Permissions</label>
+                        {{ permission_picker('create', perm_groups, []) }}
+                    </div>
+
+                    <div class="d-grid mt-3">
+                        <button type="submit" class="btn btn-primary fw-semibold">Create Role</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="editRoleForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRoleModalLabel">Edit Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Role Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editRoleName" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" class="form-control" id="editRoleDescription" name="description">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold">Permissions</label>
+                        {{ permission_picker('edit', perm_groups, []) }}
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="editRoleDeleteButton">Delete Role</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </form>
+            <form id="editRoleDeleteForm" method="POST" action="" class="d-none">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.role-create-card {
+    top: 0.75rem;
+}
+
+.role-table td,
+.role-table th {
+    vertical-align: middle;
+}
+
+.permission-groups {
+    max-height: 44vh;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.perm-item {
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.perm-item:hover {
+    background-color: #f8f9fa;
+    border-color: #cfd4dc;
+}
+
+#editRoleModal .modal-body {
+    max-height: calc(100vh - 220px);
+}
+
+@media (max-width: 991.98px) {
+    .role-create-card {
+        position: static !important;
+    }
+
+    .permission-groups {
+        max-height: none;
+    }
+}
+</style>
+
+<script>
+(() => {
+    function getPicker(target) {
+        return document.querySelector(`.permission-picker[data-picker="${target}"]`);
+    }
+
+    function applyPermissionFilter(target, query) {
+        const picker = getPicker(target);
+        if (!picker) return;
+        const normalized = String(query || "").trim().toLowerCase();
+        picker.querySelectorAll(".permission-group").forEach((groupEl) => {
+            let visibleCount = 0;
+            groupEl.querySelectorAll(".perm-item").forEach((itemEl) => {
+                const text = (itemEl.dataset.permText || "").toLowerCase();
+                const matched = !normalized || text.includes(normalized);
+                itemEl.classList.toggle("d-none", !matched);
+                if (matched) visibleCount += 1;
+            });
+            groupEl.classList.toggle("d-none", visibleCount === 0);
+        });
+    }
+
+    function updatePickerState(target) {
+        const picker = getPicker(target);
+        if (!picker) return;
+
+        const checkboxes = picker.querySelectorAll(`.perm-checkbox[data-target="${target}"]`);
+        const checkedCount = picker.querySelectorAll(`.perm-checkbox[data-target="${target}"]:checked`).length;
+        const countEl = picker.querySelector("[data-selected-count]");
+        if (countEl) countEl.textContent = String(checkedCount);
+
+        picker.querySelectorAll(".group-toggle").forEach((toggle) => {
+            const group = toggle.dataset.group || "";
+            const groupBoxes = picker.querySelectorAll(`.perm-checkbox[data-target="${target}"][data-group="${group}"]`);
+            const groupChecked = picker.querySelectorAll(`.perm-checkbox[data-target="${target}"][data-group="${group}"]:checked`);
+            const total = groupBoxes.length;
+            const checked = groupChecked.length;
+            toggle.indeterminate = checked > 0 && checked < total;
+            toggle.checked = total > 0 && checked === total;
+        });
+
+        const any = checkboxes.length > 0;
+        picker.querySelectorAll(`[data-action="select-all"][data-target="${target}"], [data-action="clear-all"][data-target="${target}"]`)
+            .forEach((btn) => { btn.disabled = !any; });
+    }
+
+    function setAllPermissions(target, checked) {
+        const picker = getPicker(target);
+        if (!picker) return;
+        picker.querySelectorAll(`.perm-checkbox[data-target="${target}"]`).forEach((cb) => {
+            cb.checked = checked;
+        });
+        updatePickerState(target);
+    }
+
+    function setGroupPermissions(target, group, checked) {
+        const picker = getPicker(target);
+        if (!picker) return;
+        picker.querySelectorAll(`.perm-checkbox[data-target="${target}"][data-group="${group}"]`).forEach((cb) => {
+            cb.checked = checked;
+        });
+        updatePickerState(target);
+    }
+
+    function initPermissionPickers() {
+        document.querySelectorAll(".permission-picker").forEach((pickerEl) => {
+            const target = pickerEl.dataset.picker;
+            if (!target) return;
+            updatePickerState(target);
+        });
+
+        document.addEventListener("input", (event) => {
+            const searchEl = event.target.closest(".permission-search");
+            if (!searchEl) return;
+            const target = searchEl.dataset.target;
+            applyPermissionFilter(target, searchEl.value);
+            updatePickerState(target);
+        });
+
+        document.addEventListener("change", (event) => {
+            const cb = event.target.closest(".perm-checkbox");
+            if (cb) {
+                updatePickerState(cb.dataset.target);
+                return;
+            }
+            const groupToggle = event.target.closest(".group-toggle");
+            if (groupToggle) {
+                setGroupPermissions(groupToggle.dataset.target, groupToggle.dataset.group, groupToggle.checked);
+            }
+        });
+
+        document.addEventListener("click", (event) => {
+            const actionBtn = event.target.closest("[data-action][data-target]");
+            if (!actionBtn) return;
+            const action = actionBtn.dataset.action;
+            const target = actionBtn.dataset.target;
+            if (action === "select-all") {
+                setAllPermissions(target, true);
+            } else if (action === "clear-all") {
+                setAllPermissions(target, false);
+            }
+        });
+    }
+
+    function initRoleSearch() {
+        const input = document.getElementById("roleSearchInput");
+        const countBadge = document.getElementById("roleCountBadge");
+        if (!input) return;
+        input.addEventListener("input", () => {
+            const q = (input.value || "").trim().toLowerCase();
+            let visible = 0;
+            document.querySelectorAll("[data-role-row]").forEach((row) => {
+                const text = (row.dataset.searchText || "").toLowerCase();
+                const matched = !q || text.includes(q);
+                row.classList.toggle("d-none", !matched);
+                if (matched) visible += 1;
+            });
+            if (countBadge) {
+                countBadge.textContent = `${visible} roles`;
+            }
+        });
+    }
+
+    function parsePermissions(raw) {
+        try {
+            const parsed = JSON.parse(raw || "[]");
+            if (Array.isArray(parsed)) return parsed;
+        } catch (e) {}
+        return [];
+    }
+
+    function initEditModal() {
+        const editForm = document.getElementById("editRoleForm");
+        const deleteForm = document.getElementById("editRoleDeleteForm");
+        const deleteButton = document.getElementById("editRoleDeleteButton");
+        const nameInput = document.getElementById("editRoleName");
+        const descInput = document.getElementById("editRoleDescription");
+        const title = document.getElementById("editRoleModalLabel");
+        if (!editForm || !deleteForm || !deleteButton || !nameInput || !descInput || !title) return;
+
+        document.querySelectorAll(".js-edit-role").forEach((button) => {
+            button.addEventListener("click", () => {
+                const roleName = button.dataset.roleName || "";
+                const roleDesc = button.dataset.roleDescription || "";
+                const rolePerms = new Set(parsePermissions(button.dataset.rolePermissions));
+
+                title.textContent = `Edit Role: ${roleName}`;
+                nameInput.value = roleName;
+                descInput.value = roleDesc;
+                editForm.action = button.dataset.roleEditUrl || "";
+                deleteForm.action = button.dataset.roleDeleteUrl || "";
+
+                document.querySelectorAll('.perm-checkbox[data-target="edit"]').forEach((cb) => {
+                    cb.checked = rolePerms.has(cb.value);
+                });
+                const searchEl = document.querySelector('.permission-search[data-target="edit"]');
+                if (searchEl) {
+                    searchEl.value = "";
+                    applyPermissionFilter("edit", "");
+                }
+                updatePickerState("edit");
+            });
+        });
+
+        deleteButton.addEventListener("click", () => {
+            const roleName = nameInput.value || "this role";
+            if (!window.confirm(`Delete role ${roleName}?`)) return;
+            deleteForm.submit();
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        initPermissionPickers();
+        initRoleSearch();
+        initEditModal();
+    });
+})();
+</script>
+{% endblock %}

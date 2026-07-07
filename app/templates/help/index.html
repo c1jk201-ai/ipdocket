@@ -1,0 +1,221 @@
+{% extends "layouts/base.html" %}
+
+{% block body_class %}help-page-body{% endblock %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ static_asset_url('css/help.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="help-page" id="top">
+  <section class="help-hero">
+    <div class="help-hero__copy">
+      <p class="help-hero__eyebrow">Internal Manual</p>
+      <h1 class="help-hero__title">{{ doc_title or title or "Help" }}</h1>
+      <p class="help-hero__summary">
+        {{ hero_summary or "Operational reference for matters, uploads, search, billing, and automation." }}
+      </p>
+
+      <div class="help-hero__actions">
+        <a class="btn btn-dark btn-sm" href="#helpManual">
+          <i class="bi bi-journal-text me-1"></i> Manual
+        </a>
+        <a class="btn btn-outline-dark btn-sm" href="#helpNavigator">
+          <i class="bi bi-compass me-1"></i> Sections
+        </a>
+      </div>
+
+      <dl class="help-hero__meta" aria-label="Help document metadata">
+        <div>
+          <dt>Document</dt>
+          <dd>{{ doc_title or "Help" }}</dd>
+        </div>
+        <div>
+          <dt>Source</dt>
+          <dd>{{ doc_path }}</dd>
+        </div>
+        <div>
+          <dt>Updated</dt>
+          <dd>{{ doc_updated_at or "Internal document" }}</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="help-hero__stats">
+      {% for stat in page_stats %}
+        <article class="help-stat-card">
+          <p class="help-stat-card__label">{{ stat.label }}</p>
+          <p class="help-stat-card__value">{{ stat.value }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if spotlight_sections %}
+    <section class="help-command-deck" aria-label="Featured help sections">
+      {% for section in spotlight_sections %}
+        <a
+          class="help-command-card js-help-card js-help-filterable"
+          href="#{{ section.id }}"
+          data-help-filter="{{ section.filter_text }}"
+        >
+          <div class="help-command-card__icon">
+            <i class="bi {{ section.icon }}"></i>
+          </div>
+          <div class="help-command-card__body">
+            <p class="help-command-card__title">{{ section.title }}</p>
+            <p class="help-command-card__summary">{{ section.summary }}</p>
+            {% if section.subsections %}
+              <div class="help-command-card__tags">
+                {% for subsection in section.subsections %}
+                  <span>{{ subsection }}</span>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <div class="help-workspace">
+    <aside class="help-sidebar" id="helpNavigator">
+      <div class="help-sidebar__sticky">
+        <div class="help-sidebar__section">
+          <div class="help-sidebar__label">Search</div>
+          <label class="help-search">
+            <i class="bi bi-search"></i>
+            <input
+              id="helpFilterInput"
+              type="search"
+              placeholder="Search sections"
+              autocomplete="off"
+            >
+          </label>
+        </div>
+
+        {% if quick_links %}
+          <div class="help-sidebar__section">
+            <div class="help-sidebar__label">Quick Start</div>
+            <div class="help-quick-links">
+              {% for item in quick_links %}
+                <a class="help-quick-link" href="#{{ item.id }}">{{ item.title }}</a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="help-sidebar__section">
+          <div class="help-sidebar__label">Contents</div>
+          <div class="help-nav" id="helpNav">
+            {% for group in toc_groups %}
+              <section
+                class="help-nav-group js-help-nav-group"
+                data-help-filter="{{ group.filter_text }}"
+              >
+                <a
+                  class="help-nav-group__title js-help-link"
+                  href="#{{ group.id }}"
+                  data-help-filter="{{ group.filter_text }}"
+                >
+                  <span>{{ group.title }}</span>
+                      <span class="help-nav-group__count">{{ group["items"]|length }}</span>
+                    </a>
+
+                {% if group["items"] %}
+                  <div class="help-nav-group__items">
+                    {% for item in group["items"] %}
+                      <a
+                        class="help-nav-link js-help-link js-help-nav-link level-{{ item.level }}"
+                        href="#{{ item.id }}"
+                        data-help-filter="{{ item.filter_text }}"
+                      >
+                        {{ item.title }}
+                      </a>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </section>
+            {% endfor %}
+            <p class="help-nav__empty" id="helpFilterEmpty" hidden>No search results.</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="help-main">
+      {% if help_sections %}
+        <section class="help-chapters" aria-label="Help sections">
+          <div class="help-section-heading">
+            <div>
+              <p class="help-section-heading__eyebrow">Overview</p>
+              <h2 class="help-section-heading__title">Sections</h2>
+            </div>
+            <p class="help-section-heading__summary">
+              Jump to the relevant section, then return to the full manual when needed.
+            </p>
+          </div>
+
+          <div class="help-chapter-grid">
+            {% for section in help_sections %}
+              <a
+                class="help-chapter-card js-help-card js-help-filterable"
+                href="#{{ section.id }}"
+                data-help-filter="{{ section.filter_text }}"
+              >
+                <div class="help-chapter-card__top">
+                  <span class="help-chapter-card__index">{{ "%02d"|format(loop.index) }}</span>
+                  <span class="help-chapter-card__count">{{ section.subsection_count }} items</span>
+                </div>
+                <h3 class="help-chapter-card__title">{{ section.title }}</h3>
+                <p class="help-chapter-card__summary">{{ section.summary }}</p>
+                {% if section.subsections %}
+                  <div class="help-chapter-card__tags">
+                    {% for subsection in section.subsections[:3] %}
+                      <span>{{ subsection }}</span>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="help-manual" id="helpManual">
+        <div class="help-section-heading help-section-heading--tight">
+          <div>
+            <p class="help-section-heading__eyebrow">Manual</p>
+            <h2 class="help-section-heading__title">Manual Content</h2>
+          </div>
+          <p class="help-section-heading__summary">
+            Rendered from the configured help document with stable section anchors.
+          </p>
+        </div>
+
+        <div class="help-manual__surface">
+          <div class="help-manual__header">
+            <div>
+              <div class="help-manual__path">{{ doc_path }}</div>
+              <div class="help-manual__submeta">{{ doc_bytes }} bytes</div>
+            </div>
+            <a class="help-manual__back" href="#top">
+              <i class="bi bi-arrow-up-short"></i> Top
+            </a>
+          </div>
+
+          <article class="help-content js-help-content">
+            {{ content_html }}
+          </article>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ static_asset_url('js/help_page.js') }}"></script>
+{% endblock %}

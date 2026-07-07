@@ -1,0 +1,1416 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}System Settings{% endblock %}
+
+{% block admin_content %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white py-3">
+    <h5 class="mb-0"><i class="bi bi-sliders me-1"></i> General Settings</h5>
+  </div>
+  <div class="card-body">
+      <div class="alert alert-info small mb-3">
+        Manage system values for login, security, billing, automation, and operational defaults.
+      </div>
+
+    <nav class="admin-page-jumpbar mb-4" aria-label="System Settings Quick Go">
+      <a href="#config-login">Login</a>
+      <a href="#config-test-account">Test Accounts</a>
+      <a href="#config-access-control">Access Control</a>
+      <a href="#config-departments">Responsible Departments</a>
+      <a href="{{ url_for('admin.matter_create_menu_page') }}">Case Menu</a>
+      <a href="#config-our-ref-numbering">Our Ref.</a>
+      <a href="#config-rule-registry">Task Rules</a>
+      <a href="#config-invoice">Billing</a>
+      <a href="#config-raw">Raw Settings</a>
+      <a href="#config-tax-invoice">Tax documentation</a>
+    </nav>
+
+    <h6 id="config-branding" class="text-muted fw-bold mb-3 border-bottom pb-2">Branding</h6>
+    <form id="branding-settings-form" class="mb-4">
+      {% set brand_app_name_val = all_config.get('BRAND_APP_NAME', branding.app_name) %}
+      {% set brand_short_name_val = all_config.get('BRAND_SHORT_NAME', branding.short_name) %}
+      {% set brand_logo_path_val = all_config.get('BRAND_LOGO_PATH', branding.logo_path) %}
+      {% set brand_favicon_path_val = all_config.get('BRAND_FAVICON_PATH', branding.favicon_path) %}
+      {% set brand_primary_color_val = all_config.get('BRAND_PRIMARY_COLOR', branding.primary_color or '#394867') %}
+      {% set brand_accent_color_val = all_config.get('BRAND_ACCENT_COLOR', branding.accent_color or '#ffb347') %}
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="brand-app-name">App name</label>
+          <input id="brand-app-name" class="form-control" value="{{ brand_app_name_val }}" placeholder="Example IP Management">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="brand-short-name">Short sidebar name</label>
+          <input id="brand-short-name" class="form-control" value="{{ brand_short_name_val }}" placeholder="Example IP">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="brand-logo-path">Logo path or URL</label>
+          <div class="input-group">
+            <input id="brand-logo-path" class="form-control" value="{{ brand_logo_path_val }}" placeholder="branding/logo.png">
+            <input id="brand-logo-file" type="file" class="d-none" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon">
+            <button type="button" class="btn btn-outline-secondary" data-brand-upload="logo">Upload</button>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="brand-favicon-path">Favicon path or URL</label>
+          <div class="input-group">
+            <input id="brand-favicon-path" class="form-control" value="{{ brand_favicon_path_val }}" placeholder="branding/favicon.png">
+            <input id="brand-favicon-file" type="file" class="d-none" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon">
+            <button type="button" class="btn btn-outline-secondary" data-brand-upload="favicon">Upload</button>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="brand-primary-color">Primary color</label>
+          <input id="brand-primary-color" type="color" class="form-control form-control-color" value="{{ brand_primary_color_val if brand_primary_color_val else '#394867' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="brand-accent-color">Accent color</label>
+          <input id="brand-accent-color" type="color" class="form-control form-control-color" value="{{ brand_accent_color_val if brand_accent_color_val else '#ffb347' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Preview</label>
+          <div class="border rounded p-3 d-flex align-items-center gap-3 bg-light">
+            <div class="rounded d-flex align-items-center justify-content-center text-white fw-semibold" id="brand-preview-tile" style="width:72px;height:56px;background:{{ brand_primary_color_val if brand_primary_color_val else '#394867' }};">
+              {% if brand_logo_path_val %}
+              <img id="brand-preview-logo" src="{{ brand_asset_url(brand_logo_path_val) }}" alt="" style="max-width:58px;max-height:42px;object-fit:contain;">
+              {% else %}
+              <span id="brand-preview-logo">{{ brand_short_name_val[:2] }}</span>
+              {% endif %}
+            </div>
+            <div>
+              <div class="fw-semibold" id="brand-preview-name">{{ brand_app_name_val }}</div>
+              <div class="small text-muted" id="brand-preview-short">{{ brand_short_name_val }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-outline-secondary" id="branding-reset-btn">Use defaults</button>
+        <button type="submit" class="btn btn-primary">Save branding</button>
+      </div>
+    </form>
+
+    <!-- Login Settings -->
+    <h6 id="config-login" class="text-muted fw-bold mb-3 border-bottom pb-2">Login Settings</h6>
+    <form id="login-settings-form" class="mb-4">
+      {% set allow_password_login_val = all_config.get('ALLOW_PASSWORD_LOGIN', 'true' if config.ALLOW_PASSWORD_LOGIN else 'false') %}
+      {% set enable_test_accounts_val = all_config.get('ENABLE_TEST_ACCOUNTS', 'true' if config.ENABLE_TEST_ACCOUNTS else 'false') %}
+      <div class="alert alert-info small">
+        <i class="bi bi-info-circle-fill"></i> Password login remains enabled for permitted accounts.
+      </div>
+
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="ls-pwd-login" checked disabled>
+        <label class="form-check-label" for="ls-pwd-login">Password Login</label>
+      </div>
+
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="ls-test-acc" {% if enable_test_accounts_val|lower == 'true' %}checked{% endif %}>
+        <label class="form-check-label" for="ls-test-acc">Allow password login for test_* accounts</label>
+      </div>
+
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">Save Login Settings</button>
+      </div>
+    </form>
+
+    <h6 id="config-test-account" class="text-muted fw-bold mb-3 border-bottom pb-2">Create Test Account</h6>
+    <div class="card card-body bg-light border-0 mb-4">
+      <div class="small text-muted mb-2">
+        Create temporary <code>test_*</code> accounts for password-login checks.
+      </div>
+      <form id="test-account-form" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Username</label>
+          <input id="ta-username" class="form-control form-control-sm" placeholder="test_demo01" required>
+          <div class="form-text">Username must start with <code>test_</code>.</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Password</label>
+          <input id="ta-password" type="password" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Display Name</label>
+          <input id="ta-display-name" class="form-control form-control-sm" placeholder="Test User">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Default Role</label>
+          {% set role_opts = available_roles if available_roles else [] %}
+          {% if 'user' not in role_opts %}
+          {% set role_opts = role_opts + ['user'] %}
+          {% endif %}
+          <select id="ta-role" class="form-select form-select-sm">
+            {% for role_name in role_opts %}
+            <option value="{{ role_name }}" {% if role_name == 'user' %}selected{% endif %}>{{ role_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1 d-grid">
+          <button type="submit" class="btn btn-sm btn-dark">Create</button>
+        </div>
+      </form>
+      <div class="small text-muted mt-2">
+        Login page: <a href="{{ url_for('auth.test_login') }}" target="_blank" rel="noopener">/auth/test-login</a>
+      </div>
+      <div class="table-responsive mt-3">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Username</th>
+              <th>Display Name</th>
+              <th>Role</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="test-account-table-body">
+            <tr>
+              <td colspan="4" class="text-center text-muted">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Access Control -->
+    <h6 id="config-access-control" class="text-muted fw-bold mb-3 border-bottom pb-2">Access Control (Administrator/Internal)</h6>
+    <form id="access-control-form" class="mb-4">
+      {% set trust_proxy_val = all_config.get('SECURITY_TRUST_PROXY_HEADERS', config.SECURITY_TRUST_PROXY_HEADERS or 'false') %}
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="ac-trust-proxy" {% if trust_proxy_val|lower == 'true' %}checked{% endif %}>
+        <label class="form-check-label" for="ac-trust-proxy">Trust proxy headers (X-Forwarded-For)</label>
+        <div class="form-text">Enable only when the app runs behind a trusted reverse proxy.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Internal CIDR List (comma-separated)</label>
+        <textarea id="ac-internal-cidrs" class="form-control" rows="2" placeholder="10.0.0.0/8, 192.168.0.0/16">{{ all_config.get('SECURITY_INTERNAL_CIDRS', config.SECURITY_INTERNAL_CIDRS or '') }}</textarea>
+        <div class="form-text">Defaults include private ranges and loopback addresses.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Administrator CIDR Allowlist (comma-separated)</label>
+        <textarea id="ac-admin-cidrs" class="form-control" rows="2" placeholder="203.0.113.10/32, 198.51.100.0/24">{{ all_config.get('ADMIN_CIDR_ALLOWLIST', config.ADMIN_CIDR_ALLOWLIST or '') }}</textarea>
+        <div class="form-text">In production, replace the private/loopback defaults with an explicit administrator allowlist.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Internal API CIDR Allowlist (comma-separated)</label>
+        <textarea id="ac-internal-api-cidrs" class="form-control" rows="2" placeholder="10.0.0.0/8, 192.168.0.0/16">{{ all_config.get('INTERNAL_API_CIDR_ALLOWLIST', config.INTERNAL_API_CIDR_ALLOWLIST or '') }}</textarea>
+        <div class="form-text">Applies to /internal/* and /api/internal/* routes.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Blocked Countries (ISO Alpha-2, comma-separated)</label>
+        <input id="ac-blocked-countries" class="form-control" value="{{ all_config.get('SECURITY_BLOCKED_COUNTRY_CODES', config.SECURITY_BLOCKED_COUNTRY_CODES or '') }}" placeholder="CN, RU">
+        <div class="form-text">Uses the GeoIP database or country CIDR files under `/app/data/country_cidrs/{Country}.zone`.</div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">GeoIP Country DB Path (GeoLite2-Country.mmdb)</label>
+        <input id="ac-geoip-db" class="form-control" value="{{ all_config.get('SECURITY_GEOIP_COUNTRY_DB', config.SECURITY_GEOIP_COUNTRY_DB or '') }}" placeholder="C:\\path\\GeoLite2-Country.mmdb">
+        <div class="form-text">Requires a geoip2-compatible country database file.</div>
+      </div>
+
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">Save Access Control Settings</button>
+      </div>
+    </form>
+
+    <!-- Case Department Options -->
+    <h6 id="config-departments" class="text-muted fw-bold mb-3 border-bottom pb-2">Matter Responsible Departments</h6>
+    <form id="dept-options-form" class="mb-4">
+      <div class="mb-3">
+        <label class="form-label">Responsible Department List (one per line)</label>
+        <textarea id="case-dept-options" class="form-control" rows="3" placeholder="0-1, 0, 1-1">{{ all_config.get('CASE_DEPARTMENT_OPTIONS', '') }}</textarea>
+        <div class="form-text">Used as the default department list for matter responsibility.</div>
+      </div>
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">Save Department Settings</button>
+      </div>
+    </form>
+
+    <h6 id="config-case-menu" class="text-muted fw-bold mb-3 border-bottom pb-2">Matter Create Menu</h6>
+    <div class="border rounded bg-light p-3 mb-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="small text-muted">
+          Matter creation menu editing moved to a dedicated administrator page with a New Matter Wizard preview and create-form parameter layout controls.
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.case_parameters_page') }}">
+            <i class="bi bi-sliders"></i> Matter Parameters
+          </a>
+          <a class="btn btn-primary btn-sm" href="{{ url_for('admin.matter_create_menu_page') }}">
+            <i class="bi bi-list-ul"></i> Open Matter Create Menu
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <h6 id="config-our-ref-numbering" class="text-muted fw-bold mb-3 border-bottom pb-2">Our Ref. Auto-numbering</h6>
+    <form id="our-ref-numbering-form" class="mb-4">
+      {% set our_ref_numbering_value = all_config.get(our_ref_numbering_config_key, default_our_ref_numbering_config) %}
+      <div class="mb-3">
+        <label class="form-label">{{ our_ref_numbering_config_key }}</label>
+        <textarea id="our-ref-numbering-json" class="form-control font-monospace" rows="16" spellcheck="false">{{ our_ref_numbering_value }}</textarea>
+        <div class="form-text">
+          Template tokens: <code>YY</code>, <code>YYYY</code>, <code>MM</code>, <code>DD</code>, <code>{code}</code>, <code>{country}</code>, <code>{seq:0000}</code>.
+          Example: <code>AP{code}YY{seq:0000}{country}</code> with code <code>PD</code> can produce an <code>APPD250111US</code>-style reference.
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" id="our-ref-numbering-default-btn">Use US preset</button>
+        <button type="submit" class="btn btn-primary">Save numbering rules</button>
+      </div>
+    </form>
+
+    <h6 id="config-rule-registry" class="text-muted fw-bold mb-3 border-bottom pb-2">Task Rule Registry</h6>
+    <form id="rule-registry-form" class="mb-4">
+      <div class="mb-3">
+        <label class="form-label">RULE_REGISTRY_JSON</label>
+        <textarea id="rule-registry-json" class="form-control font-monospace" rows="10" spellcheck="false" placeholder='{"version":"2026-05-05","rules":{"us_defaults":{"templates":[]}}}'>{{ all_config.get('RULE_REGISTRY_JSON', '') }}</textarea>
+        <div class="form-text">Expected sections include case_profiles, us_defaults, and automation_actions.</div>
+      </div>
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" id="rule-registry-preview-btn">Validate / Preview</button>
+        <button type="submit" class="btn btn-primary">Save Rule Registry</button>
+      </div>
+      <pre id="rule-registry-preview" class="small bg-light border rounded p-2 mt-3 mb-0 d-none"></pre>
+    </form>
+
+    {% set accounting_disabled_value = all_config.get('INVOICEAPP_DISABLE_ACCOUNTING_FEATURES', 'true' if config.INVOICEAPP_DISABLE_ACCOUNTING_FEATURES else 'false') %}
+    {% set invoice_timeline_value = all_config.get('INVOICE_TIMELINE_TO_CASE_MEMO_ENABLED', 'true' if config.INVOICE_TIMELINE_TO_CASE_MEMO_ENABLED else 'false') %}
+    <h6 id="config-invoice" class="text-muted fw-bold mb-3 border-bottom pb-2">Billing / Invoice</h6>
+    <form id="invoice-feature-form" class="mb-4">
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="accounting-feature-enabled" {% if accounting_disabled_value|lower != 'true' %}checked{% endif %}>
+        <label class="form-check-label" for="accounting-feature-enabled">Enable expense, ledger, and sales tax reports</label>
+        <div class="form-text">When disabled, accounting-only billing pages are hidden.</div>
+      </div>
+      <div class="mb-3 form-check form-switch">
+        <input class="form-check-input" type="checkbox" id="invoice-timeline-enabled" {% if invoice_timeline_value|lower == 'true' %}checked{% endif %}>
+        <label class="form-check-label" for="invoice-timeline-enabled">Log invoice timeline to matter notes</label>
+        <div class="form-text">Drafts, issued invoices, status changes, and receipts can be added to the related matter notes.</div>
+      </div>
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">Save billing settings</button>
+      </div>
+    </form>
+
+    <!-- General Key-Value Config -->
+    <h6 id="config-raw" class="text-muted fw-bold mb-3 border-bottom pb-2">Raw Settings List (Advanced)</h6>
+    <div class="alert alert-warning small mb-3" role="alert">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      Raw key/value settings are saved directly to the SystemConfig table.
+      Change advanced settings carefully.
+    </div>
+    <div class="table-responsive mb-3">
+      <table class="table table-sm align-middle table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>Key</th>
+            <th>Value</th>
+            <th style="width:50px">Action</th>
+          </tr>
+        </thead>
+        <tbody id="config-table-body">
+          {% for k, v in all_config.items() %}
+          <tr id="row-{{ k }}">
+            <td class="fw-semibold text-break" style="max-width: 300px;">{{ k }}</td>
+            <td>
+              <input class="form-control form-control-sm config-val" data-key="{{ k }}" value="{{ v }}" onchange="updateConfigVal('{{ k }}', this.value)">
+            </td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('{{ k }}')" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="text-center text-muted">No settings items.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Add ? Config -->
+    <div class="card card-body bg-light border-0">
+      <h6 class="small fw-bold mb-2">Raw Settings Add (Advanced)</h6>
+      <div class="small text-muted mb-2">Add a raw configuration key/value pair.</div>
+      <div class="row g-2">
+        <div class="col-md-4">
+          <input id="new-k" class="form-control form-control-sm" placeholder="KEY">
+        </div>
+        <div class="col-md-6">
+          <input id="new-v" class="form-control form-control-sm" placeholder="VALUE">
+        </div>
+        <div class="col-md-2">
+          <button class="btn btn-sm btn-secondary w-100" onclick="addConfig()">Add</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h5 id="config-tax-invoice" class="mb-0">Tax Documentation Settings</h5>
+    </div>
+    <div class="card-body">
+         <div class="alert alert-secondary small mb-3">
+             Settings for issued tax documents. Keys start with <code>TAX_INVOICE_</code>.
+         </div>
+         <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Key</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for k, v in all_config.items() %}
+                        {% if k.startswith('TAX_INVOICE') %}
+                            <tr>
+                                <td>{{ k }}</td>
+                                <td>
+                                    <input class="form-control form-control-sm" value="{{ v }}" onchange="updateConfigVal('{{ k }}', this.value)">
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+         </div>
+    </div>
+</div>
+
+<script>
+  const adminUsersApiUrl = "{{ url_for('admin.api_users') }}";
+  const ourRefNumberingConfigKey = "{{ our_ref_numbering_config_key }}";
+  const defaultOurRefNumberingConfig = {{ default_our_ref_numbering_config|tojson }};
+  const caseMenuConfigKey = "{{ case_menu_config_key }}";
+  const defaultCaseMenuConfig = {{ default_case_menu_config|tojson }};
+  const caseMenuFieldOptions = {{ case_menu_field_options|tojson }};
+  const readCsrfToken = () =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
+  const isTestUsername = (username) =>
+    String(username || "").trim().toLowerCase().startsWith("test_");
+  const escapeHtml = (value) =>
+    String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+  function renderTestAccountTable(users) {
+    const tbody = document.getElementById("test-account-table-body");
+    if (!tbody) return;
+
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No test accounts.</td></tr>';
+      return;
+    }
+
+    const rows = [...users].sort((a, b) =>
+      String(a.username || "").localeCompare(String(b.username || ""))
+    );
+
+    tbody.innerHTML = rows
+      .map((u) => {
+        const roleList = Array.isArray(u.roles) && u.roles.length
+          ? u.roles.join(", ")
+          : (u.role || "user");
+        const activeLabel = u.is_active ? "active" : "inactive";
+        const activeClass = u.is_active ? "text-success" : "text-muted";
+        return `
+          <tr>
+            <td><code>${escapeHtml(u.username || "")}</code></td>
+            <td>${escapeHtml(u.display_name || "-")}</td>
+            <td>${escapeHtml(roleList)}</td>
+            <td class="${activeClass}">${activeLabel}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  async function loadTestAccounts() {
+    const tbody = document.getElementById("test-account-table-body");
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Loading...</td></tr>';
+    try {
+      const response = await fetch(adminUsersApiUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const users = await response.json();
+      const testUsers = (Array.isArray(users) ? users : []).filter((u) =>
+        isTestUsername(u && u.username)
+      );
+      renderTestAccountTable(testUsers);
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Could not load account list.</td></tr>';
+    }
+  }
+
+  document.getElementById("test-account-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("ta-username").value.trim();
+    const password = document.getElementById("ta-password").value;
+    const displayName = document.getElementById("ta-display-name").value.trim();
+    const selectedRole = document.getElementById("ta-role").value.trim() || "user";
+
+    if (!isTestUsername(username)) {
+      try {
+        await window.AppAlert("Username must start with test_.", { title: "Confirm" });
+      } catch (e2) {}
+      return;
+    }
+
+    const payload = {
+      username,
+      password,
+      display_name: displayName,
+      roles: [selectedRole],
+    };
+
+    try {
+      const response = await fetch(adminUsersApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": readCsrfToken(),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (ignored) {}
+
+      if (!response.ok || data?.success === false) {
+        throw new Error(data?.error || `HTTP ${response.status}`);
+      }
+
+      document.getElementById("ta-password").value = "";
+      await loadTestAccounts();
+      try {
+        await window.AppAlert(`Created account: ${username}`, { title: "Done" });
+      } catch (e2) {}
+    } catch (err) {
+      const message = err?.message || "Account creation failed.";
+      try {
+        await window.AppAlert(message, { title: "Error" });
+      } catch (e2) {}
+    }
+  };
+
+  function brandPathToUrl(path) {
+    const raw = String(path || "").trim();
+    if (!raw) return "";
+    const lower = raw.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:image/") || raw.startsWith("/")) {
+      return raw;
+    }
+    const base = "{{ url_for('static', filename='__BRAND_ASSET__') }}";
+    return base.replace("__BRAND_ASSET__", raw.split("/").map(encodeURIComponent).join("/"));
+  }
+
+  function updateBrandPreview() {
+    const appName = document.getElementById("brand-app-name").value.trim() || "IP Docket System";
+    const shortName = document.getElementById("brand-short-name").value.trim() || "IP Docket";
+    const logoPath = document.getElementById("brand-logo-path").value.trim();
+    const primaryColor = document.getElementById("brand-primary-color").value || "#394867";
+    const tile = document.getElementById("brand-preview-tile");
+    const nameEl = document.getElementById("brand-preview-name");
+    const shortEl = document.getElementById("brand-preview-short");
+    const logoEl = document.getElementById("brand-preview-logo");
+    if (tile) tile.style.background = primaryColor;
+    if (nameEl) nameEl.textContent = appName;
+    if (shortEl) shortEl.textContent = shortName;
+    if (logoEl) {
+      if (logoPath) {
+        if (logoEl.tagName.toLowerCase() === "img") {
+          logoEl.src = brandPathToUrl(logoPath);
+        } else {
+          const img = document.createElement("img");
+          img.id = "brand-preview-logo";
+          img.alt = "";
+          img.src = brandPathToUrl(logoPath);
+          img.style.maxWidth = "58px";
+          img.style.maxHeight = "42px";
+          img.style.objectFit = "contain";
+          logoEl.replaceWith(img);
+        }
+      } else {
+        const span = document.createElement("span");
+        span.id = "brand-preview-logo";
+        span.textContent = shortName.slice(0, 2);
+        logoEl.replaceWith(span);
+      }
+    }
+  }
+
+  async function uploadBrandAsset(kind, file) {
+    const form = new FormData();
+    form.append("kind", kind);
+    form.append("file", file);
+    const response = await fetch("{{ url_for('admin.api_branding_asset') }}", {
+      method: "POST",
+      headers: { "X-CSRFToken": readCsrfToken() },
+      body: form,
+    });
+    let data = {};
+    try { data = await response.json(); } catch (ignored) {}
+    if (!response.ok || data?.success === false) {
+      throw new Error(data?.error || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  ["brand-app-name", "brand-short-name", "brand-logo-path", "brand-primary-color"].forEach((id) => {
+    document.getElementById(id)?.addEventListener("input", updateBrandPreview);
+  });
+
+  document.querySelectorAll("[data-brand-upload]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = button.getAttribute("data-brand-upload");
+      document.getElementById(`brand-${kind}-file`)?.click();
+    });
+  });
+
+  ["logo", "favicon"].forEach((kind) => {
+    const input = document.getElementById(`brand-${kind}-file`);
+    input?.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        const data = await uploadBrandAsset(kind, file);
+        document.getElementById(`brand-${kind}-path`).value = data.path || "";
+        updateBrandPreview();
+        try { await window.AppAlert("Brand asset uploaded.", { title: "Done" }); } catch (e2) {}
+      } catch (err) {
+        try { await window.AppAlert(err?.message || "Upload failed", { title: "Error" }); } catch (e2) {}
+      } finally {
+        input.value = "";
+      }
+    });
+  });
+
+  document.getElementById("branding-reset-btn")?.addEventListener("click", () => {
+    document.getElementById("brand-app-name").value = "IP Docket System";
+    document.getElementById("brand-short-name").value = "IP Docket";
+    document.getElementById("brand-logo-path").value = "";
+    document.getElementById("brand-favicon-path").value = "";
+    document.getElementById("brand-primary-color").value = "#394867";
+    document.getElementById("brand-accent-color").value = "#ffb347";
+    updateBrandPreview();
+  });
+
+  document.getElementById("branding-settings-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      BRAND_APP_NAME: document.getElementById("brand-app-name").value.trim(),
+      BRAND_SHORT_NAME: document.getElementById("brand-short-name").value.trim(),
+      BRAND_LOGO_PATH: document.getElementById("brand-logo-path").value.trim(),
+      BRAND_FAVICON_PATH: document.getElementById("brand-favicon-path").value.trim(),
+      BRAND_PRIMARY_COLOR: document.getElementById("brand-primary-color").value.trim(),
+      BRAND_ACCENT_COLOR: document.getElementById("brand-accent-color").value.trim(),
+    };
+    await saveConfigs(payload);
+    try { await window.AppAlert("Branding saved.", { title: "Done" }); } catch (e2) {}
+  });
+
+  // Login Settings Submit
+  document.getElementById("login-settings-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      ALLOW_PASSWORD_LOGIN: document.getElementById("ls-pwd-login").checked ? "true" : "false",
+      ENABLE_TEST_ACCOUNTS: document.getElementById("ls-test-acc").checked ? "true" : "false",
+    };
+    await saveConfigs(payload);
+    try { await window.AppAlert("Login settings saved.", { title: "Done" }); } catch (e2) {}
+  };
+
+  // Access control submit
+  document.getElementById("access-control-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      SECURITY_TRUST_PROXY_HEADERS: document.getElementById("ac-trust-proxy").checked ? "true" : "false",
+      SECURITY_INTERNAL_CIDRS: document.getElementById("ac-internal-cidrs").value,
+      ADMIN_CIDR_ALLOWLIST: document.getElementById("ac-admin-cidrs").value,
+      INTERNAL_API_CIDR_ALLOWLIST: document.getElementById("ac-internal-api-cidrs").value,
+      SECURITY_BLOCKED_COUNTRY_CODES: document.getElementById("ac-blocked-countries").value,
+      SECURITY_GEOIP_COUNTRY_DB: document.getElementById("ac-geoip-db").value,
+    };
+    await saveConfigs(payload);
+    try { await window.AppAlert("Access control settings saved.", { title: "Done" }); } catch (e2) {}
+  };
+
+  // Department options submit
+  document.getElementById("dept-options-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      CASE_DEPARTMENT_OPTIONS: document.getElementById("case-dept-options").value,
+    };
+    await saveConfigs(payload);
+    try { await window.AppAlert("Department settings saved.", { title: "Done" }); } catch (e2) {}
+  };
+
+  const caseMenuDivisions = ["DOM", "INC", "OUT", "ETC"];
+  const caseMenuProfileTypes = ["PATENT", "UTILITY", "DESIGN", "TRADEMARK", "PCT", "LITIGATION", "MISC"];
+  let caseMenuEditorState = { version: 1, sections: [] };
+  let caseMenuJsonDirty = false;
+
+  function caseMenuTextarea() {
+    return document.getElementById("case-menu-json");
+  }
+
+  function caseMenuNumber(value, fallback) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
+  function caseMenuList(value) {
+    if (Array.isArray(value)) return value;
+    return [];
+  }
+
+  function splitCaseMenuList(value) {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item || "").trim()).filter(Boolean);
+    }
+    return String(value || "")
+      .split(/[\n,]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  function caseMenuSlug(value, fallback) {
+    const slug = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    return slug || fallback;
+  }
+
+  function caseMenuNamespace(value, division, type) {
+    const raw = String(value || "").trim();
+    if (raw) return raw;
+    return `custom_${String(division || "case").toLowerCase()}_${String(type || "matter").toLowerCase()}`.replace(/[^a-z0-9_]+/g, "_");
+  }
+
+  function sortCaseMenuRows(rows) {
+    return caseMenuList(rows).sort((a, b) => {
+      const orderA = caseMenuNumber(a?.order, 0);
+      const orderB = caseMenuNumber(b?.order, 0);
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a?.label || a?.id || "").localeCompare(String(b?.label || b?.id || ""));
+    });
+  }
+
+  function parseCaseMenuConfig(raw) {
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw || "{}") : raw;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch (ignored) {}
+    try {
+      return JSON.parse(defaultCaseMenuConfig || "{}");
+    } catch (ignored) {
+      return { version: 1, sections: [] };
+    }
+  }
+
+  function hydrateCaseMenuState(raw) {
+    const config = parseCaseMenuConfig(raw);
+    const sections = sortCaseMenuRows(config.sections).map((section, sectionIndex) => {
+      const nextSection = { ...(section || {}) };
+      nextSection.id = String(nextSection.id || `section-${sectionIndex + 1}`);
+      nextSection.label = String(nextSection.label || "Case Menu");
+      nextSection.description = String(nextSection.description || "");
+      nextSection.division = String(nextSection.division || "INC").toUpperCase();
+      nextSection.icon = String(nextSection.icon || "bi-folder");
+      nextSection.theme = String(nextSection.theme || "secondary");
+      nextSection.order = caseMenuNumber(nextSection.order, (sectionIndex + 1) * 10);
+      nextSection.enabled = nextSection.enabled !== false;
+      nextSection.items = sortCaseMenuRows(nextSection.items).map((item, itemIndex) => {
+        const nextItem = { ...(item || {}) };
+        nextItem.id = String(nextItem.id || `${nextSection.division.toLowerCase()}-item-${itemIndex + 1}`);
+        nextItem.label = String(nextItem.label || nextItem.type || "New Matter");
+        nextItem.description = String(nextItem.description || "");
+        nextItem.division = String(nextItem.division || nextSection.division || "INC").toUpperCase();
+        nextItem.type = String(nextItem.type || nextItem.case_type || "CUSTOM");
+        nextItem.order = caseMenuNumber(nextItem.order, (itemIndex + 1) * 10);
+        nextItem.enabled = nextItem.enabled !== false;
+        nextItem.profile_division = String(nextItem.profile_division ?? nextItem.division ?? "").toUpperCase();
+        nextItem.profile_type = String(nextItem.profile_type || "PATENT").toUpperCase();
+        nextItem.profile_group = String(nextItem.profile_group || "");
+        nextItem.namespace = caseMenuNamespace(nextItem.namespace, nextItem.division, nextItem.type);
+        nextItem.fields_inherited = nextItem.fields_inherited === true;
+        const rawExtraAllowed = Array.isArray(nextItem.field_mapping?.extra_allowed)
+          ? nextItem.field_mapping.extra_allowed
+          : nextItem.extra_allowed;
+        nextItem.extra_allowed = splitCaseMenuList(rawExtraAllowed);
+        const rawFields = Array.isArray(nextItem.field_mapping?.fields)
+          ? nextItem.field_mapping.fields
+          : nextItem.fields;
+        nextItem.fields = caseMenuList(rawFields).map((field, fieldIndex) => {
+          if (typeof field === "string") {
+            return { key: field, order: fieldIndex + 1, col: 1, required: false };
+          }
+          const nextField = { ...(field || {}) };
+          nextField.key = String(nextField.key || "");
+          nextField.order = caseMenuNumber(nextField.order, fieldIndex + 1);
+          nextField.col = caseMenuNumber(nextField.col, 1) === 2 ? 2 : 1;
+          nextField.required = Boolean(nextField.required);
+          return nextField;
+        });
+        return nextItem;
+      });
+      return nextSection;
+    });
+    return { version: config.version || 1, sections };
+  }
+
+  function cleanCaseMenuState() {
+    return {
+      version: caseMenuEditorState.version || 1,
+      sections: caseMenuList(caseMenuEditorState.sections).map((section, sectionIndex) => {
+        const cleanSection = { ...(section || {}) };
+        cleanSection.id = caseMenuSlug(cleanSection.id || cleanSection.label, `section-${sectionIndex + 1}`);
+        cleanSection.label = String(cleanSection.label || "Case Menu").trim();
+        cleanSection.description = String(cleanSection.description || "").trim();
+        cleanSection.division = String(cleanSection.division || "INC").trim().toUpperCase();
+        cleanSection.icon = String(cleanSection.icon || "bi-folder").trim();
+        cleanSection.theme = String(cleanSection.theme || "secondary").trim();
+        cleanSection.order = caseMenuNumber(cleanSection.order, (sectionIndex + 1) * 10);
+        cleanSection.enabled = cleanSection.enabled !== false;
+        delete cleanSection.collapse_id;
+        delete cleanSection.heading_id;
+        delete cleanSection.legacy_paths;
+        cleanSection.items = caseMenuList(cleanSection.items).map((item, itemIndex) => {
+          const cleanItem = { ...(item || {}) };
+          cleanItem.id = caseMenuSlug(cleanItem.id || cleanItem.label || cleanItem.type, `${cleanSection.division.toLowerCase()}-item-${itemIndex + 1}`);
+          cleanItem.label = String(cleanItem.label || cleanItem.type || "New Matter").trim();
+          cleanItem.description = String(cleanItem.description || "").trim();
+          cleanItem.division = String(cleanItem.division || cleanSection.division || "INC").trim().toUpperCase();
+          cleanItem.type = String(cleanItem.type || cleanItem.case_type || "CUSTOM").trim();
+          cleanItem.order = caseMenuNumber(cleanItem.order, (itemIndex + 1) * 10);
+          cleanItem.enabled = cleanItem.enabled !== false;
+          cleanItem.profile_division = String(cleanItem.profile_division ?? cleanItem.division ?? "").trim().toUpperCase();
+          cleanItem.profile_type = String(cleanItem.profile_type || "PATENT").trim().toUpperCase();
+          cleanItem.profile_group = String(cleanItem.profile_group || "").trim();
+          cleanItem.namespace = caseMenuNamespace(cleanItem.namespace, cleanItem.division, cleanItem.type);
+          cleanItem.extra_allowed = splitCaseMenuList(cleanItem.extra_allowed);
+          if (cleanItem.fields_inherited === true) {
+            delete cleanItem.fields;
+          } else {
+            cleanItem.fields = caseMenuList(cleanItem.fields)
+              .map((field, fieldIndex) => {
+                const cleanField = { ...(field || {}) };
+                cleanField.key = String(cleanField.key || "").trim();
+                cleanField.order = caseMenuNumber(cleanField.order, fieldIndex + 1);
+                cleanField.col = caseMenuNumber(cleanField.col, 1) === 2 ? 2 : 1;
+                cleanField.required = Boolean(cleanField.required);
+                return cleanField;
+              })
+              .filter((field) => field.key);
+          }
+          delete cleanItem.field_mapping;
+          delete cleanItem.fields_inherited;
+          delete cleanItem.list_endpoint;
+          delete cleanItem.is_custom;
+          return cleanItem;
+        });
+        return cleanSection;
+      }),
+    };
+  }
+
+  function syncCaseMenuTextarea() {
+    const textarea = caseMenuTextarea();
+    if (!textarea) return;
+    textarea.value = JSON.stringify(cleanCaseMenuState(), null, 2);
+    caseMenuJsonDirty = false;
+  }
+
+  function caseMenuSelectOptions(values, selected, includeBlank = false) {
+    const allValues = includeBlank ? ["", ...values] : values;
+    return allValues
+      .map((value) => {
+        const label = value || "-";
+        return `<option value="${escapeHtml(value)}" ${String(value) === String(selected || "") ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      })
+      .join("");
+  }
+
+  function renderCaseMenuFields(fields) {
+    if (!caseMenuList(fields).length) {
+      return '<div class="text-muted small border rounded p-2 bg-light">No ledger parameters configured.</div>';
+    }
+    return `
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Field key</th>
+              <th style="width:110px">Order</th>
+              <th style="width:110px">Column</th>
+              <th style="width:90px">Required</th>
+              <th style="width:110px">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fields.map((field, fieldIndex) => `
+              <tr data-field-index="${fieldIndex}">
+                <td>
+                  <input class="form-control form-control-sm" list="case-menu-field-key-options" data-field-prop="key" value="${escapeHtml(field.key || "")}" placeholder="application_no">
+                </td>
+                <td><input class="form-control form-control-sm" type="number" data-field-prop="order" value="${escapeHtml(field.order ?? fieldIndex + 1)}"></td>
+                <td>
+                  <select class="form-select form-select-sm" data-field-prop="col">
+                    <option value="1" ${Number(field.col || 1) === 1 ? "selected" : ""}>Left</option>
+                    <option value="2" ${Number(field.col || 1) === 2 ? "selected" : ""}>Right</option>
+                  </select>
+                </td>
+                <td class="text-center">
+                  <input class="form-check-input" type="checkbox" data-field-prop="required" ${field.required ? "checked" : ""}>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-field-up" title="Move field up"><i class="bi bi-arrow-up"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" data-action="move-field-down" title="Move field down"><i class="bi bi-arrow-down"></i></button>
+                    <button type="button" class="btn btn-outline-danger" data-action="delete-field" title="Delete field"><i class="bi bi-trash"></i></button>
+                  </div>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderCaseMenuItem(item, itemIndex) {
+    return `
+      <div class="border rounded bg-white p-3" data-item-index="${itemIndex}">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <div class="fw-semibold">${escapeHtml(item.label || "Matter type")}</div>
+            <div class="small text-muted">${escapeHtml(item.division || "")}:${escapeHtml(item.type || "")} - ${caseMenuList(item.fields).length} parameters</div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-action="move-item-up" title="Move item up"><i class="bi bi-arrow-up"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-action="move-item-down" title="Move item down"><i class="bi bi-arrow-down"></i></button>
+            <button type="button" class="btn btn-outline-danger" data-action="delete-item" title="Delete item"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label small">Label</label>
+            <input class="form-control form-control-sm" data-item-prop="label" value="${escapeHtml(item.label || "")}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Division</label>
+            <select class="form-select form-select-sm" data-item-prop="division">
+              ${caseMenuSelectOptions(caseMenuDivisions, item.division)}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Type</label>
+            <input class="form-control form-control-sm" data-item-prop="type" value="${escapeHtml(item.type || "")}" placeholder="CUSTOM-TYPE">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Order</label>
+            <input class="form-control form-control-sm" type="number" data-item-prop="order" value="${escapeHtml(item.order ?? (itemIndex + 1) * 10)}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Namespace</label>
+            <input class="form-control form-control-sm" data-item-prop="namespace" value="${escapeHtml(item.namespace || "")}" placeholder="incoming_custom_type">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Profile division</label>
+            <select class="form-select form-select-sm" data-item-prop="profile_division">
+              ${caseMenuSelectOptions(caseMenuDivisions, item.profile_division, true)}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Profile type</label>
+            <select class="form-select form-select-sm" data-item-prop="profile_type">
+              ${caseMenuSelectOptions(caseMenuProfileTypes, item.profile_type || "PATENT")}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Description</label>
+            <input class="form-control form-control-sm" data-item-prop="description" value="${escapeHtml(item.description || "")}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Extra allowed field keys</label>
+            <textarea class="form-control form-control-sm" rows="2" data-item-prop="extra_allowed" placeholder="one field key per line">${escapeHtml(splitCaseMenuList(item.extra_allowed).join("\n"))}</textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Item id</label>
+            <input class="form-control form-control-sm" data-item-prop="id" value="${escapeHtml(item.id || "")}">
+          </div>
+          <div class="col-md-6 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" data-item-prop="enabled" ${item.enabled !== false ? "checked" : ""}>
+              <label class="form-check-label small">Enabled</label>
+            </div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold small">Matter ledger parameters</div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-field">
+              <i class="bi bi-plus-lg"></i> Add parameter
+            </button>
+          </div>
+          ${renderCaseMenuFields(item.fields)}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCaseMenuSection(section, sectionIndex) {
+    return `
+      <section class="border rounded bg-light p-3" data-section-index="${sectionIndex}">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <div class="fw-semibold">${escapeHtml(section.label || "Case Menu")}</div>
+            <div class="small text-muted">${caseMenuList(section.items).length} matter types</div>
+          </div>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-action="move-section-up" title="Move section up"><i class="bi bi-arrow-up"></i></button>
+            <button type="button" class="btn btn-outline-secondary" data-action="move-section-down" title="Move section down"><i class="bi bi-arrow-down"></i></button>
+            <button type="button" class="btn btn-outline-danger" data-action="delete-section" title="Delete section"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <label class="form-label small">Section label</label>
+            <input class="form-control form-control-sm" data-section-prop="label" value="${escapeHtml(section.label || "")}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Division</label>
+            <select class="form-select form-select-sm" data-section-prop="division">
+              ${caseMenuSelectOptions(caseMenuDivisions, section.division || "INC")}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Order</label>
+            <input class="form-control form-control-sm" type="number" data-section-prop="order" value="${escapeHtml(section.order ?? (sectionIndex + 1) * 10)}">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small">Theme</label>
+            <input class="form-control form-control-sm" data-section-prop="theme" value="${escapeHtml(section.theme || "secondary")}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Icon</label>
+            <input class="form-control form-control-sm" data-section-prop="icon" value="${escapeHtml(section.icon || "bi-folder")}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Description</label>
+            <input class="form-control form-control-sm" data-section-prop="description" value="${escapeHtml(section.description || "")}">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Section id</label>
+            <input class="form-control form-control-sm" data-section-prop="id" value="${escapeHtml(section.id || "")}">
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" data-section-prop="enabled" ${section.enabled !== false ? "checked" : ""}>
+              <label class="form-check-label small">Enabled</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-semibold small">Matter types</div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-item">
+            <i class="bi bi-plus-lg"></i> Add matter type
+          </button>
+        </div>
+        <div class="vstack gap-2">
+          ${caseMenuList(section.items).length ? section.items.map(renderCaseMenuItem).join("") : '<div class="text-muted small border rounded p-2 bg-white">No matter types configured.</div>'}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderCaseMenuEditor() {
+    const editor = document.getElementById("case-menu-editor");
+    if (!editor) return;
+    if (!caseMenuList(caseMenuEditorState.sections).length) {
+      editor.innerHTML = '<div class="text-muted small border rounded p-3">No menu sections. Add a section to start.</div>';
+    } else {
+      editor.innerHTML = caseMenuEditorState.sections.map(renderCaseMenuSection).join("");
+    }
+    syncCaseMenuTextarea();
+  }
+
+  function loadCaseMenuEditorFromTextarea() {
+    const textarea = caseMenuTextarea();
+    caseMenuEditorState = hydrateCaseMenuState(textarea ? textarea.value : defaultCaseMenuConfig);
+    renderCaseMenuEditor();
+  }
+
+  function updateCaseMenuFromInput(target) {
+    const sectionEl = target.closest("[data-section-index]");
+    if (!sectionEl) return;
+    const sectionIndex = Number(sectionEl.getAttribute("data-section-index"));
+    const section = caseMenuEditorState.sections[sectionIndex];
+    if (!section) return;
+    const itemEl = target.closest("[data-item-index]");
+    const fieldEl = target.closest("[data-field-index]");
+    const value = target.type === "checkbox" ? target.checked : target.value;
+
+    if (fieldEl && target.dataset.fieldProp) {
+      const itemIndex = Number(itemEl?.getAttribute("data-item-index"));
+      const fieldIndex = Number(fieldEl.getAttribute("data-field-index"));
+      const field = section.items?.[itemIndex]?.fields?.[fieldIndex];
+      if (!field) return;
+      section.items[itemIndex].fields_inherited = false;
+      field[target.dataset.fieldProp] = value;
+      syncCaseMenuTextarea();
+      return;
+    }
+
+    if (itemEl && target.dataset.itemProp) {
+      const itemIndex = Number(itemEl.getAttribute("data-item-index"));
+      const item = section.items?.[itemIndex];
+      if (!item) return;
+      const prop = target.dataset.itemProp;
+      item[prop] = prop === "extra_allowed" ? splitCaseMenuList(value) : value;
+      if (prop === "label" && !String(item.id || "").trim()) {
+        item.id = caseMenuSlug(value, `item-${itemIndex + 1}`);
+      }
+      if (prop === "division" && !String(item.profile_division || "").trim()) {
+        item.profile_division = String(value || "").toUpperCase();
+      }
+      syncCaseMenuTextarea();
+      return;
+    }
+
+    if (target.dataset.sectionProp) {
+      const prop = target.dataset.sectionProp;
+      section[prop] = value;
+      syncCaseMenuTextarea();
+    }
+  }
+
+  function resequenceCaseMenuRows(rows) {
+    caseMenuList(rows).forEach((row, index) => {
+      row.order = (index + 1) * 10;
+    });
+  }
+
+  function moveCaseMenuRow(rows, index, direction) {
+    const target = index + direction;
+    if (!Array.isArray(rows) || target < 0 || target >= rows.length) return;
+    const [row] = rows.splice(index, 1);
+    rows.splice(target, 0, row);
+    resequenceCaseMenuRows(rows);
+  }
+
+  async function confirmCaseMenuDelete(message) {
+    if (window.AppConfirm) return await window.AppConfirm(message);
+    return window.confirm(message);
+  }
+
+  function addCaseMenuSection() {
+    const nextOrder = (caseMenuEditorState.sections.length + 1) * 10;
+    caseMenuEditorState.sections.push({
+      id: `custom-section-${Date.now().toString(36)}`,
+      label: "New Case Menu",
+      description: "",
+      division: "INC",
+      icon: "bi-folder",
+      theme: "secondary",
+      order: nextOrder,
+      enabled: true,
+      items: [],
+    });
+    renderCaseMenuEditor();
+  }
+
+  function addCaseMenuItem(section) {
+    const items = section.items || (section.items = []);
+    const nextOrder = (items.length + 1) * 10;
+    const division = String(section.division || "INC").toUpperCase();
+    items.push({
+      id: `${division.toLowerCase()}-custom-${Date.now().toString(36)}`,
+      label: "New Matter Type",
+      description: "",
+      division,
+      type: "CUSTOM",
+      order: nextOrder,
+      enabled: true,
+      profile_division: division,
+      profile_type: "PATENT",
+      namespace: `custom_${division.toLowerCase()}_${Date.now().toString(36)}`,
+      fields: [],
+      extra_allowed: [],
+    });
+  }
+
+  function addCaseMenuField(item) {
+    const fields = item.fields || (item.fields = []);
+    item.fields_inherited = false;
+    fields.push({
+      key: "",
+      order: fields.length + 1,
+      col: fields.length % 2 === 0 ? 1 : 2,
+      required: false,
+    });
+  }
+
+  document.getElementById("case-menu-add-section-btn")?.addEventListener("click", addCaseMenuSection);
+
+  document.getElementById("case-menu-editor")?.addEventListener("input", (event) => {
+    updateCaseMenuFromInput(event.target);
+  });
+  document.getElementById("case-menu-editor")?.addEventListener("change", (event) => {
+    updateCaseMenuFromInput(event.target);
+  });
+  caseMenuTextarea()?.addEventListener("input", () => {
+    caseMenuJsonDirty = true;
+  });
+
+  document.getElementById("case-menu-editor")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    const action = button.getAttribute("data-action");
+    const sectionEl = button.closest("[data-section-index]");
+    const sectionIndex = Number(sectionEl?.getAttribute("data-section-index"));
+    const section = caseMenuEditorState.sections[sectionIndex];
+    if (!section) return;
+    const itemEl = button.closest("[data-item-index]");
+    const itemIndex = itemEl ? Number(itemEl.getAttribute("data-item-index")) : -1;
+    const item = itemIndex >= 0 ? section.items?.[itemIndex] : null;
+    const fieldEl = button.closest("[data-field-index]");
+    const fieldIndex = fieldEl ? Number(fieldEl.getAttribute("data-field-index")) : -1;
+
+    if (action === "add-item") {
+      addCaseMenuItem(section);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (action === "delete-section") {
+      if (!(await confirmCaseMenuDelete(`Delete section '${section.label || section.id}'?`))) return;
+      caseMenuEditorState.sections.splice(sectionIndex, 1);
+      resequenceCaseMenuRows(caseMenuEditorState.sections);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (action === "move-section-up" || action === "move-section-down") {
+      moveCaseMenuRow(caseMenuEditorState.sections, sectionIndex, action === "move-section-up" ? -1 : 1);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (!item) return;
+    if (action === "add-field") {
+      addCaseMenuField(item);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (action === "delete-item") {
+      if (!(await confirmCaseMenuDelete(`Delete matter type '${item.label || item.type}'?`))) return;
+      section.items.splice(itemIndex, 1);
+      resequenceCaseMenuRows(section.items);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (action === "move-item-up" || action === "move-item-down") {
+      moveCaseMenuRow(section.items, itemIndex, action === "move-item-up" ? -1 : 1);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (fieldIndex < 0) return;
+    if (action === "delete-field") {
+      item.fields_inherited = false;
+      item.fields.splice(fieldIndex, 1);
+      resequenceCaseMenuRows(item.fields);
+      renderCaseMenuEditor();
+      return;
+    }
+    if (action === "move-field-up" || action === "move-field-down") {
+      item.fields_inherited = false;
+      moveCaseMenuRow(item.fields, fieldIndex, action === "move-field-up" ? -1 : 1);
+      renderCaseMenuEditor();
+    }
+  });
+
+  document.getElementById("case-menu-default-btn")?.addEventListener("click", () => {
+    caseMenuTextarea().value = defaultCaseMenuConfig;
+    caseMenuJsonDirty = true;
+    loadCaseMenuEditorFromTextarea();
+  });
+
+  function prepareCaseMenuRawForAction() {
+    if (!caseMenuJsonDirty) {
+      syncCaseMenuTextarea();
+    }
+  }
+
+  async function validateCaseMenu() {
+    prepareCaseMenuRawForAction();
+    const previewEl = document.getElementById("case-menu-preview");
+    const raw = caseMenuTextarea().value.trim();
+    const response = await fetch("{{ url_for('admin.api_case_menu_validate') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": readCsrfToken() },
+      body: JSON.stringify({ value: raw || "{}" }),
+    });
+    const data = await response.json();
+    previewEl.classList.remove("d-none");
+    previewEl.textContent = JSON.stringify(data, null, 2);
+    if (!response.ok || data.valid === false) {
+      throw new Error((data.errors || []).join(", ") || data.error || "Validation failed");
+    }
+    if (caseMenuJsonDirty) {
+      caseMenuEditorState = hydrateCaseMenuState(raw);
+      caseMenuJsonDirty = false;
+      renderCaseMenuEditor();
+    }
+    return data;
+  }
+
+  document.getElementById("case-menu-preview-btn")?.addEventListener("click", async () => {
+    try {
+      await validateCaseMenu();
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Validation failed", { title: "Error" }); } catch (e2) {}
+    }
+  });
+
+  document.getElementById("case-menu-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      await validateCaseMenu();
+      await saveConfigs({
+        [caseMenuConfigKey]: caseMenuTextarea().value.trim() || "{}",
+      });
+      try { await window.AppAlert("Case menu saved.", { title: "Done" }); } catch (e2) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Save failed", { title: "Error" }); } catch (e2) {}
+    }
+  });
+
+  loadCaseMenuEditorFromTextarea();
+
+  document.getElementById("our-ref-numbering-default-btn")?.addEventListener("click", () => {
+    document.getElementById("our-ref-numbering-json").value = defaultOurRefNumberingConfig;
+  });
+
+  document.getElementById("our-ref-numbering-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const raw = document.getElementById("our-ref-numbering-json").value.trim();
+    try {
+      if (raw) JSON.parse(raw);
+      await saveConfigs({ [ourRefNumberingConfigKey]: raw || "{}" });
+      try { await window.AppAlert("Our Ref. numbering rules saved.", { title: "Done" }); } catch (e2) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Numbering rules save failed.", { title: "Error" }); } catch (e2) {}
+    }
+  });
+
+  async function validateRuleRegistry() {
+    const previewEl = document.getElementById("rule-registry-preview");
+    const raw = document.getElementById("rule-registry-json").value.trim();
+    const response = await fetch("{{ url_for('admin.api_rule_registry_validate') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": readCsrfToken() },
+      body: JSON.stringify({ value: raw || "{}" }),
+    });
+    const data = await response.json();
+    previewEl.classList.remove("d-none");
+    previewEl.textContent = JSON.stringify(data, null, 2);
+    if (!response.ok || data.valid === false) {
+      throw new Error((data.errors || []).join(", ") || data.error || "Validation failed");
+    }
+    return data;
+  }
+
+  document.getElementById("rule-registry-preview-btn").onclick = async () => {
+    try {
+      await validateRuleRegistry();
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Validation failed", { title: "Error" }); } catch (e2) {}
+    }
+  };
+
+  document.getElementById("rule-registry-form").onsubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await validateRuleRegistry();
+      await saveConfigs({
+        RULE_REGISTRY_JSON: document.getElementById("rule-registry-json").value.trim() || "{}",
+      });
+      try { await window.AppAlert("Task rule registry saved.", { title: "Done" }); } catch (e2) {}
+    } catch (err) {
+      try { await window.AppAlert(err?.message || "Save failed", { title: "Error" }); } catch (e2) {}
+    }
+  };
+
+  document.getElementById("invoice-feature-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      INVOICEAPP_DISABLE_ACCOUNTING_FEATURES: document.getElementById("accounting-feature-enabled").checked ? "false" : "true",
+      INVOICE_TIMELINE_TO_CASE_MEMO_ENABLED: document.getElementById("invoice-timeline-enabled").checked ? "true" : "false",
+    };
+    await saveConfigs(payload);
+    try { await window.AppAlert("Billing settings saved.", { title: "Done" }); } catch (e2) {}
+  };
+
+  async function saveConfigs(payload) {
+    const csrfToken = readCsrfToken();
+    const response = await fetch("{{ url_for('admin.api_config') }}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+      body: JSON.stringify(payload),
+    });
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (ignored) {}
+    if (!response.ok || data?.success === false) {
+      throw new Error(data?.error || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  // Update single config
+  window.updateConfigVal = async (k, v) => {
+    await saveConfigs({ [k]: v });
+    // ToastLegacy
+  };
+
+  // Delete config
+  window.deleteConfig = async (k) => {
+    if(!await window.AppConfirm(`'${k}' Settings Delete`)) return;
+    const csrfToken = readCsrfToken();
+    await fetch(`{{ url_for('admin.api_config') }}?key=${encodeURIComponent(k)}`, {
+      method: "DELETE",
+      headers: { "X-CSRFToken": csrfToken }
+    });
+    document.getElementById(`row-${k}`)?.remove();
+  };
+
+  // Add config
+  window.addConfig = async () => {
+    const k = document.getElementById("new-k").value.trim();
+    const v = document.getElementById("new-v").value.trim();
+    if (k) {
+      await saveConfigs({ [k]: v });
+      window.location.reload();
+    }
+  };
+
+  loadTestAccounts();
+</script>
+{% endblock %}

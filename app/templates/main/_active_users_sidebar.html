@@ -1,0 +1,35 @@
+<div
+  id="homeActiveUsersPanel"
+  class="mt-2 px-2"
+  hx-get="{{ url_for('main.home_active_users_sidebar') }}"
+  hx-trigger="every 60s"
+  hx-swap="outerHTML"
+>
+  <div class="d-flex align-items-center justify-content-between px-1 mb-1">
+    <div class="small text-uppercase text-muted">Active users</div>
+    <div class="small text-muted">{{ home_active_users|length }} · {{ home_active_user_window_minutes }} min</div>
+  </div>
+  <div class="border rounded-3 bg-white px-2 py-2">
+    {% if home_active_users %}
+    <ul class="list-unstyled mb-0 d-flex flex-column" style="gap: 0.35rem;">
+      {% for user in home_active_users %}
+      <li class="d-flex align-items-center justify-content-between gap-2 px-1" title="{{ user.meta }}">
+        <div class="d-flex align-items-center gap-2" style="min-width: 0;">
+          <span
+            class="rounded-circle bg-success flex-shrink-0"
+            style="width: 0.45rem; height: 0.45rem;"
+          ></span>
+          <div class="small fw-semibold text-truncate">
+            {{ user.name }}
+            {% if user.is_me %}<span class="text-muted fw-normal">(you)</span>{% endif %}
+          </div>
+        </div>
+        <div class="small text-muted text-nowrap">{{ user.age_label }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="small text-muted px-1">No active users in the last {{ home_active_user_window_minutes }} minutes.</div>
+    {% endif %}
+  </div>
+</div>

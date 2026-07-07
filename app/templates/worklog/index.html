@@ -1,0 +1,2752 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<style>
+  .worklog-page {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 1680px;
+  }
+  .worklog-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+  }
+  .worklog-page-title {
+    color: var(--app-navy);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .worklog-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+  }
+  .worklog-view-segment {
+    background: #e9edf5;
+    border: 1px solid rgba(57, 72, 103, 0.08);
+    border-radius: 0.75rem;
+    display: inline-flex;
+    gap: 0.2rem;
+    padding: 0.25rem;
+  }
+  .worklog-view-segment .nav-link {
+    align-items: center;
+    border-radius: 0.55rem;
+    color: #64748b;
+    display: inline-flex;
+    font-size: 0.86rem;
+    font-weight: 700;
+    gap: 0.35rem;
+    min-height: 2.1rem;
+    padding: 0.36rem 0.82rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .worklog-view-segment .nav-link:hover {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--app-indigo);
+  }
+  .worklog-view-segment .nav-link.active {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+    color: var(--app-navy);
+  }
+  .worklog-page-note {
+    align-items: center;
+    background: #fff;
+    border: 1px solid rgba(57, 72, 103, 0.12);
+    border-radius: 0.75rem;
+    color: #475569;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    padding: 0.6rem 0.8rem;
+  }
+  .worklog-kpi {
+    border: 1px solid rgba(57, 72, 103, 0.1);
+    border-radius: 0.7rem;
+    background: #fff;
+    overflow: hidden;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .worklog-kpi .card-body {
+    padding: 0.95rem 1rem;
+  }
+  .worklog-kpi:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0.35rem 1rem rgba(15, 23, 42, 0.08);
+  }
+  .worklog-kpi__label {
+    color: #64748b;
+    font-size: 0.77rem;
+    font-weight: 800;
+  }
+  .worklog-kpi__value {
+    display: inline-block;
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.05;
+    margin-top: 0.12rem;
+  }
+  .worklog-kpi__icon {
+    align-items: center;
+    border-radius: 0.65rem;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2.35rem;
+    justify-content: center;
+    width: 2.35rem;
+  }
+  .worklog-kpi--todo {
+    border-top: 3px solid rgba(57, 72, 103, 0.75);
+  }
+  .worklog-kpi--urgent {
+    border-top: 3px solid rgba(245, 158, 11, 0.85);
+  }
+  .worklog-kpi--overdue {
+    border-top: 3px solid rgba(220, 38, 38, 0.85);
+  }
+  .worklog-kpi--completed {
+    border-top: 3px solid rgba(22, 163, 74, 0.85);
+  }
+  .worklog-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .worklog-filter-tab {
+    border-radius: 999px;
+  }
+  .worklog-filter-tab.active {
+    box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.4);
+  }
+  .worklog-due-axis {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem;
+    border-radius: 999px;
+    background: #eef4fb;
+    border: 1px solid rgba(13, 110, 253, 0.12);
+  }
+  .worklog-due-axis-btn {
+    border: none;
+    background: transparent;
+    color: #4b5563;
+    font-size: 0.84rem;
+    font-weight: 700;
+    padding: 0.42rem 0.9rem;
+    border-radius: 999px;
+    transition: all 0.18s ease;
+  }
+  .worklog-due-axis-btn:hover {
+    background: rgba(255, 255, 255, 0.82);
+    color: #0b4fa6;
+  }
+  .worklog-due-axis-btn.active {
+    background: #fff;
+    color: #0b4fa6;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+  }
+  .worklog-field-label {
+    display: block;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.01em;
+  }
+  .worklog-filter-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .worklog-quick-filter-wrap {
+    min-width: 0;
+  }
+  .worklog-filter-section {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    padding: 0.85rem 0.9rem;
+  }
+  .worklog-filter-card {
+    border: 1px solid rgba(57, 72, 103, 0.1);
+    border-radius: 0.8rem;
+  }
+  .worklog-filter-heading {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.6rem;
+  }
+  .worklog-filter-summary {
+    border: 1px dashed rgba(13, 110, 253, 0.2);
+    background: #f5f9ff;
+  }
+  .worklog-filter-summary__text {
+    min-height: 1.5rem;
+  }
+  .worklog-active-filters {
+    min-height: 1.8rem;
+  }
+  .worklog-active-filters .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid rgba(13, 110, 253, 0.25);
+    background: rgba(13, 110, 253, 0.07);
+    color: #0b4fa6;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.74rem;
+    margin: 0 0.35rem 0.35rem 0;
+  }
+  .worklog-days-preset {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .worklog-days-btn {
+    border-radius: 999px;
+  }
+  .worklog-days-btn.active {
+    box-shadow: inset 0 0 0 1px rgba(25, 135, 84, 0.28);
+  }
+  .worklog-advanced-filters {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0.75rem;
+    background: #fff;
+  }
+  .worklog-advanced-filters > summary {
+    align-items: center;
+    color: #475569;
+    cursor: pointer;
+    display: flex;
+    font-size: 0.82rem;
+    font-weight: 800;
+    justify-content: space-between;
+    list-style: none;
+    padding: 0.75rem 0.9rem;
+  }
+  .worklog-advanced-filters > summary::-webkit-details-marker {
+    display: none;
+  }
+  .worklog-advanced-filters > summary .bi-chevron-down {
+    transition: transform 0.15s ease;
+  }
+  .worklog-advanced-filters[open] > summary .bi-chevron-down {
+    transform: rotate(180deg);
+  }
+  .worklog-advanced-filters__hint {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+  .worklog-advanced-filters__body {
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    padding: 0.9rem;
+  }
+  .worklog-staff-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+  }
+  .worklog-staff-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    border-radius: 999px;
+    padding: 0.15rem 0.48rem;
+    font-size: 0.72rem;
+    border: 1px solid transparent;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .worklog-staff-chip.role-attorney {
+    background: rgba(13, 110, 253, 0.08);
+    border-color: rgba(13, 110, 253, 0.2);
+    color: #0a58ca;
+  }
+  .worklog-staff-chip.role-owner {
+    background: rgba(108, 117, 125, 0.12);
+    border-color: rgba(108, 117, 125, 0.3);
+    color: #495057;
+  }
+  .worklog-staff-chip.role-handler {
+    background: rgba(32, 201, 151, 0.12);
+    border-color: rgba(32, 201, 151, 0.28);
+    color: #005EA8;
+  }
+  .worklog-staff-chip.role-manager {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.45);
+    color: #7a5800;
+  }
+  .worklog-meta-line {
+    font-size: 0.77rem;
+  }
+  .worklog-due-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+  }
+  .worklog-due-line {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+  }
+  .worklog-due-line__label {
+    flex: 0 0 auto;
+    min-width: 3.8rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .worklog-due-line__label.final {
+    color: #12395F;
+  }
+  .worklog-due-line__label.internal {
+    color: #b45309;
+  }
+  .worklog-due-line__value {
+    min-width: 0;
+    font-size: 0.84rem;
+  }
+  .worklog-due-line__value.primary {
+    font-weight: 700;
+  }
+  #task-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  #task-table thead th {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.35;
+    padding-bottom: 0.72rem;
+    padding-top: 0.72rem;
+    white-space: nowrap;
+  }
+  #task-table tbody td {
+    border-bottom: 1px solid #eef2f7;
+    line-height: 1.35;
+    padding-bottom: 0.78rem;
+    padding-top: 0.78rem;
+    vertical-align: middle;
+  }
+  #task-table .btn-group-sm > .btn,
+  #task-table .btn.btn-sm {
+    min-height: 1.95rem;
+    padding: 0.28rem 0.55rem;
+  }
+  #task-table tbody tr:hover > td {
+    background: #f8fafc;
+  }
+  .worklog-task-cell {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .worklog-desc-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .worklog-desc-preview__text {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .worklog-list-toolbar {
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid rgba(57, 72, 103, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+  }
+  .worklog-list-title {
+    color: var(--app-navy);
+    font-size: 0.98rem;
+    font-weight: 800;
+  }
+  .worklog-list-meta {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .worklog-bulk-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: flex-end;
+  }
+  .worklog-empty-state {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .assignment-confirm-card .nav-link {
+    border: 0;
+    color: var(--bs-secondary-color);
+    padding: 0.35rem 0.75rem;
+  }
+  .assignment-confirm-card .nav-link.active {
+    color: var(--bs-primary);
+    background: var(--bs-primary-bg-subtle);
+    font-weight: 700;
+  }
+  .assignment-request-list {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .assignment-request-item {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
+    padding: 0.75rem;
+    background: var(--bs-body-bg);
+  }
+  .assignment-request-title {
+    min-width: 0;
+  }
+  .assignment-pending-badge {
+    white-space: nowrap;
+  }
+  @media (min-width: 992px) and (max-width: 1535.98px) {
+    .worklog-page.container-fluid {
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .worklog-compact-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+      padding-bottom: 0.2rem;
+      -webkit-overflow-scrolling: touch;
+    }
+    .worklog-compact-scroll .worklog-filter-tabs {
+      flex-wrap: nowrap;
+      width: max-content;
+      min-width: 100%;
+    }
+    .worklog-filter-tab,
+    .worklog-days-btn {
+      white-space: nowrap;
+    }
+    .worklog-filter-section {
+      padding: 0.85rem;
+      border-radius: 0.8rem;
+    }
+    .worklog-detail-filter-row > [class*="col-"] {
+      flex: 0 0 25%;
+      max-width: 25%;
+    }
+    .worklog-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #task-table {
+      min-width: 1500px;
+    }
+    #task-table th,
+    #task-table td {
+      padding-left: 0.65rem;
+      padding-right: 0.65rem;
+    }
+    .worklog-staff-chip {
+      font-size: 0.69rem;
+      padding: 0.12rem 0.4rem;
+    }
+  }
+  @media (min-width: 992px) and (max-width: 1199.98px) {
+    #summary-cards > [class*="col-"] {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+    .worklog-detail-filter-row > [class*="col-"] {
+      flex: 0 0 50%;
+      max-width: 50%;
+    }
+  }
+  @media (max-width: 991px) {
+    .worklog-compact-scroll {
+      overflow-x: auto;
+      padding-bottom: 0.15rem;
+    }
+  }
+  @media (max-width: 767.98px) {
+    .worklog-page {
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .worklog-page-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .worklog-page-actions {
+      justify-content: flex-start;
+    }
+    .worklog-view-segment {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .worklog-kpi .card-body {
+      padding: 0.8rem;
+    }
+    .worklog-kpi__value {
+      font-size: 1.45rem;
+    }
+    .worklog-kpi__icon {
+      height: 2rem;
+      width: 2rem;
+    }
+    .worklog-filter-card .card-body {
+      padding: 0.85rem;
+    }
+    .worklog-filter-shell {
+      gap: 0.75rem;
+    }
+    .worklog-advanced-filters__hint {
+      display: none;
+    }
+    .worklog-list-toolbar {
+      align-items: stretch;
+      padding: 0.8rem;
+    }
+    .worklog-bulk-actions {
+      justify-content: flex-start;
+    }
+    .worklog-table-wrap {
+      overflow: visible;
+    }
+    #main .worklog-table-wrap > #task-table,
+    #task-table {
+      border-collapse: separate;
+      border-spacing: 0 0.75rem;
+      min-width: 0;
+      width: 100% !important;
+      max-width: 100%;
+      table-layout: auto;
+    }
+    #task-table thead {
+      display: none;
+    }
+    #task-table tbody,
+    #task-table tbody tr,
+    #task-table tbody td {
+      display: block;
+      width: 100%;
+    }
+    #task-table tbody tr {
+      background: #fff;
+      border: 1px solid rgba(57, 72, 103, 0.12);
+      border-radius: 0.75rem;
+      box-shadow: 0 0.2rem 0.7rem rgba(15, 23, 42, 0.06);
+      max-width: 100%;
+      overflow: hidden;
+      padding: 0.6rem 0.75rem;
+    }
+    #task-table tbody td {
+      border-bottom: 1px solid #eef2f7;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      padding: 0.55rem 0;
+    }
+    #task-table tbody td[data-label] {
+      display: grid;
+      gap: 0.5rem;
+      grid-template-columns: 5.8rem minmax(0, 1fr);
+    }
+    #task-table tbody td:last-child {
+      border-bottom: 0;
+    }
+    #task-table tbody td[data-label]::before {
+      color: #64748b;
+      content: attr(data-label);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding-top: 0.08rem;
+    }
+    #task-table tbody td[data-label] > * {
+      min-width: 0;
+    }
+    #task-table tbody td[data-label="Select"] {
+      display: flex;
+      justify-content: flex-end;
+      padding-bottom: 0.15rem;
+    }
+    #task-table tbody td[data-label="Select"]::before {
+      display: none;
+    }
+    #task-table tbody td[data-label=""] .btn-group {
+      width: 100%;
+    }
+    #task-table tbody td[data-label=""] .btn-group .btn {
+      flex: 1 1 0;
+      min-width: 0;
+      padding-left: 0.45rem;
+      padding-right: 0.45rem;
+    }
+  }
+</style>
+<div class="container-fluid mt-3 worklog-page app-page app-page--wide">
+  <div class="worklog-page-header app-page-header">
+    <div>
+      <h1 class="worklog-page-title app-page-title"><i class="bi bi-check2-square me-2"></i>Task </h1>
+      <nav class="worklog-view-segment mt-2" aria-label="Task/Deadline View">
+        <a href="{{ url_for('worklog.index') }}" class="nav-link active" aria-current="page">
+          <i class="bi bi-list-task"></i><span>Task</span>
+        </a>
+        <a href="{{ url_for('deadlines.calendar_month') }}" class="nav-link">
+          <i class="bi bi-calendar3"></i><span>Month Task</span>
+        </a>
+        <a href="{{ url_for('deadlines.list_view') }}" class="nav-link">
+          <i class="bi bi-table"></i><span>Deadline List</span>
+        </a>
+      </nav>
+    </div>
+    <div class="worklog-page-actions app-toolbar">
+      <a id="export-xlsx-btn" class="btn btn-outline-success btn-sm desktop-preferred-action" href="#" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-excel"></i> Excel(Current)
+      </a>
+      <a id="export-xlsx-all-btn" class="btn btn-success btn-sm desktop-preferred-action" href="#" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-excel"></i> Excel(All)
+      </a>
+      <button id="refresh-btn" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-clockwise"></i> ?
+      </button>
+    </div>
+  </div>
+
+  {% set view_module = "worklog" %}
+  {% include "_saved_views_bar.html" %}
+
+  <div class="worklog-page-note small mb-3">
+    <i class="bi bi-calendar2-event text-primary"></i>
+    <span class="fw-semibold">Deadline Add·Edit·Delete</span>
+    <a href="{{ url_for('deadlines.list_view') }}" class="text-decoration-none">Deadline List</a>
+  </div>
+
+  <div class="row g-3 mb-3" id="summary-cards">
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 worklog-kpi worklog-kpi--todo">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="worklog-kpi__label">Open Task</div>
+              <a class="worklog-kpi__value text-primary text-decoration-none" id="summary-pending" href="?filter=todo" title="Open View tasks">-</a>
+            </div>
+            <div class="worklog-kpi__icon bg-primary bg-opacity-10">
+              <i class="bi bi-list-task text-primary fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 worklog-kpi worklog-kpi--urgent">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="worklog-kpi__label"> 7</div>
+              <a class="worklog-kpi__value text-warning text-decoration-none" id="summary-urgent" href="?filter=todo&bucket=urgent&days=7" title=" View tasks">-</a>
+            </div>
+            <div class="worklog-kpi__icon bg-warning bg-opacity-10">
+              <i class="bi bi-exclamation-triangle text-warning fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 worklog-kpi worklog-kpi--overdue">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="worklog-kpi__label">Deadline Overdue</div>
+              <a class="worklog-kpi__value text-danger text-decoration-none" id="summary-overdue" href="?filter=todo&bucket=overdue" title="Overdue View tasks">-</a>
+            </div>
+            <div class="worklog-kpi__icon bg-danger bg-opacity-10">
+              <i class="bi bi-x-circle text-danger fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 worklog-kpi worklog-kpi--completed">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="worklog-kpi__label">Completed</div>
+              <a class="worklog-kpi__value text-success text-decoration-none" id="summary-completed" href="?filter=completed&bucket=completed_week" title="View completed tasks">-</a>
+            </div>
+            <div class="worklog-kpi__icon bg-success bg-opacity-10">
+              <i class="bi bi-check-circle text-success fs-5"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3 assignment-confirm-card">
+    <div class="card-body py-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <div class="fw-semibold"><i class="bi bi-person-check me-1"></i> Assignment confirmations</div>
+        <ul class="nav nav-pills nav-sm" id="assignment-request-tabs" aria-label="Assignment confirmation views">
+          <li class="nav-item">
+            <button type="button" class="nav-link active" data-assignment-scope="inbox">
+                <span class="badge bg-primary-subtle text-primary ms-1" id="assignment-inbox-count">0</span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button type="button" class="nav-link" data-assignment-scope="sent">
+                <span class="badge bg-secondary-subtle text-secondary ms-1" id="assignment-sent-count">0</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+      <div id="assignment-request-list" class="assignment-request-list small">
+        <div class="text-muted">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3 worklog-filter-card">
+    <div class="card-body py-3">
+      <div class="worklog-filter-shell">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div class="flex-grow-1 worklog-quick-filter-wrap">
+            <div class="worklog-filter-heading">Quick View</div>
+            <div class="worklog-compact-scroll">
+              <div class="worklog-filter-tabs" id="quick-status-tabs">
+                <button type="button" class="btn btn-sm btn-outline-primary worklog-filter-tab" data-filter="todo" data-bucket="" data-days="all">Open Task</button>
+                <button type="button" class="btn btn-sm btn-outline-warning worklog-filter-tab" data-filter="todo" data-bucket="urgent" data-days="7">Due in 7 days</button>
+                <button type="button" class="btn btn-sm btn-outline-danger worklog-filter-tab" data-filter="todo" data-bucket="overdue" data-days="all">Deadline Overdue</button>
+                <button type="button" class="btn btn-sm btn-outline-info worklog-filter-tab" data-filter="todo" data-bucket="recommended" data-days="all">Suggested completion</button>
+                <button type="button" class="btn btn-sm btn-outline-success worklog-filter-tab" data-filter="completed" data-bucket="completed_week" data-days="all">Completed this week</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary worklog-filter-tab" data-filter="all" data-bucket="" data-days="all">Show all</button>
+              </div>
+            </div>
+          </div>
+          <div class="d-flex gap-2 align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="reset-filters-btn">
+              <i class="bi bi-arrow-counterclockwise"></i> Filter Reset
+            </button>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-xl-7">
+            <div class="worklog-filter-section h-100">
+              <div class="worklog-filter-heading">Search</div>
+              <div class="input-group input-group-sm">
+                <input type="text" id="search-input" class="form-control" placeholder='Search, e.g. ref:INV-2026 owner:"Smith" -completed'>
+                <button class="btn btn-outline-secondary" type="button" id="search-btn">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-5">
+            <div class="worklog-filter-section worklog-filter-summary h-100">
+              <div class="worklog-filter-heading">Current View</div>
+              <div class="small fw-semibold worklog-filter-summary__text" id="current-view-summary">Filters are active.</div>
+              <div class="worklog-active-filters small mt-2" id="active-filter-chips"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-xl-8">
+            <div class="worklog-filter-section h-100">
+              <div class="worklog-filter-heading">Deadline View</div>
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                <div>
+                  <label class="worklog-field-label mb-2">Due date basis</label>
+                  <div class="worklog-due-axis" id="due-axis-tabs" aria-label="Deadline filter">
+                    <button type="button" class="worklog-due-axis-btn" data-due-axis="all">All</button>
+                    <button type="button" class="worklog-due-axis-btn" data-due-axis="final">Final Due date</button>
+                    <button type="button" class="worklog-due-axis-btn" data-due-axis="internal">Internal Due date</button>
+                  </div>
+                </div>
+                <div>
+                  <label class="worklog-field-label mb-2">Quick deadline range</label>
+                  <div class="worklog-days-preset" id="days-preset-tabs" aria-label="Quick deadline range">
+                    <button type="button" class="btn btn-sm btn-outline-success worklog-days-btn" data-days="all">All</button>
+                    <button type="button" class="btn btn-sm btn-outline-success worklog-days-btn" data-days="7">7</button>
+                    <button type="button" class="btn btn-sm btn-outline-success worklog-days-btn" data-days="30">30</button>
+                    <button type="button" class="btn btn-sm btn-outline-success worklog-days-btn" data-days="90">90</button>
+                    <button type="button" class="btn btn-sm btn-outline-success worklog-days-btn" data-days="365">1 year</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-xl-4">
+            <div class="worklog-filter-section h-100 d-flex flex-column justify-content-center">
+              <div class="worklog-filter-heading mb-2">Responsible party</div>
+              <div class="form-check user-select-none mt-1">
+                <input class="form-check-input" type="checkbox" id="filter-mine">
+                <label class="form-check-label small fw-semibold text-secondary" for="filter-mine">Show my tasks</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% set worklog_advanced_open = (
+          request.args.get('status', 'todo') != 'todo'
+          or request.args.get('category', '') != ''
+          or request.args.get('owner_role', 'owner') != 'owner'
+          or request.args.get('owner', '') != ''
+          or request.args.get('days', 'all') not in ['', 'all']
+          or request.args.get('due_from', '') != ''
+          or request.args.get('due_to', '') != ''
+        ) %}
+        <details class="worklog-advanced-filters" {% if worklog_advanced_open %}open{% endif %}>
+          <summary>
+            <span><i class="bi bi-sliders2 me-1"></i> Filters <span class="worklog-advanced-filters__hint">Contact, period, and task type.</span></span>
+            <i class="bi bi-chevron-down"></i>
+          </summary>
+          <div class="worklog-advanced-filters__body">
+          <div class="row g-3 align-items-end worklog-detail-filter-row">
+            <div class="col-12 col-md-6 col-xl-2">
+              <label for="filter-status" class="worklog-field-label">Task Status</label>
+              <select id="filter-status" class="form-select form-select-sm">
+                <option value="todo" selected>Open Task</option>
+                <option value="completed">Completed</option>
+                <option value="all">All</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label for="filter-category" class="worklog-field-label">Task Type</label>
+              <select id="filter-category" class="form-select form-select-sm">
+                <option value="" selected>All types</option>
+                <option value="mgmt">Management</option>
+                <option value="work">Attorney work</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label for="filter-owner-role" class="worklog-field-label">Responsible role</label>
+              <select id="filter-owner-role" class="form-select form-select-sm">
+                <option value="owner" selected>Task owner</option>
+                <option value="any">Any matter contact</option>
+                <option value="attorney">Responsible attorney</option>
+                <option value="handler">Handler</option>
+                <option value="manager">Manager</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label for="filter-owner" class="worklog-field-label" id="filter-owner-label">Task owner</label>
+              <select id="filter-owner" class="form-select form-select-sm">
+                <option value="" selected>All task owners</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label for="filter-days" class="worklog-field-label">Deadline range</label>
+              <select id="filter-days" class="form-select form-select-sm">
+                <option value="all" selected>All</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+                <option value="365">1 year</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-1">
+              <label for="filter-due-from" class="worklog-field-label">Deadline Start</label>
+              <input type="date" id="filter-due-from" class="form-control form-control-sm" aria-label="Deadline Start Date">
+            </div>
+            <div class="col-12 col-md-6 col-xl-1">
+              <label for="filter-due-to" class="worklog-field-label">Deadline end</label>
+              <input type="date" id="filter-due-to" class="form-control form-control-sm" aria-label="Deadline end">
+            </div>
+          </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container position-fixed top-0 end-0 p-3" id="toast-container" style="z-index: 1055;"></div>
+
+  <div class="card border-0 shadow-sm worklog-table-card">
+    <div class="worklog-list-toolbar">
+      <div>
+        <div class="worklog-list-title">Task List</div>
+        <div class="worklog-list-meta mt-1">
+          <span class="badge bg-light text-dark border d-none" id="bucket-badge">
+            <span id="bucket-badge-text"></span>
+            <a href="#" id="bucket-badge-clear" class="ms-1 text-muted text-decoration-none" title="Filter Clear" aria-label="Filter Clear">&times;</a>
+          </span>
+          <span class="text-muted small" id="task-count">-</span>
+        </div>
+      </div>
+      <div class="worklog-bulk-actions">
+        <button class="btn btn-sm btn-success desktop-preferred-action" id="bulk-complete-btn" disabled>
+          <i class="bi bi-check-all"></i> Complete selected
+        </button>
+        <button class="btn btn-sm btn-outline-secondary desktop-preferred-action" id="bulk-abandon-btn" disabled>
+          <i class="bi bi-x-lg"></i> Close selected
+        </button>
+        <select id="bulk-transfer-target" class="form-select form-select-sm desktop-preferred-action" style="min-width: 180px;">
+          <option value="">Select assignee</option>
+        </select>
+        <button class="btn btn-sm btn-outline-primary desktop-preferred-action" id="bulk-transfer-btn" disabled>
+          <i class="bi bi-arrow-left-right"></i> Reassign selected
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive worklog-table-wrap">
+        <table class="table table-hover mb-0 align-middle" id="task-table">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width: 40px;" class="text-center">
+                <input type="checkbox" class="form-check-input" id="select-all-checkbox" title="Select all">
+              </th>
+              <th scope="col" class="sortable" data-sort="our_ref" style="cursor: pointer; width: 13%;">
+                Matter reference <i class="bi bi-arrow-down-up text-muted small"></i>
+              </th>
+              <th scope="col" style="width: 12%;">Applicant</th>
+              <th scope="col">Task</th>
+              <th scope="col" style="width: 29%;">Responsible</th>
+              <th scope="col" class="sortable" data-sort="due_date" style="cursor: pointer; width: 120px;">
+                Due date <i class="bi bi-arrow-down-up text-muted small"></i>
+              </th>
+              <th scope="col" style="width: 140px;">Status</th>
+              <th scope="col" style="width: 140px;"></th>
+            </tr>
+          </thead>
+          <tbody id="task-list">
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                <span class="ms-2">Data Loading...</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+    <div class="text-muted small" id="pagination-info"></div>
+    <div id="pagination-container" class="app-pagination" aria-label="Task Pagination"></div>
+  </div>
+</div>
+
+<div class="modal fade" id="completeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Complete task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-light border mb-3">
+          <div class="small text-muted" id="modal-our-ref"></div>
+          <div class="fw-bold" id="modal-task-name"></div>
+          <div class="small text-danger mt-1" id="modal-due-date"></div>
+        </div>
+        <div class="mb-3">
+          <label for="complete-evidence-type" class="form-label">Completion evidence type</label>
+          <select id="complete-evidence-type" class="form-select">
+            <option value="memo" selected>Notes</option>
+            <option value="file">File</option>
+            <option value="mail">Email</option>
+            <option value="number">Reference number</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="complete-description" class="form-label">Completion details *</label>
+          <textarea id="complete-description" class="form-control" rows="3" placeholder="File name, email subject, process note, or other completion evidence..."></textarea>
+          <div class="form-text">Enter the evidence that supports marking this task complete.</div>
+        </div>
+        <input type="hidden" id="modal-docket-id">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" id="confirm-complete-btn">
+          <i class="bi bi-check-lg"></i> Mark complete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="noteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Notes Add</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-light border mb-3">
+          <div class="small text-muted" id="note-modal-our-ref"></div>
+          <div class="fw-bold" id="note-modal-task-name"></div>
+        </div>
+        <div class="mb-3">
+          <textarea id="note-description" class="form-control" rows="3" placeholder="Notes Content Input..."></textarea>
+        </div>
+        <input type="hidden" id="note-modal-docket-id">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-note-btn">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="abandonModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h5 class="modal-title"><i class="bi bi-slash-circle me-1"></i> Task  Process</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          <strong id="abandon-modal-our-ref"></strong> - <span id="abandon-modal-task-name"></span>
+        </p>
+        <div class="alert alert-warning small">
+          <i class="bi bi-info-circle"></i> Task  <strong> Task Closed</strong>, Matter  Abandoned/  Process.
+        </div>
+        <div class="mb-3">
+          <label for="abandon-reason" class="form-label"> Reason</label>
+          <textarea id="abandon-reason" class="form-control" rows="3" placeholder="Reason Input..."></textarea>
+        </div>
+        <input type="hidden" id="abandon-modal-docket-id">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-secondary" id="confirm-abandon-btn"> Process</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if false %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // --- Constants & State ---
+  const CURRENT_USER_ID = Number({{ (current_user.id or 0)|int }}) || 0;
+  const CURRENT_USER_OWNER_VALUE = {{ ((current_user.staff_party_id or current_user.id|string) if current_user.is_authenticated else '')|tojson }};
+  const CONFIG = {
+    itemsPerPage: 50,
+    apiPrefix: '/worklog/api',
+    exportMaxRows: 10000,
+    crmClientsUrl: {{ url_for('customers.clients')|tojson }},
+    crmClientViewTemplate: {{ url_for('customers.client_view', client_id=0)|tojson }},
+  };
+
+  const state = {
+    search: "",
+    sort: "due_date",
+    order: "asc",
+    page: 1,
+    bucket: "",
+    dueAxis: "all",
+    mineOnly: false,
+    owners: [],
+    loading: false,
+    needsReload: false,
+    lastCheckedTaskBox: null
+  };
+  let ownersLoaded = false;
+  let ownersLoadingPromise = null;
+  let transferTargetsLoaded = false;
+  let transferTargetsLoadingPromise = null;
+
+  function normalizeDateInput(raw) {
+    const value = (raw || "").toString().trim();
+    if (!value) return "";
+    return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+  }
+
+  // --- DOM Elements ---
+  const els = {
+    taskList: document.getElementById("task-list"),
+    taskCount: document.getElementById("task-count"),
+    quickStatusTabs: Array.from(document.querySelectorAll(".worklog-filter-tab")),
+    dueAxisTabs: Array.from(document.querySelectorAll(".worklog-due-axis-btn")),
+    activeFilterChips: document.getElementById("active-filter-chips"),
+    mineToggle: document.getElementById("filter-mine"),
+    filters: {
+      status: document.getElementById("filter-status"),
+      category: document.getElementById("filter-category"),
+      ownerRole: document.getElementById("filter-owner-role"),
+      owner: document.getElementById("filter-owner"),
+      days: document.getElementById("filter-days"),
+      dueFrom: document.getElementById("filter-due-from"),
+      dueTo: document.getElementById("filter-due-to"),
+    },
+    search: {
+      input: document.getElementById("search-input"),
+      btn: document.getElementById("search-btn"),
+    },
+    export: {
+      pageBtn: document.getElementById("export-xlsx-btn"),
+      allBtn: document.getElementById("export-xlsx-all-btn"),
+    },
+    refreshBtn: document.getElementById("refresh-btn"),
+    selectAll: document.getElementById("select-all-checkbox"),
+    bulk: {
+      complete: document.getElementById("bulk-complete-btn"),
+      abandon: document.getElementById("bulk-abandon-btn"),
+      transfer: document.getElementById("bulk-transfer-btn"),
+      transferTarget: document.getElementById("bulk-transfer-target"),
+    },
+    pagination: {
+      container: document.getElementById("pagination-container"),
+      info: document.getElementById("pagination-info"),
+    },
+    toastContainer: document.getElementById("toast-container"),
+    summary: {
+      pending: document.getElementById("summary-pending"),
+      urgent: document.getElementById("summary-urgent"),
+      overdue: document.getElementById("summary-overdue"),
+      completed: document.getElementById("summary-completed"),
+    },
+    bucket: {
+      badge: document.getElementById("bucket-badge"),
+      text: document.getElementById("bucket-badge-text"),
+      clear: document.getElementById("bucket-badge-clear"),
+    },
+  };
+
+  // CSRF Token logic
+  const csrfToken = document.querySelector('input[name="csrf_token"]')?.value
+    || document.querySelector('meta[name="csrf-token"]')?.content
+    || "";
+
+  // --- Utility Functions ---
+
+  // XSS prevention
+  function escapeHtml(text) {
+    if (!text) return "";
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+  }
+
+  function truncateText(text, limit = 120) {
+    const normalized = (text || "")
+      .toString()
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!normalized) return "";
+    if (normalized.length <= limit) return normalized;
+    return `${normalized.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
+  }
+
+  function splitCsvNames(raw) {
+    return (raw || "")
+      .toString()
+      .split(/[,;]/)
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function buildClientViewUrl(clientId) {
+    const cid = (clientId || "").toString().trim();
+    if (!/^\d+$/.test(cid)) return "";
+    return (CONFIG.crmClientViewTemplate || "").replace(/0$/, encodeURIComponent(cid));
+  }
+
+  function renderApplicantCell(task) {
+    const names = splitCsvNames(task?.applicant_name || "");
+    if (!names.length) return '<span class="text-muted">-</span>';
+
+    const uniqueNames = [];
+    const seen = new Set();
+    names.forEach(name => {
+      const token = (name || "").toString().trim();
+      if (!token || seen.has(token)) return;
+      seen.add(token);
+      uniqueNames.push(token);
+    });
+    if (!uniqueNames.length) return '<span class="text-muted">-</span>';
+
+    const rawClientId = (task?.applicant_client_id || "").toString().trim();
+    const clientViewUrl = buildClientViewUrl(rawClientId);
+
+    // If we have one clear applicant+client mapping, prefer direct CRM client view link.
+    if (clientViewUrl && uniqueNames.length === 1) {
+      const applicantName = uniqueNames[0];
+      const escapedName = escapeHtml(applicantName);
+      const searchHref = `${CONFIG.crmClientsUrl}?q=${encodeURIComponent(applicantName)}`;
+      return `
+        <div class="d-flex align-items-center gap-1" style="min-width:0;">
+          <a href="${clientViewUrl}"
+             class="flex-grow-1 text-truncate text-decoration-none text-dark"
+             style="min-width:0;"
+             title="CRM Client Details (Applicant)">
+            ${escapedName}
+          </a>
+          <a href="${searchHref}"
+             class="link-muted flex-shrink-0"
+             title="Search CRM">
+            <i class="bi bi-search"></i>
+          </a>
+        </div>
+      `;
+    }
+
+    return uniqueNames
+      .map(name => {
+        const href = `${CONFIG.crmClientsUrl}?q=${encodeURIComponent(name)}`;
+        return `<a href="${href}" class="text-decoration-none text-dark" title="Applicant to CRM Search">${escapeHtml(name)}</a>`;
+      })
+      .join('<span class="text-muted">; </span>');
+  }
+
+  function normalizeStaffRows(rows, fallbackNames = "") {
+    const out = [];
+    const seen = new Set();
+    const add = (id, name) => {
+      const sid = (id || "").toString().trim();
+      const sname = (name || "").toString().trim();
+      if (!sid && !sname) return;
+      const key = sid || sname;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ id: sid, name: sname || sid });
+    };
+
+    if (Array.isArray(rows)) {
+      rows.forEach(row => {
+        if (!row || typeof row !== "object") return;
+        add(row.id, row.name);
+      });
+    }
+
+    if (!out.length) {
+      splitCsvNames(fallbackNames).forEach(name => add("", name));
+    }
+    return out;
+  }
+
+  function ownerRoleLabel(role) {
+    const labels = {
+      owner: "Task Contact",
+      any: "MatterResponsible(All)",
+      attorney: "Responsible attorney",
+      handler: "Handler",
+      manager: "Manager",
+    };
+    return labels[role] || role;
+  }
+
+  function updateOwnerPlaceholderOption() {
+    const select = els.filters.owner;
+    if (!select || !select.options.length) return;
+    const role = (els.filters.ownerRole?.value || "owner").trim();
+    select.options[0].textContent = `All ${ownerRoleLabel(role)}`;
+  }
+
+  function categoryLabel(category) {
+    if (category === "mgmt") return " ";
+    if (category === "work") return " ";
+    return "All Type";
+  }
+
+  function statusLabel(status) {
+    if (status === "todo") return "Open Task";
+    if (status === "completed") return "Done";
+    return "All";
+  }
+
+  function updateQuickStatusTabs() {
+    const currentFilter = (els.filters.status?.value || "todo").trim();
+    const currentBucket = (state.bucket || "").trim();
+    const currentDays = (els.filters.days?.value || "all").trim();
+
+    (els.quickStatusTabs || []).forEach(btn => {
+      const filter = (btn.dataset.filter || "").trim();
+      const bucket = (btn.dataset.bucket || "").trim();
+      const days = (btn.dataset.days || "all").trim();
+      const sameFilter = currentFilter === filter;
+      const sameBucket = currentBucket === bucket;
+      const sameDays = bucket === "urgent" ? currentDays === days : true;
+      const active = sameFilter && sameBucket && sameDays;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function updateDueAxisTabs() {
+    const currentAxis = (state.dueAxis || DEFAULTS.due_axis).trim();
+    (els.dueAxisTabs || []).forEach(btn => {
+      const axis = (btn.dataset.dueAxis || "").trim();
+      const active = axis === currentAxis;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function renderActiveFilterChips() {
+    if (!els.activeFilterChips) return;
+    const chips = [];
+    const status = (els.filters.status?.value || "todo").trim();
+    const category = (els.filters.category?.value || "").trim();
+    const ownerRole = (els.filters.ownerRole?.value || "owner").trim();
+    const owner = (els.filters.owner?.value || "").trim();
+    const days = (els.filters.days?.value || "all").trim();
+    const dueFrom = normalizeDateInput(els.filters.dueFrom?.value || "");
+    const dueTo = normalizeDateInput(els.filters.dueTo?.value || "");
+    const ownerLabel = owner && els.filters.owner
+      ? (els.filters.owner.selectedOptions?.[0]?.textContent || owner).trim()
+      : "";
+
+    chips.push(`<span class="chip"><i class="bi bi-funnel"></i>${escapeHtml(statusLabel(status))}</span>`);
+    chips.push(`<span class="chip"><i class="bi bi-calendar2-range"></i>${escapeHtml(dueAxisLabel(state.dueAxis))}</span>`);
+    chips.push(`<span class="chip"><i class="bi bi-grid-1x2"></i>${escapeHtml(categoryLabel(category))}</span>`);
+    if (state.mineOnly) {
+      chips.push(`<span class="chip"><i class="bi bi-person-check"></i> Task</span>`);
+    }
+
+    if (state.bucket) {
+      chips.push(`<span class="chip"><i class="bi bi-flag"></i>${escapeHtml(bucketLabel(state.bucket))}</span>`);
+    }
+    if (owner && !state.mineOnly) {
+      chips.push(
+        `<span class="chip"><i class="bi bi-person"></i>${escapeHtml(ownerRoleLabel(ownerRole))}: ${escapeHtml(ownerLabel || owner)}</span>`
+      );
+    }
+    if (days !== "all") {
+      chips.push(`<span class="chip"><i class="bi bi-calendar3"></i>${escapeHtml(days)} </span>`);
+    }
+    if (dueFrom || dueTo) {
+      const fromLabel = dueFrom || "";
+      const toLabel = dueTo || "";
+      chips.push(
+        `<span class="chip"><i class="bi bi-calendar-range"></i>Deadline: ${escapeHtml(fromLabel)} ~ ${escapeHtml(toLabel)}</span>`
+      );
+    }
+    if (state.search) {
+      chips.push(`<span class="chip"><i class="bi bi-search"></i>${escapeHtml(state.search)}</span>`);
+    }
+    els.activeFilterChips.innerHTML = chips.join("");
+  }
+
+  function renderRoleChips({ roleKey, rows, fallbackNames, roleMark }) {
+    const normalized = normalizeStaffRows(rows, fallbackNames);
+    if (!normalized.length) return "";
+    return normalized.map(row => {
+      const id = (row.id || "").toString().trim();
+      const name = escapeHtml((row.name || "").toString().trim() || "-");
+      if (id) {
+        const href = buildPageUrl({ owner_role: roleKey, owner: id, page: 1 });
+        return `<a href="${href}" class="worklog-staff-chip role-${roleKey}"><strong>${roleMark}</strong>${name}</a>`;
+      }
+      return `<span class="worklog-staff-chip role-${roleKey}"><strong>${roleMark}</strong>${name}</span>`;
+    }).join("");
+  }
+
+  function renderOwnerChips(task) {
+    const ownerId = (task.owner_id || "").toString().trim();
+    const ownerNameRaw = (task.owner_name || ownerId || "").toString().trim();
+    const rows = normalizeStaffRows(task.owners, ownerNameRaw);
+    if (rows.length) {
+      return rows.map(row => {
+        const id = (row.id || "").toString().trim();
+        const name = escapeHtml((row.name || "").toString().trim() || "-");
+        if (id) {
+          const href = buildPageUrl({ owner_role: "owner", owner: id, page: 1 });
+          return `<a href="${href}" class="worklog-staff-chip role-owner"><strong>Task</strong>${name}</a>`;
+        }
+        return `<span class="worklog-staff-chip role-owner"><strong>Task</strong>${name}</span>`;
+      }).join("");
+    }
+    if (ownerId) {
+      const href = buildPageUrl({ owner_role: "owner", owner: ownerId, page: 1 });
+      return `<a href="${href}" class="worklog-staff-chip role-owner"><strong>Task</strong>${escapeHtml(ownerNameRaw || ownerId)}</a>`;
+    }
+    const names = splitCsvNames(ownerNameRaw);
+    if (!names.length) return "";
+    return names.map(name => `<span class="worklog-staff-chip role-owner"><strong>Task</strong>${escapeHtml(name)}</span>`).join("");
+  }
+
+  function renderStaffCell(task) {
+    const chunks = [];
+    const owner = renderOwnerChips(task);
+    if (owner) chunks.push(owner);
+    const attorneys = renderRoleChips({
+      roleKey: "attorney",
+      rows: task.attorneys,
+      fallbackNames: task.attorney_names,
+      roleMark: "",
+    });
+    if (attorneys) chunks.push(attorneys);
+    const handlers = renderRoleChips({
+      roleKey: "handler",
+      rows: task.handlers,
+      fallbackNames: task.handler_names,
+      roleMark: "",
+    });
+    if (handlers) chunks.push(handlers);
+    const managers = renderRoleChips({
+      roleKey: "manager",
+      rows: task.managers,
+      fallbackNames: task.manager_names,
+      roleMark: "",
+    });
+    if (managers) chunks.push(managers);
+
+    if (!chunks.length) return '<span class="text-muted">-</span>';
+    return `<div class="worklog-staff-wrap">${chunks.join("")}</div>`;
+  }
+
+  function buildDueCalendarUrl(dateValue, axis) {
+    const ymd = (dateValue || "").toString().slice(0, 10);
+    if (!ymd) return "";
+    const url = new URL("/deadline/calendar/month", window.location.origin);
+    url.searchParams.set("date", ymd);
+    if (axis && axis !== "all") url.searchParams.set("due_axis", axis);
+    if (state.mineOnly) {
+      url.searchParams.set("mine", "1");
+    } else {
+      const ownerRole = (els.filters.ownerRole?.value || DEFAULTS.owner_role).trim();
+      const owner = (els.filters.owner?.value || "").trim();
+      const ownerLabel = owner && els.filters.owner
+        ? (els.filters.owner.selectedOptions?.[0]?.textContent || owner).trim()
+        : "";
+      if (ownerRole === "owner" && owner) {
+        url.searchParams.set("owner", owner);
+        if (ownerLabel) url.searchParams.set("owner_name", ownerLabel);
+      }
+    }
+    return `${url.pathname}${url.search}`;
+  }
+
+  function dueStatusToneClass(status, primary) {
+    if (!primary) return "text-muted";
+    if (status === "overdue") return "text-danger";
+    if (status === "urgent") return "text-warning";
+    return "";
+  }
+
+  function renderDueCell(task) {
+    const finalDue = (task.final_due_date || "").toString().trim();
+    const internalDue = (task.internal_due_date || "").toString().trim();
+    const currentAxis = (state.dueAxis || DEFAULTS.due_axis).trim();
+    const lines = [];
+
+    const addLine = ({ axis, label, value, primary }) => {
+      const href = buildDueCalendarUrl(value, axis);
+      const toneClass = dueStatusToneClass((task.status || "").toString().toLowerCase(), primary);
+      const valueClass = `worklog-due-line__value${primary ? " primary" : ""}${toneClass ? ` ${toneClass}` : ""}`;
+      const valueHtml = href
+        ? `<a href="${href}" class="text-decoration-none ${valueClass}">${escapeHtml(value)}</a>`
+        : `<span class="${valueClass}">${escapeHtml(value)}</span>`;
+      lines.push(`
+        <div class="worklog-due-line">
+          <span class="worklog-due-line__label ${axis}">${escapeHtml(label)}</span>
+          ${valueHtml}
+        </div>
+      `);
+    };
+
+    if (currentAxis === "final") {
+      if (finalDue) addLine({ axis: "final", label: "Final", value: finalDue, primary: true });
+      if (internalDue) addLine({ axis: "internal", label: "Internal", value: internalDue, primary: false });
+    } else if (currentAxis === "internal") {
+      if (internalDue) addLine({ axis: "internal", label: "Internal", value: internalDue, primary: true });
+      if (finalDue) addLine({ axis: "final", label: "Final", value: finalDue, primary: false });
+    } else {
+      if (internalDue) {
+        addLine({ axis: "internal", label: "Internal", value: internalDue, primary: true });
+      }
+      if (finalDue) {
+        addLine({ axis: "final", label: "Final", value: finalDue, primary: !internalDue });
+      }
+    }
+
+    if (!lines.length && task.due_date) {
+      addLine({ axis: "all", label: "Deadline", value: task.due_date, primary: true });
+    }
+
+    if (!lines.length) return '<span class="text-muted">-</span>';
+    return `<div class="worklog-due-stack">${lines.join("")}</div>`;
+  }
+
+  function dueAxisLabel(axis) {
+    const token = (axis || "").toString().trim().toLowerCase();
+    if (token === "final") return "Final Due date";
+    if (token === "internal") return "Internal Due date";
+    return "All";
+  }
+
+  const DEFAULTS = {
+    filter: "todo",
+    category: "",
+    owner_role: "owner",
+    owner: "",
+    mine: false,
+    days: "all",
+    due_from: "",
+    due_to: "",
+    due_axis: "all",
+    search: "",
+    sort: "due_date",
+    order: "asc",
+    page: 1,
+    bucket: "",
+  };
+
+  function parseUrlState() {
+    const params = new URLSearchParams(window.location.search || "");
+
+    const rawBucket = (params.get("bucket") || "").trim().toLowerCase();
+    const bucket = ["urgent", "overdue", "recommended", "completed_week"].includes(rawBucket) ? rawBucket : "";
+
+    let rawFilter = (params.get("filter") || DEFAULTS.filter).trim().toLowerCase();
+    if (bucket === "completed_week") rawFilter = "completed";
+    if ((bucket === "urgent" || bucket === "overdue" || bucket === "recommended") && !params.has("filter")) rawFilter = "todo";
+    const filter = ["todo", "completed", "all"].includes(rawFilter) ? rawFilter : DEFAULTS.filter;
+
+    const rawCategory = (params.get("category") || DEFAULTS.category).trim().toLowerCase();
+    const category = ["mgmt", "work"].includes(rawCategory) ? rawCategory : DEFAULTS.category;
+
+    const rawOwnerRole = (params.get("owner_role") || DEFAULTS.owner_role).trim().toLowerCase();
+    const ownerRole = ["owner", "attorney", "handler", "manager", "any"].includes(rawOwnerRole) ? rawOwnerRole : DEFAULTS.owner_role;
+
+    const owner = (params.get("owner") || DEFAULTS.owner).trim();
+    const ownerName = (params.get("owner_name") || "").trim();
+    const mine = ["1", "true", "yes"].includes((params.get("mine") || "").trim().toLowerCase());
+
+    const rawDays = (params.get("days") || DEFAULTS.days).trim();
+    const days = bucket === "urgent" && !params.has("days") ? "7" : rawDays;
+    const rawDueAxis = (params.get("due_axis") || DEFAULTS.due_axis).trim().toLowerCase();
+    const dueAxis = ["all", "final", "internal"].includes(rawDueAxis) ? rawDueAxis : DEFAULTS.due_axis;
+    let dueFrom = normalizeDateInput(params.get("due_from") || DEFAULTS.due_from);
+    let dueTo = normalizeDateInput(params.get("due_to") || DEFAULTS.due_to);
+    if (dueFrom && dueTo && dueFrom > dueTo) {
+      const swappedFrom = dueTo;
+      dueTo = dueFrom;
+      dueFrom = swappedFrom;
+    }
+
+    const search = (params.get("search") || DEFAULTS.search).trim();
+
+    const rawSort = (params.get("sort") || DEFAULTS.sort).trim();
+    const sort = ["our_ref", "due_date"].includes(rawSort) ? rawSort : DEFAULTS.sort;
+
+    const rawOrder = (params.get("order") || DEFAULTS.order).trim().toLowerCase();
+    const order = rawOrder === "desc" ? "desc" : DEFAULTS.order;
+
+    const rawPage = parseInt(params.get("page") || "", 10);
+    const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : DEFAULTS.page;
+
+    return {
+      filter,
+      category,
+      ownerRole,
+      owner,
+      ownerName,
+      mine,
+      days,
+      dueAxis,
+      dueFrom,
+      dueTo,
+      search,
+      sort,
+      order,
+      page,
+      bucket
+    };
+  }
+
+  function getQueryState() {
+    return {
+      filter: (els.filters.status?.value || DEFAULTS.filter).trim(),
+      category: (els.filters.category?.value || DEFAULTS.category).trim(),
+      owner_role: (els.filters.ownerRole?.value || DEFAULTS.owner_role).trim(),
+      owner: (els.filters.owner?.value || DEFAULTS.owner).trim(),
+      mine: Boolean(state.mineOnly),
+      days: (els.filters.days?.value || DEFAULTS.days).trim(),
+      due_axis: (state.dueAxis || DEFAULTS.due_axis).trim(),
+      due_from: normalizeDateInput(els.filters.dueFrom?.value || DEFAULTS.due_from),
+      due_to: normalizeDateInput(els.filters.dueTo?.value || DEFAULTS.due_to),
+      search: (state.search || "").trim(),
+      sort: (state.sort || DEFAULTS.sort).trim(),
+      order: (state.order || DEFAULTS.order).trim(),
+      page: state.page || DEFAULTS.page,
+      bucket: (state.bucket || DEFAULTS.bucket).trim(),
+    };
+  }
+
+  function buildQueryString(s) {
+    const params = new URLSearchParams();
+    if (s.filter && s.filter !== DEFAULTS.filter) params.set("filter", s.filter);
+    if (s.category) params.set("category", s.category);
+    if (s.mine) {
+      params.set("mine", "1");
+    } else {
+      if (s.owner_role && s.owner_role !== DEFAULTS.owner_role) params.set("owner_role", s.owner_role);
+      if (s.owner) params.set("owner", s.owner);
+    }
+    if (s.bucket) params.set("bucket", s.bucket);
+    if (s.days && s.days !== DEFAULTS.days) params.set("days", s.days);
+    if (s.due_axis && s.due_axis !== DEFAULTS.due_axis) params.set("due_axis", s.due_axis);
+    if (s.due_from) params.set("due_from", s.due_from);
+    if (s.due_to) params.set("due_to", s.due_to);
+    if (s.search) params.set("search", s.search);
+    if (s.sort && s.sort !== DEFAULTS.sort) params.set("sort", s.sort);
+    if (s.order && s.order !== DEFAULTS.order) params.set("order", s.order);
+    if (s.page && Number(s.page) > 1) params.set("page", String(s.page));
+
+    // purely for display (badges / external links)
+    if (!s.mine && s.owner && els.filters.owner) {
+      const opt = els.filters.owner.selectedOptions && els.filters.owner.selectedOptions[0];
+      const label = opt && opt.value === s.owner ? (opt.textContent || "").trim() : "";
+      if (label) params.set("owner_name", label);
+    }
+
+    return params.toString();
+  }
+
+  function buildPageUrl(overrides = {}) {
+    const merged = { ...getQueryState(), ...overrides };
+    const hasMineOverride = Object.prototype.hasOwnProperty.call(overrides, "mine");
+    const hasOwnerOverride = Object.prototype.hasOwnProperty.call(overrides, "owner");
+    const hasOwnerRoleOverride = Object.prototype.hasOwnProperty.call(overrides, "owner_role");
+    if (!hasMineOverride && (hasOwnerOverride || hasOwnerRoleOverride)) {
+      merged.mine = false;
+    }
+    const qs = buildQueryString(merged);
+    return qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  }
+
+  function buildExportUrl(scope = "page") {
+    const s = getQueryState();
+    const params = new URLSearchParams();
+    if (s.filter) params.set("filter", s.filter);
+    if (s.category) params.set("category", s.category);
+    if (s.owner_role) params.set("owner_role", s.owner_role);
+    if (s.owner) params.set("owner", s.owner);
+    if (s.mine) params.set("mine", "1");
+    if (s.bucket) params.set("bucket", s.bucket);
+    if (s.days) params.set("days", s.days);
+    if (s.due_axis) params.set("due_axis", s.due_axis);
+    if (s.due_from) params.set("due_from", s.due_from);
+    if (s.due_to) params.set("due_to", s.due_to);
+    if (s.search) params.set("search", s.search);
+    if (s.sort) params.set("sort", s.sort);
+    if (s.order) params.set("order", s.order);
+
+    if (scope === "all") {
+      params.set("page", "1");
+      params.set("limit", String(CONFIG.exportMaxRows));
+      params.set("export", "1");
+      params.set("export_scope", "all");
+    } else {
+      params.set("page", String(s.page || 1));
+      params.set("limit", String(CONFIG.itemsPerPage));
+      params.set("export", "1");
+      params.set("export_scope", "page");
+    }
+
+    if (!s.mine && s.owner && els.filters.owner) {
+      const opt = els.filters.owner.selectedOptions && els.filters.owner.selectedOptions[0];
+      const label = opt && opt.value === s.owner ? (opt.textContent || "").trim() : "";
+      if (label) params.set("owner_name", label);
+    }
+
+    return `${CONFIG.apiPrefix}/tasks?${params.toString()}`;
+  }
+
+  function updateExportLinks() {
+    if (els.export.pageBtn) {
+      els.export.pageBtn.href = buildExportUrl("page");
+    }
+    if (els.export.allBtn) {
+      els.export.allBtn.href = buildExportUrl("all");
+    }
+  }
+
+  function syncUrl(replace = true) {
+    const url = buildPageUrl();
+    if (replace) history.replaceState(null, "", url);
+    else history.pushState(null, "", url);
+  }
+
+  function applySortIcons() {
+    document.querySelectorAll(".sortable i").forEach(i => i.className = "bi bi-arrow-down-up text-muted small");
+    const th = document.querySelector(`.sortable[data-sort=\"${state.sort}\"]`);
+    const icon = th ? th.querySelector("i") : null;
+    if (icon) icon.className = `bi bi-arrow-${state.order === "asc" ? "up" : "down"} text-primary`;
+  }
+
+  function bucketLabel(bucket) {
+    const b = (bucket || "").toString().trim().toLowerCase();
+    if (b === "urgent") return "Due in 7 days";
+    if (b === "overdue") return "Deadline Overdue";
+    if (b === "recommended") return "Suggested completion";
+    if (b === "completed_week") return "Completed this week";
+    return b;
+  }
+
+  function renderBucketBadge() {
+    const badge = els.bucket?.badge;
+    const text = els.bucket?.text;
+    if (!badge || !text) return;
+    if (!state.bucket) {
+      badge.classList.add("d-none");
+      text.textContent = "";
+      return;
+    }
+    text.textContent = bucketLabel(state.bucket);
+    badge.classList.remove("d-none");
+  }
+
+  function updateSummaryCardLinks() {
+    if (els.summary.pending) els.summary.pending.href = buildPageUrl({ filter: "todo", bucket: "", page: 1 });
+    if (els.summary.urgent) els.summary.urgent.href = buildPageUrl({ filter: "todo", bucket: "urgent", days: "7", page: 1 });
+    if (els.summary.overdue) els.summary.overdue.href = buildPageUrl({ filter: "todo", bucket: "overdue", page: 1 });
+    if (els.summary.completed) els.summary.completed.href = buildPageUrl({ filter: "completed", bucket: "completed_week", page: 1 });
+  }
+
+  function refreshFilterUi() {
+    if (els.mineToggle) {
+      els.mineToggle.checked = Boolean(state.mineOnly);
+    }
+    if (els.filters.ownerRole) {
+      els.filters.ownerRole.disabled = Boolean(state.mineOnly);
+    }
+    if (els.filters.owner) {
+      els.filters.owner.disabled = Boolean(state.mineOnly);
+    }
+    updateOwnerPlaceholderOption();
+    updateDueAxisTabs();
+    renderBucketBadge();
+    renderActiveFilterChips();
+    updateQuickStatusTabs();
+    updateSummaryCardLinks();
+    updateExportLinks();
+  }
+
+  // Debounce for search
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  function showToast(message, type = "success") {
+    const toastId = `toast-${Date.now()}`;
+    const bgClass = type === "success" ? "bg-success" : type === "danger" ? "bg-danger" : "bg-warning";
+    const icon = type === "success" ? "check-circle" : "exclamation-circle";
+    const safeMessage = escapeHtml(String(message ?? ""));
+
+    const html = `
+      <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-${icon} me-2"></i> ${safeMessage}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+      </div>
+    `;
+    els.toastContainer.insertAdjacentHTML("beforeend", html);
+    const toastEl = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+    toast.show();
+    toastEl.addEventListener("hidden.bs.toast", () => toastEl.remove());
+  }
+
+  async function apiCall(endpoint, method = "GET", body = null) {
+    const options = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+      }
+    };
+    if (body) options.body = JSON.stringify(body);
+
+    const response = await fetch(`${CONFIG.apiPrefix}${endpoint}`, options);
+    const raw = await response.text();
+    let data = null;
+    if (raw) {
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        data = { message: raw };
+      }
+    }
+    if (!response.ok) {
+      const msg = (data && typeof data === "object" && (data.error || data.message))
+        || response.statusText
+        || " Error .";
+      throw new Error(msg);
+    }
+    return data || {};
+  }
+
+  // --- Core Logic ---
+
+  async function loadSummary() {
+    try {
+      const params = new URLSearchParams({
+        category: els.filters.category.value,
+        owner_role: els.filters.ownerRole.value,
+        owner: els.filters.owner.value,
+        mine: state.mineOnly ? "1" : "",
+        days: els.filters.days.value,
+        due_axis: state.dueAxis,
+        due_from: normalizeDateInput(els.filters.dueFrom?.value || ""),
+        due_to: normalizeDateInput(els.filters.dueTo?.value || ""),
+        search: (state.search || "").trim(),
+      });
+      if (!state.mineOnly) params.delete("mine");
+      const data = await apiCall(`/summary?${params}`);
+      els.summary.pending.textContent = data.pending || 0;
+      els.summary.urgent.textContent = data.urgent || 0;
+      els.summary.overdue.textContent = data.overdue || 0;
+      els.summary.completed.textContent = data.completed_week || 0;
+      updateSummaryCardLinks();
+    } catch (e) {
+      console.error("Summary load failed", e);
+    }
+  }
+
+  async function loadOwners() {
+    try {
+      const params = new URLSearchParams({
+        owner_role: els.filters.ownerRole.value || DEFAULTS.owner_role,
+      });
+      const data = await apiCall(`/owners?${params}`);
+      const select = els.filters.owner;
+      // Keep first option
+      while (select.options.length > 1) select.remove(1);
+      updateOwnerPlaceholderOption();
+
+      const owners = data.owners || [];
+      state.owners = owners;
+      owners.forEach(owner => {
+        const opt = document.createElement("option");
+        opt.value = owner.id;
+        opt.textContent = owner.name;
+        select.appendChild(opt);
+      });
+      ownersLoaded = true;
+    } catch (e) {
+      ownersLoaded = false;
+      console.error("Owners load failed", e);
+    }
+  }
+
+  async function loadTransferTargets() {
+    const select = els.bulk.transferTarget;
+    if (!select) return;
+    const selected = (select.value || "").trim();
+
+    try {
+      const data = await apiCall("/transfer-targets");
+      while (select.options.length > 1) select.remove(1);
+
+      (data.users || []).forEach(user => {
+        const uid = Number(user.id || 0);
+        if (!uid || uid === CURRENT_USER_ID) return;
+        const opt = document.createElement("option");
+        opt.value = String(uid);
+        opt.textContent = (user.name || `User #${uid}`).toString().trim();
+        select.appendChild(opt);
+      });
+
+      if (selected && Array.from(select.options).some(opt => opt.value === selected)) {
+        select.value = selected;
+      } else {
+        select.value = "";
+      }
+      transferTargetsLoaded = true;
+    } catch (e) {
+      transferTargetsLoaded = false;
+      console.error("Transfer target load failed", e);
+    } finally {
+      updateBulkButtons();
+    }
+  }
+
+  function ensureOwnersLoaded(force = false) {
+    if (force) ownersLoaded = false;
+    if (ownersLoaded && !force) return Promise.resolve();
+    if (ownersLoadingPromise && !force) return ownersLoadingPromise;
+    ownersLoadingPromise = loadOwners().finally(() => {
+      ownersLoadingPromise = null;
+    });
+    return ownersLoadingPromise;
+  }
+
+  function ensureTransferTargetsLoaded(force = false) {
+    if (force) transferTargetsLoaded = false;
+    if (transferTargetsLoaded && !force) return Promise.resolve();
+    if (transferTargetsLoadingPromise && !force) return transferTargetsLoadingPromise;
+    transferTargetsLoadingPromise = loadTransferTargets().finally(() => {
+      transferTargetsLoadingPromise = null;
+    });
+    return transferTargetsLoadingPromise;
+  }
+
+  async function loadTasks() {
+    if (state.loading) {
+      state.needsReload = true;
+      return;
+    }
+    state.loading = true;
+    state.needsReload = false;
+
+    // Build Query
+    const params = new URLSearchParams({
+      filter: els.filters.status.value,
+      category: els.filters.category.value,
+      owner_role: els.filters.ownerRole.value,
+      owner: els.filters.owner.value,
+      mine: state.mineOnly ? "1" : "",
+      bucket: state.bucket,
+      days: els.filters.days.value,
+      due_axis: state.dueAxis,
+      due_from: normalizeDateInput(els.filters.dueFrom?.value || ""),
+      due_to: normalizeDateInput(els.filters.dueTo?.value || ""),
+      page: state.page,
+      limit: CONFIG.itemsPerPage,
+      search: state.search,
+      sort: state.sort,
+      order: state.order
+    });
+    if (!state.mineOnly) params.delete("mine");
+
+    els.taskList.innerHTML = `
+      <tr><td colspan="8" class="text-center py-5 text-muted">
+        <div class="spinner-border spinner-border-sm text-primary"></div> Loading...
+      </td></tr>`;
+
+    try {
+      const data = await apiCall(`/tasks?${params}`);
+      renderTasks(data);
+    } catch (e) {
+      els.taskList.innerHTML = `
+        <tr><td colspan="8" class="text-center py-5 text-danger">
+          <i class="bi bi-exclamation-triangle"></i> Data  Failed: ${escapeHtml(e.message)}
+        </td></tr>`;
+    } finally {
+      state.loading = false;
+      els.selectAll.checked = false;
+      updateBulkButtons();
+      if (state.needsReload) {
+        state.needsReload = false;
+        loadTasks();
+      }
+    }
+  }
+
+  function renderTasks(data) {
+    const tasks = data.tasks || [];
+    const totalCount = data.total || 0;
+    state.lastCheckedTaskBox = null;
+
+    els.taskCount.textContent = `Total ${totalCount.toLocaleString()}items`;
+    renderPagination(data.page || 1, data.total_pages || 1, totalCount);
+
+    if (tasks.length === 0) {
+      els.taskList.innerHTML = `
+        <tr><td colspan="8" class="text-center py-5 text-muted bg-light">
+          <i class="bi bi-inbox fs-4 d-block mb-2"></i>
+          ${state.search ? "No search results." : "Display Task none."}
+        </td></tr>`;
+      return;
+    }
+
+    els.taskList.innerHTML = tasks.map(task => {
+      const isCompleted = task.status === "completed" || task.status === "abandoned";
+      const statusBadge = getStatusBadge(task.status);
+      const categoryType = (task.category_type || "").toString().trim().toLowerCase();
+      const categoryLabel = (task.category_display || "").toString().trim();
+      const safeCategoryLabel = escapeHtml(
+        categoryLabel || (categoryType === "mgmt" ? "" : categoryType === "hybrid" ? "HYBRID" : "")
+      );
+      const categoryBadge = categoryType === "mgmt"
+        ? `<span class="badge bg-info bg-opacity-10 text-info border border-info">${safeCategoryLabel}</span>`
+        : categoryType === "work"
+          ? `<span class="badge bg-secondary bg-opacity-10 text-secondary border">${safeCategoryLabel}</span>`
+          : `<span class="badge bg-dark-subtle text-dark border">${safeCategoryLabel || "HYBRID"}</span>`;
+      const completionRecommended = Boolean(task.completion_recommendation);
+      const recommendationTitle = escapeHtml(
+        task.completion_recommendation_text || "Suggested client-notice completion."
+      );
+      const recommendationUrl = buildPageUrl({ filter: "todo", bucket: "recommended", page: 1 });
+      const recommendationBadge = completionRecommended
+        ? `<a href="${recommendationUrl}" class="text-decoration-none" title="View suggested completions"><span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="bi bi-stars me-1"></i>Suggested completion</span></a>`
+        : "";
+      const completeBtnClass = completionRecommended ? "btn-success" : "btn-outline-success";
+      const completeBtnTitle = completionRecommended ? "Complete suggested task" : "Complete task";
+
+      // Escape all user content
+      const safeRef = escapeHtml(task.our_ref || '-');
+      const safeName = escapeHtml(task.task_name || '-');
+      const rawDesc = (task.worklog_description || '').toString();
+      const safeDesc = escapeHtml(truncateText(rawDesc, 120));
+      const safeDescTitle = escapeHtml(
+        rawDesc
+          .replace(/\s+/g, ' ')
+          .trim()
+      );
+      const safeDueDate = escapeHtml(task.due_date || '');
+      const safeMatterId = encodeURIComponent(String(task.matter_id || ''));
+      const caseUrl = safeMatterId ? `/case/${safeMatterId}` : "#";
+      const actionId = String(task.id || "");
+      const wfToken = String(task.workflow_link_id || actionId);
+      const wfId = encodeURIComponent(wfToken);
+      const wfNumeric = wfToken.startsWith("wf_") ? wfToken.slice(3) : "";
+      const wfUrl = safeMatterId ? `/case/${safeMatterId}?workflow_id=${wfId}#sec-workflow` : "#";
+      const wfDetailUrl = wfNumeric ? `/workflow/${encodeURIComponent(wfNumeric)}` : wfUrl;
+      const wfCaseLink = (wfUrl && wfUrl !== "#")
+        ? `<a href="${wfUrl}" class="link-muted ms-1" title="Matter (Task )"><i class="bi bi-link-45deg"></i></a>`
+        : "";
+      const staffCell = renderStaffCell(task);
+      const dueCellHtml = renderDueCell(task);
+
+      const categoryUrl = (categoryType === "mgmt" || categoryType === "work")
+        ? buildPageUrl({ category: categoryType, page: 1 })
+        : "";
+      const statusUrl = (() => {
+        const s = (task.status || "").toString().toLowerCase();
+        if (s === "urgent") return buildPageUrl({ filter: "todo", bucket: "urgent", days: "7", page: 1 });
+        if (s === "overdue") return buildPageUrl({ filter: "todo", bucket: "overdue", page: 1 });
+        if (s === "completed" || s === "abandoned") return buildPageUrl({ filter: "completed", bucket: "", page: 1 });
+        return buildPageUrl({ filter: "todo", bucket: "", page: 1 });
+      })();
+
+      return `
+        <tr class="${isCompleted ? 'table-light opacity-75' : ''}">
+          <td class="text-center">
+            ${!isCompleted ? `
+            <input type="checkbox" class="form-check-input task-row-checkbox"
+              data-id="${actionId}"
+              data-our-ref="${safeRef}"
+              data-task-name="${safeName}"
+              data-due-date="${safeDueDate}">
+            ` : ''}
+          </td>
+          <td>
+            ${caseUrl !== "#"
+              ? `<a href="${caseUrl}" class="fw-semibold text-decoration-none">${safeRef}</a>`
+              : `<span class="fw-semibold">${safeRef}</span>`}
+            <div class="worklog-meta-line text-muted mt-1">
+              <a href="${wfDetailUrl}" class="text-decoration-none">Task</a>${wfCaseLink}
+            </div>
+          </td>
+          <td class="small">
+            ${renderApplicantCell(task)}
+          </td>
+          <td class="worklog-task-cell">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <a href="${wfDetailUrl}" class="${isCompleted ? 'text-decoration-line-through text-muted' : 'fw-medium text-decoration-none'}">${safeName}</a>
+              ${categoryUrl
+                ? `<a href="${categoryUrl}" class="text-decoration-none" title="View category">${categoryBadge}</a>`
+                : categoryBadge}
+              ${recommendationBadge}
+            </div>
+            ${safeDesc ? `<div class="worklog-meta-line text-muted mt-1 worklog-desc-preview" title="${safeDescTitle}"><i class="bi bi-chat-left-text"></i><span class="worklog-desc-preview__text">${safeDesc}</span></div>` : ''}
+          </td>
+          <td class="small">${staffCell}</td>
+          <td class="small">
+            ${dueCellHtml}
+          </td>
+          <td>
+            <a href="${statusUrl}" class="text-decoration-none" title="View status">${statusBadge}</a>
+            ${completionRecommended ? `<div class="small text-success mt-1" title="${recommendationTitle}"><i class="bi bi-info-circle me-1"></i>Suggested completion</div>` : ""}
+          </td>
+          <td>
+            ${isCompleted ? `
+              <button class="btn btn-sm btn-outline-secondary reopen-btn" data-id="${actionId}" title="Reopen Open">
+                <i class="bi bi-arrow-counterclockwise"></i>
+              </button>
+            ` : `
+              <div class="btn-group btn-group-sm">
+                <button class="btn ${completeBtnClass} complete-btn" data-id="${actionId}"
+                  data-our-ref="${safeRef}" data-task-name="${safeName}" data-due-date="${safeDueDate}" title="${completeBtnTitle}">
+                  <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-outline-secondary abandon-btn" data-id="${actionId}"
+                  data-our-ref="${safeRef}" data-task-name="${safeName}" title="Task ">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                <button class="btn btn-outline-primary note-btn" data-id="${actionId}"
+                  data-our-ref="${safeRef}" data-task-name="${safeName}" title="Notes">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function getStatusBadge(status) {
+    const badges = {
+      completed: '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Done</span>',
+      abandoned: '<span class="badge bg-secondary"><i class="bi bi-slash-circle me-1"></i></span>',
+      overdue: '<span class="badge bg-danger"><i class="bi bi-exclamation-octagon me-1"></i>Overdue</span>',
+      urgent: '<span class="badge bg-warning text-dark"><i class="bi bi-lightning-fill me-1"></i></span>',
+      default: '<span class="badge bg-light text-dark border">Waiting</span>'
+    };
+    return badges[status] || badges.default;
+  }
+
+  function renderPagination(page, totalPages, totalCount) {
+    const container = els.pagination.container;
+    container.innerHTML = "";
+
+    if (totalCount === 0) {
+      els.pagination.info.textContent = "Search  None";
+      return;
+    }
+
+    els.pagination.info.textContent = `Total ${totalCount.toLocaleString()}items (page ${page} / ${totalPages})`;
+    if (totalPages <= 1) return;
+
+    const createItem = (p, text, isDisabled = false, isActive = false) => {
+      return `
+        <li class="page-item ${isDisabled ? 'disabled' : ''} ${isActive ? 'active' : ''}">
+          <a class="page-link" href="#" data-page="${p}">${text}</a>
+        </li>`;
+    };
+
+    let html = createItem(page - 1, "Previous", page === 1);
+
+    // Logic for showing limited page numbers
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, page + 2);
+
+    if (start > 1) html += createItem(1, "1") + (start > 2 ? createItem(0, "...", true) : "");
+
+    for (let i = start; i <= end; i++) {
+      html += createItem(i, i, false, i === page);
+    }
+
+    if (end < totalPages) html += (end < totalPages - 1 ? createItem(0, "...", true) : "") + createItem(totalPages, totalPages);
+
+    html += createItem(page + 1, "Next", page === totalPages);
+    container.innerHTML = html;
+  }
+
+  // --- Event Handling ---
+
+  // Filter Changes
+  const handleFilterChange = (e) => {
+    if (e && e.target === els.filters.ownerRole) {
+      if (els.filters.owner) els.filters.owner.value = "";
+      ensureOwnersLoaded(true);
+    }
+    if (e && e.target === els.filters.status) {
+      state.bucket = "";
+    }
+    state.page = 1;
+    refreshFilterUi();
+    syncUrl();
+    loadTasks();
+    loadSummary();
+  };
+  Object.values(els.filters).forEach(el => { if (el) el.addEventListener("change", handleFilterChange); });
+  els.refreshBtn.addEventListener("click", () => {
+    refreshFilterUi();
+    syncUrl();
+    loadTasks();
+    loadSummary();
+  });
+
+  (els.quickStatusTabs || []).forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetFilter = (btn.dataset.filter || "todo").trim();
+      const targetBucket = (btn.dataset.bucket || "").trim();
+      const targetDays = (btn.dataset.days || "all").trim();
+
+      if (els.filters.status) els.filters.status.value = targetFilter;
+      state.bucket = targetBucket;
+      if (els.filters.days && Array.from(els.filters.days.options).some(o => o.value === targetDays)) {
+        els.filters.days.value = targetDays;
+      }
+      state.page = 1;
+      refreshFilterUi();
+      syncUrl();
+      loadTasks();
+      loadSummary();
+    });
+  });
+
+  (els.dueAxisTabs || []).forEach(btn => {
+    btn.addEventListener("click", () => {
+      const nextAxis = (btn.dataset.dueAxis || DEFAULTS.due_axis).trim().toLowerCase();
+      if (!["all", "final", "internal"].includes(nextAxis) || nextAxis === state.dueAxis) return;
+      state.dueAxis = nextAxis;
+      state.page = 1;
+      refreshFilterUi();
+      syncUrl();
+      loadTasks();
+      loadSummary();
+    });
+  });
+
+  if (els.mineToggle) {
+    els.mineToggle.addEventListener("change", () => {
+      state.mineOnly = Boolean(els.mineToggle.checked) && Boolean(CURRENT_USER_OWNER_VALUE);
+      state.page = 1;
+      refreshFilterUi();
+      syncUrl();
+      loadTasks();
+      loadSummary();
+    });
+  }
+
+  if (els.bucket.clear) {
+    els.bucket.clear.addEventListener("click", (e) => {
+      e.preventDefault();
+      state.bucket = "";
+      state.page = 1;
+      refreshFilterUi();
+      syncUrl();
+      loadTasks();
+      loadSummary();
+    });
+  }
+
+  // Search (Debounced)
+  const handleSearch = debounce(() => {
+    state.search = els.search.input.value.trim();
+    state.page = 1;
+    renderActiveFilterChips();
+    syncUrl();
+    loadTasks();
+    loadSummary();
+  }, 400); // 400ms debounce
+  els.search.input.addEventListener("input", handleSearch);
+  els.search.btn.addEventListener("click", () => {
+    state.search = els.search.input.value.trim();
+    state.page = 1;
+    renderActiveFilterChips();
+    syncUrl();
+    loadTasks();
+    loadSummary();
+  });
+
+  // Pagination Click
+  els.pagination.container.addEventListener("click", (e) => {
+    e.preventDefault();
+    const link = e.target.closest(".page-link");
+    if (!link || link.parentElement.classList.contains("disabled")) return;
+
+    const newPage = parseInt(link.dataset.page);
+    if (newPage && newPage !== state.page) {
+      state.page = newPage;
+      syncUrl();
+      loadTasks();
+    }
+  });
+
+  // Sorting
+  document.querySelectorAll(".sortable").forEach(th => {
+    th.addEventListener("click", function() {
+      const col = this.dataset.sort;
+      if (state.sort === col) {
+        state.order = state.order === "asc" ? "desc" : "asc";
+      } else {
+        state.sort = col;
+        state.order = "asc";
+      }
+
+      state.page = 1;
+      applySortIcons();
+      syncUrl();
+      loadTasks();
+    });
+  });
+
+  // Checkbox & Bulk Logic
+  function getTaskCheckboxes() {
+    return Array.from(document.querySelectorAll(".task-row-checkbox"));
+  }
+
+  function syncSelectAllCheckboxState() {
+    const all = getTaskCheckboxes();
+    const checked = all.filter(cb => cb.checked);
+    els.selectAll.checked = all.length > 0 && all.length === checked.length;
+    els.selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+  }
+
+  function applyShiftRangeSelection(anchorBox, targetBox) {
+    if (!anchorBox || !targetBox) return;
+    const boxes = getTaskCheckboxes();
+    const start = boxes.indexOf(anchorBox);
+    const end = boxes.indexOf(targetBox);
+    if (start < 0 || end < 0) return;
+    const [from, to] = start <= end ? [start, end] : [end, start];
+    for (let i = from; i <= to; i++) {
+      boxes[i].checked = targetBox.checked;
+    }
+  }
+
+  function updateBulkButtons() {
+    const checked = document.querySelectorAll(".task-row-checkbox:checked");
+    const count = checked.length;
+    const targetSelected = Boolean((els.bulk.transferTarget?.value || "").trim());
+
+    if (count > 0) {
+      els.bulk.complete.removeAttribute("disabled");
+      els.bulk.abandon.removeAttribute("disabled");
+      if (targetSelected) {
+        els.bulk.transfer.removeAttribute("disabled");
+      } else {
+        els.bulk.transfer.setAttribute("disabled", "disabled");
+      }
+    } else {
+      els.bulk.complete.setAttribute("disabled", "disabled");
+      els.bulk.abandon.setAttribute("disabled", "disabled");
+      els.bulk.transfer.setAttribute("disabled", "disabled");
+    }
+
+    els.bulk.complete.innerHTML = count > 0
+      ? `<i class="bi bi-check-all"></i> Complete selected (${count})`
+      : `<i class="bi bi-check-all"></i> Complete selected`;
+
+    els.bulk.abandon.innerHTML = count > 0
+      ? `<i class="bi bi-x-lg"></i> Close selected (${count})`
+      : `<i class="bi bi-x-lg"></i> Close selected`;
+
+    els.bulk.transfer.innerHTML = count > 0
+      ? `<i class="bi bi-arrow-left-right"></i> Reassign selected (${count})`
+      : `<i class="bi bi-arrow-left-right"></i> Reassign selected`;
+  }
+
+  els.selectAll.addEventListener("change", (e) => {
+    getTaskCheckboxes().forEach(cb => cb.checked = e.target.checked);
+    els.selectAll.indeterminate = false;
+    state.lastCheckedTaskBox = null;
+    updateBulkButtons();
+  });
+  if (els.filters.owner) {
+    ["focus", "mousedown", "touchstart"].forEach(evtName => {
+      els.filters.owner.addEventListener(evtName, () => {
+        ensureOwnersLoaded();
+      }, { passive: evtName === "touchstart" });
+    });
+  }
+  if (els.bulk.transferTarget) {
+    ["focus", "mousedown", "touchstart"].forEach(evtName => {
+      els.bulk.transferTarget.addEventListener(evtName, () => {
+        ensureTransferTargetsLoaded();
+      }, { passive: evtName === "touchstart" });
+    });
+  }
+  if (els.bulk.transferTarget) {
+    els.bulk.transferTarget.addEventListener("change", () => updateBulkButtons());
+  }
+
+  // Shift + to  Select 
+  els.taskList.addEventListener("click", (e) => {
+    const cb = e.target.closest(".task-row-checkbox");
+    if (!cb) return;
+    if (e.shiftKey) {
+      applyShiftRangeSelection(state.lastCheckedTaskBox, cb);
+    }
+    state.lastCheckedTaskBox = cb;
+    updateBulkButtons();
+    syncSelectAllCheckboxState();
+  });
+
+  els.taskList.addEventListener("change", (e) => {
+    if (e.target.classList.contains("task-row-checkbox")) {
+      updateBulkButtons();
+      syncSelectAllCheckboxState();
+      if (!state.lastCheckedTaskBox) {
+        state.lastCheckedTaskBox = e.target;
+      }
+    }
+  });
+
+  // --- Actions (Delegation) ---
+  const modals = {
+    complete: new bootstrap.Modal(document.getElementById("completeModal")),
+    note: new bootstrap.Modal(document.getElementById("noteModal")),
+    abandon: new bootstrap.Modal(document.getElementById("abandonModal")),
+  };
+
+  function isTypingTarget(el) {
+    if (!el) return false;
+    const tag = (el.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea" || tag === "select") return true;
+    return Boolean(el.isContentEditable);
+  }
+
+  function firstActionButton(selector) {
+    const checked = document.querySelectorAll(".task-row-checkbox:checked");
+    if (!checked.length) return null;
+    const row = checked[0].closest("tr");
+    return row ? row.querySelector(selector) : null;
+  }
+
+  document.addEventListener("keydown", (e) => {
+    const key = (e.key || "").toLowerCase();
+    const isCmd = e.ctrlKey || e.metaKey;
+    if (!isCmd || isTypingTarget(e.target)) return;
+
+    const completeModal = document.getElementById("completeModal");
+    const noteModal = document.getElementById("noteModal");
+    const abandonModal = document.getElementById("abandonModal");
+
+    if (key === "enter") {
+      if (completeModal && completeModal.classList.contains("show")) {
+        e.preventDefault();
+        document.getElementById("confirm-complete-btn")?.click();
+        return;
+      }
+      if (noteModal && noteModal.classList.contains("show")) {
+        e.preventDefault();
+        document.getElementById("confirm-note-btn")?.click();
+        return;
+      }
+      if (abandonModal && abandonModal.classList.contains("show")) {
+        e.preventDefault();
+        document.getElementById("confirm-abandon-btn")?.click();
+        return;
+      }
+      const btn = firstActionButton(".complete-btn");
+      if (btn) {
+        e.preventDefault();
+        btn.click();
+      }
+    }
+
+    if (key === "m") {
+      const btn = firstActionButton(".note-btn");
+      if (btn) {
+        e.preventDefault();
+        btn.click();
+      }
+    }
+  });
+
+  els.taskList.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const { id, ourRef, taskName, dueDate } = btn.dataset;
+
+    if (btn.classList.contains("complete-btn")) {
+      document.getElementById("modal-docket-id").value = id;
+      document.getElementById("modal-our-ref").textContent = ourRef;
+      document.getElementById("modal-task-name").textContent = taskName;
+      document.getElementById("modal-due-date").textContent = dueDate ? `Deadline: ${dueDate}` : '';
+      document.getElementById("complete-evidence-type").value = "memo";
+      document.getElementById("complete-description").value = "";
+      modals.complete.show();
+    }
+    else if (btn.classList.contains("abandon-btn")) {
+      document.getElementById("abandon-modal-docket-id").value = id;
+      document.getElementById("abandon-modal-our-ref").textContent = ourRef;
+      document.getElementById("abandon-modal-task-name").textContent = taskName;
+      document.getElementById("abandon-reason").value = "";
+      modals.abandon.show();
+    }
+    else if (btn.classList.contains("note-btn")) {
+      document.getElementById("note-modal-docket-id").value = id;
+      document.getElementById("note-modal-our-ref").textContent = ourRef;
+      document.getElementById("note-modal-task-name").textContent = taskName;
+      document.getElementById("note-description").value = "";
+      modals.note.show();
+    }
+    else if (btn.classList.contains("reopen-btn")) {
+      const ok = await window.AppConfirm(" Task Reopen active ? ");
+      if (!ok) return;
+      try {
+        await apiCall(`/tasks/${id}/reopen`, "POST");
+        showToast("Task Reopen active.");
+        loadTasks();
+        loadSummary();
+      } catch (err) {
+        showToast(err.message, "danger");
+      }
+    }
+  });
+
+  // --- Modal Confirm Actions ---
+
+  // 1. Complete
+  document.getElementById("confirm-complete-btn").addEventListener("click", async () => {
+    const id = document.getElementById("modal-docket-id").value;
+    const desc = document.getElementById("complete-description").value;
+    const evidenceType = document.getElementById("complete-evidence-type").value || "memo";
+    if (!desc.trim()) {
+      showToast("Enter completion details.", "warning");
+      return;
+    }
+    try {
+      await apiCall(`/tasks/${id}/complete`, "POST", { description: desc, evidence_type: evidenceType });
+      modals.complete.hide();
+      showToast("Task marked complete.");
+      loadTasks();
+      loadSummary();
+    } catch (e) {
+      showToast(e.message || "Could not complete the task.", "danger");
+    }
+  });
+
+  // 2. Note
+  document.getElementById("confirm-note-btn").addEventListener("click", async () => {
+    const id = document.getElementById("note-modal-docket-id").value;
+    const desc = document.getElementById("note-description").value;
+    if (!desc.trim()) {
+      showToast("Enter note content.", "warning");
+      return;
+    }
+    try {
+      await apiCall(`/tasks/${id}/note`, "POST", { description: desc });
+      modals.note.hide();
+      showToast("Note saved.");
+      loadTasks();
+    } catch (e) {
+      showToast(e.message || "Could not save the note.", "danger");
+    }
+  });
+
+  // 3. Abandon
+  document.getElementById("confirm-abandon-btn").addEventListener("click", async () => {
+    const id = document.getElementById("abandon-modal-docket-id").value;
+    const reason = document.getElementById("abandon-reason").value;
+    try {
+      await apiCall(`/tasks/${id}/abandon`, "POST", { reason });
+      modals.abandon.hide();
+      showToast("Task closed.", "warning");
+      loadTasks();
+      loadSummary();
+    } catch (e) {
+      showToast(e.message || "Could not close the task.", "danger");
+    }
+  });
+
+  // --- Bulk Actions (Optimized) ---
+
+  async function performBulkAction(kind, dataBuilder, successMsg) {
+    const selected = Array.from(document.querySelectorAll(".task-row-checkbox:checked"));
+    if (selected.length === 0) return;
+    const actionLabel = kind === "complete" ? "complete" : "close";
+
+    const ok = await window.AppConfirm(`${actionLabel} ${selected.length} selected task(s)?`);
+    if (!ok) return;
+
+    const btn = kind === "complete" ? els.bulk.complete : els.bulk.abandon;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Processing...`;
+
+    try {
+      const taskIds = selected
+        .map(cb => (cb.dataset.id || "").trim())
+        .filter(Boolean);
+      const data = await apiCall(`/tasks/bulk-${kind}`, "POST", {
+        task_ids: taskIds,
+        ...dataBuilder(selected),
+      });
+      const successCount = Number(data?.processed_count || 0);
+      const failureCount = Number(data?.missing_count || 0);
+
+      if (failureCount === 0) {
+        showToast(`${successCount} task(s) ${successMsg}.`);
+      } else {
+        showToast(`${successCount} task(s) processed; ${failureCount} could not be processed.`, "warning");
+      }
+    } catch (err) {
+      showToast(err.message || "Bulk action failed.", "danger");
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      els.selectAll.checked = false;
+    }
+
+    loadTasks();
+    loadSummary();
+  }
+
+  els.bulk.complete.addEventListener("click", () => {
+    performBulkAction("complete", () => ({ description: "Bulk completion", evidence_type: "memo" }), "marked complete");
+  });
+
+  els.bulk.abandon.addEventListener("click", () => {
+    performBulkAction("abandon", () => ({ reason: "Bulk close" }), "closed");
+  });
+
+  async function performBulkTransfer() {
+    const selected = Array.from(document.querySelectorAll(".task-row-checkbox:checked"));
+    if (selected.length === 0) return;
+
+    const targetId = (els.bulk.transferTarget?.value || "").trim();
+    if (!targetId) {
+      showToast("Select an assignee.", "warning");
+      return;
+    }
+
+    const targetName = (
+      els.bulk.transferTarget?.selectedOptions?.[0]?.textContent || targetId
+    ).trim();
+    const ok = await window.AppConfirm(`Reassign ${selected.length} selected task(s) to ${targetName}?`);
+    if (!ok) return;
+
+    const btn = els.bulk.transfer;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>  In Progress...`;
+
+    try {
+      const taskIds = selected
+        .map(cb => (cb.dataset.id || "").trim())
+        .filter(Boolean);
+
+      const result = await apiCall("/tasks/bulk-transfer", "POST", {
+        task_ids: taskIds,
+        target_user_id: Number(targetId),
+      });
+
+      const transferred = Number(result.transferred_count || 0);
+      const skipped = Number(result.skipped_count || 0);
+      const forbidden = Number(result.forbidden_count || 0);
+      const missing = Number(result.missing_count || 0);
+
+      if (transferred > 0 && skipped === 0 && forbidden === 0 && missing === 0) {
+        showToast(`${transferred} task(s) reassigned to ${targetName}.`);
+      } else {
+        showToast(
+          ` ${transferred}items, items ${skipped}items, PermissionsNone ${forbidden}items,  ${missing}items`,
+          "warning"
+        );
+      }
+
+      els.selectAll.checked = false;
+      state.lastCheckedTaskBox = null;
+      await ensureOwnersLoaded(true);
+      await ensureTransferTargetsLoaded(true);
+      await loadTasks();
+      await loadSummary();
+    } catch (e) {
+      showToast(e.message || "Bulk reassignment failed.", "danger");
+    } finally {
+      btn.innerHTML = originalText;
+      updateBulkButtons();
+    }
+  }
+
+  els.bulk.transfer.addEventListener("click", () => {
+    performBulkTransfer();
+  });
+
+  // --- Initialization ---
+  (async function init() {
+    const urlState = parseUrlState();
+
+    // Apply URL state (except owner; applied after owner list loads)
+    if (els.filters.status) els.filters.status.value = urlState.filter;
+    if (els.filters.category) els.filters.category.value = urlState.category;
+    if (els.filters.ownerRole && Array.from(els.filters.ownerRole.options).some(o => o.value === urlState.ownerRole)) {
+      els.filters.ownerRole.value = urlState.ownerRole;
+    }
+    if (els.filters.days && Array.from(els.filters.days.options).some(o => o.value === urlState.days)) {
+      els.filters.days.value = urlState.days;
+    }
+    if (els.filters.dueFrom) els.filters.dueFrom.value = urlState.dueFrom || "";
+    if (els.filters.dueTo) els.filters.dueTo.value = urlState.dueTo || "";
+
+    state.search = urlState.search;
+    if (els.search.input) els.search.input.value = urlState.search;
+
+    state.sort = urlState.sort;
+    state.order = urlState.order;
+    state.page = urlState.page;
+    state.bucket = urlState.bucket;
+    state.dueAxis = urlState.dueAxis;
+    state.mineOnly = Boolean(urlState.mine) && Boolean(CURRENT_USER_OWNER_VALUE);
+    applySortIcons();
+    const ownersPromise = urlState.owner ? ensureOwnersLoaded() : Promise.resolve();
+
+    if (urlState.owner && els.filters.owner) {
+      const select = els.filters.owner;
+      const exists = Array.from(select.options).some(opt => opt.value === urlState.owner);
+      if (!exists) {
+        const opt = document.createElement("option");
+        opt.value = urlState.owner;
+        opt.textContent = urlState.ownerName || urlState.owner;
+        select.appendChild(opt);
+      }
+      select.value = urlState.owner;
+    }
+
+    refreshFilterUi();
+    const initialDataPromise = Promise.all([loadSummary(), loadTasks()]);
+
+    await ownersPromise;
+    if (urlState.owner && els.filters.owner) {
+      const select = els.filters.owner;
+      const exists = Array.from(select.options).some(opt => opt.value === urlState.owner);
+      if (!exists) {
+        const opt = document.createElement("option");
+        opt.value = urlState.owner;
+        opt.textContent = urlState.ownerName || urlState.owner;
+        select.appendChild(opt);
+      }
+      select.value = urlState.owner;
+    }
+
+    refreshFilterUi();
+    await initialDataPromise;
+    syncUrl();
+  })();
+});
+</script>
+{% endif %}
+<script id="worklog-page-config" type="application/json">{{ {
+  'currentUserId': (current_user.id or 0)|int,
+  'currentUserOwnerValue': ((current_user.staff_party_id or current_user.id|string) if current_user.is_authenticated else ''),
+  'crmClientsUrl': url_for('customers.clients'),
+  'crmClientViewTemplate': url_for('customers.client_view', client_id=0),
+}|tojson }}</script>
+<script src="{{ static_asset_url('js/worklog_index.js') }}"></script>
+{% endblock %}

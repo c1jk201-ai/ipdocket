@@ -1,0 +1,124 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ <div class="page-header">
+  <div>
+   <h2 class="invoice-page-title">Retainers</h2>
+   <div class="invoice-page-subtitle">Client retainer balances by currency.</div>
+  </div>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.clients.list_clients') }}">Client List</a>
+  </div>
+ </div>
+
+ <div class="invoice-filter-panel">
+  <h3 class="invoice-section-title">Search and filters</h3>
+  <h3 style="margin-top:0;">🔍 Search Filters</h3>
+  <form method="get" class="filter-form">
+   <div style="min-width:240px; flex:1 1 260px;">
+    <label>Search (Client name/ID)</label>
+    <input type="text" name="q" value="{{ q }}" placeholder="Client name ID" />
+   </div>
+   <div style="min-width:200px;">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for p in all_profiles %}
+     <option value="{{ p['id'] }}" {% if business_profile_id and business_profile_id|int == p['id']|int %}selected{% endif %}>{{ p['name'] }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div style="min-width:120px;">
+    <label>Currency</label>
+    <input type="text" name="currency" value="{{ currency }}" placeholder="USD" />
+   </div>
+   <div style="min-width:100px;">
+    <label>Display</label>
+    <select name="per_page">
+     {% for n in [20, 50, 100, 200] %}
+     <option value="{{ n }}" {% if per_page|int == n %}selected{% endif %}>{{ n }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="filter-actions">
+    <button class="btn btn-primary" type="submit">Apply</button>
+    <a class="btn btn-ghost" href="{{ url_for('billing_invoices.clients.deposit_overview') }}">Reset</a>
+   </div>
+  </form>
+ </div>
+
+ <div class="invoice-summary-grid">
+  {% for t in grand_totals %}
+  <div class="card" style="padding:14px 16px; background: var(--surface-soft); border:1px solid var(--border-subtle);">
+   <div class="muted" style="font-size:0.85em; margin-bottom:4px;">Currency Total · {{ t['currency'] }}</div>
+   <div class="text-xl text-strong">{{ t['balance_minor']|currency_minor(t['currency']) }}</div>
+  </div>
+  {% else %}
+  <div class="card" style="padding:14px 16px;">
+   <div class="muted"> </div>
+  </div>
+  {% endfor %}
+ </div>
+
+ <div class="invoice-data-panel">
+  <div style="display:flex; align-items:center; margin-bottom:12px; gap:8px;">
+   <div style="font-weight:600; color:var(--muted);">
+    Total {{ total_count }}items
+    {% if q %}
+     <span style="color:var(--accent);">(Search: "{{ q }}")</span>
+    {% endif %}
+   </div>
+   <div class="spacer"></div>
+   <div class="muted" style="font-size:0.9em;">
+    {% if total_count %}
+     {{ (page - 1) * per_page + 1 }} - {{ [page * per_page, total_count]|min }} Display
+    {% else %}
+     0 - 0 Display
+    {% endif %}
+   </div>
+  </div>
+
+  <div class="table-card">
+   <table class="responsive table-compact" style="width:100%; border-collapse:collapse;">
+    <thead>
+     <tr>
+      <th style="text-align:left;">Client</th>
+      <th style="text-align:left;">Currency</th>
+      <th style="text-align:right;"></th>
+      <th style="text-align:right;">items</th>
+      <th style="text-align:left;">Recent </th>
+      <th style="text-align:right;"></th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for r in rows %}
+     <tr>
+      <td data-label="Client" style="font-weight:600;">
+       <a href="{{ url_for('billing_invoices.clients.view_client', client_id=r['client_id']) }}" style="color:var(--accent);">{{ r['client_name'] or ('#' ~ r['client_id']) }}</a>
+      </td>
+      <td data-label="Currency">{{ r['currency'] }}</td>
+      <td data-label="" class="right text-nowrap">
+       <span class="deposit-amount {% if (r['balance_minor'] or 0)> 0 %}pos{% elif (r['balance_minor'] or 0) < 0 %}neg{% else %}zero{% endif %}">
+        {{ (r['balance_minor'] or 0)|currency_minor(r['currency']) }}
+       </span>
+      </td>
+      <td data-label="items" class="right">{{ r['entry_count'] }}</td>
+      <td data-label="Recent" class="text-nowrap">{{ r['last_created_at']|local_dt_min }}</td>
+      <td data-label="Details" class="right nowrap">
+       <a class="btn btn-ghost btn-ui-compact" href="{{ url_for('billing_invoices.clients.client_deposit_ledger', client_id=r['client_id'], currency=r['currency'], business_profile_id=(business_profile_id or '')) }}">Details</a>
+      </td>
+     </tr>
+     {% else %}
+     <tr>
+      <td colspan="6" class="muted" style="text-align:center; padding:40px;">Retainer No data.</td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set deposit_overview_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = deposit_overview_pagination_args.update({'per_page': per_page}) %}
+ {{ ui.pagination('billing_invoices.clients.deposit_overview', page, total_pages, deposit_overview_pagination_args, 'Retainer Pagination') }}
+{% endblock %}

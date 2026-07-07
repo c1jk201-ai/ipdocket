@@ -1,0 +1,169 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header" style="margin-bottom:16px;">
+ <h2 style="margin:0;">{{ 'User Edit' if user else ' User' }}</h2>
+ <div class="page-actions">
+  <a class="btn" href="{{ url_for('billing_invoices.admin.list_users') }}">Listto</a>
+ </div>
+</div>
+
+{% if not user %}
+<!-- User -->
+<form method="post" class="card">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <h3 style="margin-top:0;">Default </h3>
+ <div class="grid grid-2">
+  <div>
+   <label> (Required)</label>
+   <input name="username" required minlength="3" placeholder="3 ">
+  </div>
+  <div>
+   <label></label>
+   <select name="role">
+    <option value="staff">days (days Actions )</option>
+    <option value="admin">Administrator ( Permissions)</option>
+   </select>
+  </div>
+ </div>
+
+ <h3 style="margin-top:20px; margin-bottom:12px;"> </h3>
+ <div style="margin-bottom:16px;">
+  <label>
+   <input type="radio" name="password_option" value="auto" checked>
+    Auto ()
+  </label>
+  <div style="font-size:0.85rem; color:#6b7280; margin-left:24px;"> 12 .</div>
+ </div>
+ <div style="margin-bottom:16px;">
+  <label>
+   <input type="radio" name="password_option" value="manual">
+   Manual Input
+  </label>
+ </div>
+
+ <div id="manual_password_fields" style="display:none; margin-left:24px; margin-bottom:16px;">
+  <div class="grid grid-2" style="gap:12px;">
+   <div>
+    <label></label>
+    <input type="password" name="password" minlength="6">
+    <div style="font-size:0.85rem; color:#6b7280; margin-top:4px;"> 6 </div>
+   </div>
+   <div>
+    <label> Confirm</label>
+    <input type="password" name="password_confirm" minlength="6">
+   </div>
+  </div>
+ </div>
+
+ <div class="row" style="margin-top:20px;">
+  <button class="btn btn-primary" type="submit">User </button>
+ </div>
+</form>
+
+<script>
+ document.querySelectorAll('input[name="password_option"]').forEach(radio => {
+  radio.addEventListener('change', function() {
+   document.getElementById('manual_password_fields').style.display =
+    this.value === 'manual' ? 'block' : 'none';
+  });
+ });
+</script>
+
+{% else %}
+<!-- User Edit -->
+<div class="card">
+ <h3 style="margin-top:0;">Default </h3>
+ <div class="grid grid-2">
+  <div>
+   <label></label>
+   <input value="{{ user['username'] }}" disabled>
+  </div>
+  <div>
+   <label>Registration date</label>
+   <input value="{{ user['created_at']|local_dt }}" disabled>
+  </div>
+ </div>
+</div>
+
+<form method="post" class="card">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+ <input type="hidden" name="action" value="update_role">
+ <h3 style="margin-top:0;"> Change</h3>
+ <div class="grid grid-2">
+  <div>
+   <label>Current </label>
+   <select name="role">
+    <option value="staff" {% if user['role'] == 'staff' %}selected{% endif %}>days</option>
+    <option value="admin" {% if user['role'] == 'admin' %}selected{% endif %}>Administrator</option>
+   </select>
+  </div>
+  <div style="display:flex; align-items:end;">
+   <button class="btn btn-primary" type="submit"> Change</button>
+  </div>
+ </div>
+</form>
+
+<div class="card">
+ <h3 style="margin-top:0;">Account </h3>
+ <div style="display:flex; flex-direction:column; gap:12px;">
+  <form method="post" style="display:flex; align-items:center; gap:12px;">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <input type="hidden" name="action" value="toggle_active">
+   <span style="font-weight:600;">Account Status:</span>
+   <span class="{% if user['is_active'] %}success-text{% else %}danger-text{% endif %}" style="font-weight:600;">
+    {{ 'active' if user['is_active'] else 'active' }}
+   </span>
+   <button class="btn" type="submit">
+    {{ 'disabled' if user['is_active'] else 'active' }}
+   </button>
+  </form>
+
+  {% if user['locked_until'] %}
+  <form method="post" style="display:flex; align-items:center; gap:12px;">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <input type="hidden" name="action" value="unlock_account">
+   <span class="danger-text" style="font-weight:600;">🔒 Account exists ({{ user['locked_until'] }})</span>
+   <button class="btn btn-primary" type="submit"> </button>
+  </form>
+  {% endif %}
+
+  <form method="post" style="display:flex; align-items:center; gap:12px;" data-confirm=" ?">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <input type="hidden" name="action" value="reset_password">
+   <button class="btn" type="submit">🔑  </button>
+   <span class="muted" style="font-size:0.9em;">  Display</span>
+  </form>
+
+  <form method="post" style="display:flex; align-items:center; gap:12px;" data-confirm=" User  ?">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <input type="hidden" name="action" value="force_logout">
+   <button class="btn btn-danger" type="submit">🚪 </button>
+   <span class="muted" style="font-size:0.9em;"> Immediate Closed</span>
+  </form>
+ </div>
+</div>
+
+<div class="card">
+ <h3 style="margin-top:0;"> </h3>
+ <div class="grid grid-2">
+  <div>
+   <label> </label>
+   <input value="{{ user['last_login_at'] or '-' }}" disabled>
+  </div>
+  <div>
+   <label> Changedays</label>
+   <input value="{{ user['password_changed_at'] or '-' }}" disabled>
+  </div>
+  <div>
+   <label> </label>
+   <input value="{{ user['failed_login_count'] or 0 }}" disabled>
+  </div>
+  <div>
+   <label> Version</label>
+   <input value="{{ user['session_version'] or 1 }}" disabled>
+  </div>
+ </div>
+</div>
+{% endif %}
+
+{% endblock %}

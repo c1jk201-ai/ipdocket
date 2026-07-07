@@ -1,0 +1,76 @@
+{% extends 'invoice_base.html' %} {% block invoice_content %}
+<div class="page-header">
+ <h2 style="margin: 0">Business profiles</h2>
+ <div class="page-actions">
+  {% if is_admin() %}
+  <a class="btn btn-primary" href="{{ url_for('mgmt_info.new_business_profile') }}">+ ? business profile</a>
+  {% endif %}
+ </div>
+</div>
+
+<div class="card" style="margin-top: 12px">
+ <div class="table-card">
+  <table class="responsive table-compact">
+   <thead>
+    <tr>
+     <th>Business profile name</th>
+     <th>Order</th>
+     <th>Address</th>
+     <th>Email</th>
+     <th>Phone</th>
+     <th>Currency</th>
+     <th>Sales tax(%)</th>
+     <th></th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for p in profiles %}
+    <tr>
+     <td style="font-weight: 600" data-label="Business profile name">
+      {{ p['name'] }}
+     </td>
+     <td data-label="Order">{{ p.get('sort_order') if p.get('sort_order') is not none else '-' }}</td>
+     <td class="muted" data-label="Address">{{ p['address'] or '-' }}</td>
+     <td class="muted" data-label="Email">{{ p['email'] or '-' }}</td>
+     <td class="muted" data-label="Phone">{{ p['phone'] or '-' }}</td>
+     <td data-label="Currency">{{ p['currency'] }}</td>
+     <td data-label="Sales tax(%)">{{ p['vat_rate'] }}%</td>
+     <td class="right nowrap" data-label="Actions">
+      <a
+       class="btn btn-ghost"
+       href="{{ url_for('mgmt_info.view_business_profile', profile_id=p['id']) }}"
+      >View</a
+     >
+      {% if is_admin() %}
+      <a
+       class="btn"
+       href="{{ url_for('mgmt_info.edit_business_profile', profile_id=p['id']) }}"
+      >Edit</a
+     >
+      <form
+       method="post"
+       action="{{ url_for('mgmt_info.delete_business_profile', profile_id=p['id']) }}"
+       style="display: inline"
+       data-confirm="Delete this business profileLegacy Profiles linked to invoices cannot be deleted."
+     >
+       <button
+        class="btn btn-danger"
+        type="submit"
+        data-tooltip="Only profiles with no linked invoices can be deleted."
+      >
+        Delete
+       </button>
+      </form>
+      {% endif %}
+     </td>
+    </tr>
+    {% else %}
+    <tr>
+     <td colspan="8" class="muted">No business profiles.</td>
+    </tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+{% endblock %}

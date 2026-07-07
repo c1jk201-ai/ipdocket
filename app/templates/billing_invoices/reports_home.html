@@ -1,0 +1,47 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0"> </h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">table</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_general_ledger') }}">TotalAccountLedger</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_period_close') }}">timesPeriod deadline</a>
+  </div>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-8">Default </div>
+   <h3 class="mt-0">Trial Balance</h3>
+   <p class="muted">// Account .</p>
+   <a class="btn btn-primary" href="{{ url_for('business.accounting_trial_balance_report') }}">Open</a>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-8"> </div>
+   <h3 class="mt-0">Income Statement</h3>
+   <p class="muted"> / table to Period .</p>
+   <a class="btn btn-primary" href="{{ url_for('business.accounting_income_statement_report') }}">Open</a>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-8"> Status</div>
+   <h3 class="mt-0">Balance Sheet</h3>
+   <p class="muted">reference date Current Assets, Liabilities, Equity  Confirm.</p>
+   <a class="btn btn-primary" href="{{ url_for('business.accounting_balance_sheet_report') }}">Open</a>
+  </div>
+ </div>
+
+ <div class="grid grid-2 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-8">Tax </div>
+   <h3 class="mt-0">Sales tax </h3>
+   <p class="muted">Invoice/  Sales tax  .</p>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_vat_report') }}">Open</a>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-8">Period </div>
+   <h3 class="mt-0">timesPeriod deadline</h3>
+   <p class="muted"> table Period , deadline  Period / .</p>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_period_close') }}">Open</a>
+  </div>
+ </div>
+{% endblock %}

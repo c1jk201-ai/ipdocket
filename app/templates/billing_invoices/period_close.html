@@ -1,0 +1,104 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">timesPeriod deadline</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}">Reports Home</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">table</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_trial_balance_report') }}">Trial Balance</a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">deadline row</h3>
+  <form method="post" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-3">
+    <label>Business profile</label>
+    <select name="business_profile_id" required>
+     <option value="">Select</option>
+     {% for bp in business_profiles %}
+      <option value="{{ bp.id }}" {% if business_profile_id and business_profile_id|string == bp.id|string %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-2">
+    <label></label>
+    <select name="period_type">
+     <option value="monthly">deadline</option>
+     <option value="quarterly">quarterdeadline</option>
+     <option value="custom">User</option>
+    </select>
+   </div>
+   <div class="col-12 col-md-2">
+    <label>Start date</label>
+    <input type="date" name="start_date" value="{{ default_start }}">
+   </div>
+   <div class="col-12 col-md-2">
+    <label>End date</label>
+    <input type="date" name="end_date" value="{{ default_end }}">
+   </div>
+   <div class="col-12 col-md-3">
+    <label>Notes</label>
+    <input type="text" name="notes" placeholder="deadline  Notes">
+   </div>
+   <div class="col-12">
+    <button class="btn btn-primary" type="submit">Period deadline</button>
+   </div>
+  </form>
+  <div class="muted mt-8"> table deadline . deadline  Period table  .</div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Period List</h3>
+  <div class="overflow-auto">
+   <table class="table">
+    <thead>
+     <tr>
+      <th>Business profile</th>
+      <th></th>
+      <th>Period</th>
+      <th>Status</th>
+      <th>Notes</th>
+      <th>Due date</th>
+      <th class="w-120"></th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for period in periods %}
+     <tr>
+      <td>
+       {% for bp in business_profiles %}
+        {% if bp.id|string == period.business_profile_id|string %}{{ bp.name }}{% endif %}
+       {% endfor %}
+      </td>
+      <td>{{ period.period_type or 'custom' }}</td>
+      <td>{{ period.start_date }} ~ {{ period.end_date }}</td>
+      <td>
+       <span class="badge text-bg-{% if period.status == 'closed' %}dark{% else %}secondary{% endif %}">
+        {{ 'deadline' if period.status == 'closed' else 'column' }}
+       </span>
+      </td>
+      <td>{{ period.notes or '-' }}</td>
+      <td>{{ period.closed_at|local_dt if period.closed_at else '-' }}</td>
+      <td>
+       {% if period.status == 'closed' %}
+       <form method="post" action="{{ url_for('business.accounting_period_reopen', period_id=period.id) }}" class="m-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit"></button>
+       </form>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="7" class="muted">Registration timesPeriod none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

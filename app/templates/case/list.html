@@ -1,0 +1,768 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ static_asset_url('css/case_list.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<h2>Matter List</h2>
+{% set view_module = "case_list" %}
+{% include "_saved_views_bar.html" %}
+{% if filter_title %}
+<div class="mb-2">
+  <span class="badge bg-secondary">{{ filter_title }}</span>
+</div>
+{% endif %}
+
+<form
+  method="get"
+  class="row g-2 mb-3"
+  data-show-loading="true"
+  data-loading-text="Search  Loading..."
+  data-loading-detail="items      exists."
+>
+  <div class="col-auto">
+    <label for="caseListSearchInput" class="visually-hidden">Matter Search</label>
+    <input
+      id="caseListSearchInput"
+      class="form-control"
+      type="text"
+      name="q"
+      value="{{ request.args.get('q','') }}"
+      placeholder='Search: " " / A OR B / - / client:Client / ref:Matter reference'
+      aria-label="Matter  Search"
+      title=': " ", alpha OR beta, -, client:, applicant:"Acme Corp", ref:INV-2026'
+    />
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary">Search</button>
+  </div>
+  <div class="col-auto">
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#detailedSearch">
+      DetailsSearch
+    </button>
+  </div>
+  <div class="col-auto">
+    <select class="form-select" name="per_page" onchange="this.form.submit()">
+      {% for n in (per_page_options or [20,50,100,200,500]) %}
+      <option value="{{ n }}" {% if (per_page or 50) == n %}selected{% endif %}>{{ n }}items</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <div class="btn-group desktop-preferred-action" role="group" aria-label=" ">
+      <a class="btn btn-outline-success" href="{{ export_xlsx_page_url }}" title="Current page  ">
+        <i class="bi bi-file-earmark-excel"></i> 
+      </a>
+      <button
+        type="button"
+        class="btn btn-outline-success dropdown-toggle dropdown-toggle-split"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <span class="visually-hidden">  </span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{{ export_xlsx_page_url }}">Current page </a></li>
+        <li><a class="dropdown-item" href="{{ export_xlsx_all_url }}">All  </a></li>
+      </ul>
+    </div>
+  </div>
+  {% if create_case_url %}
+  <div class="col-auto">
+    <a
+      class="btn btn-primary"
+      data-full-navigation="1"
+      href="{{ create_case_url }}"
+      >Create Case</a
+    >
+  </div>
+  {% elif division and case_type %}
+  <div class="col-auto">
+    <a
+      class="btn btn-primary"
+      data-full-navigation="1"
+      href="{{ url_for('case_work.create_matter', division=division, type=case_type) }}"
+      >Create Case</a
+    >
+  </div>
+  {% elif case_type %}
+  <div class="col-auto">
+    <a
+      class="btn btn-primary"
+      data-full-navigation="1"
+      href="{{ url_for('case_work.create_matter', type=case_type) }}"
+      >Create Case</a
+    >
+  </div>
+  {% endif %}
+  <div class="col-12 collapse {% if request.args.get('attorney') or request.args.get('handler') or request.args.get('manager') or request.args.get('client') or request.args.get('applicant') or request.args.get('our_ref') or request.args.get('status') or request.args.get('right_name') or request.args.get('inventor') or request.args.get('app_no') %}show{% endif %}" id="detailedSearch">
+    <div class="card card-body bg-light border-0 shadow-sm mt-2">
+      <div class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted">Matter  / Title</label>
+          <input type="text" class="form-control form-control-sm mb-2" name="our_ref" value="{{ request.args.get('our_ref', '') }}" placeholder="Internal Ref">
+          <input type="text" class="form-control form-control-sm" name="right_name" value="{{ request.args.get('right_name', '') }}" placeholder="Matter Title">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted"> / </label>
+          <input type="text" class="form-control form-control-sm mb-2" name="client" value="{{ request.args.get('client', '') }}" placeholder="Client">
+          <input type="text" class="form-control form-control-sm mb-2" name="applicant" value="{{ request.args.get('applicant', '') }}" placeholder="Applicant">
+          <input type="text" class="form-control form-control-sm" name="inventor" value="{{ request.args.get('inventor', '') }}" placeholder="Inventor">
+        </div>
+        <div class="col-md-3">
+           <label class="form-label small fw-bold text-muted">Contact</label>
+           <input type="text" class="form-control form-control-sm mb-2" name="attorney" value="{{ request.args.get('attorney', '') }}" placeholder="Responsible attorney">
+           <input type="text" class="form-control form-control-sm mb-2" name="handler" value="{{ request.args.get('handler', '') }}" placeholder="Handler">
+           <input type="text" class="form-control form-control-sm" name="manager" value="{{ request.args.get('manager', '') }}" placeholder="Manager">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold text-muted">Status / Other </label>
+          <input type="text" class="form-control form-control-sm mb-2" name="status" value="{{ request.args.get('status', '') }}" placeholder="Status (Red/Blue)">
+          <input type="text" class="form-control form-control-sm" name="app_no" value="{{ request.args.get('app_no', '') }}" placeholder="Filing ">
+        </div>
+      </div>
+      <div class="row mt-3">
+        <div class="col-12 text-end">
+           <button type="button" class="btn btn-sm btn-link text-muted text-decoration-none" data-action="reset-detailed-search">Reset</button>
+           <button type="submit" class="btn btn-sm btn-primary px-3">Details Search Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div
+  id="caseListShell"
+  class="case-list-shell"
+  data-case-summary-url-template="{{ url_for('api.case_summary', case_id='__CASE__') }}"
+>
+  <div id="caseListSplit" class="app-split case-list-split" data-split-key="case_list" data-min-left="860" data-min-right="400" data-split-disabled-media="(max-width: 1199.98px)">
+    <div class="split-pane">
+      <div class="case-list-master">
+        <div class="case-list-master__bar">
+          <div>
+            <div class="case-list-master__title">Matter List</div>
+            <div class="case-list-master__meta-row">
+              <div class="case-list-master__meta" id="caseListSelectionSummary" data-total="{{ total or (cases|length) }}">
+                {{ total or (cases|length) }}items In Progress Preview Select.
+              </div>
+              <div class="case-list-master__hint">
+                <kbd>↑</kbd><kbd>↓</kbd> Go · <kbd>Enter</kbd> Select · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> Quick  
+              </div>
+            </div>
+          </div>
+          <div class="case-list-master__actions">
+            <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="casePreviewRefreshBtn">
+              <i class="bi bi-arrow-clockwise"></i> ?
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              data-case-preview-toggle="1"
+              data-expanded-label="Collapse details"
+              data-collapsed-label="Open details"
+              aria-controls="casePreviewPane"
+              aria-expanded="true"
+            >
+              <i class="bi bi-chevron-bar-right" data-case-preview-toggle-icon="1" aria-hidden="true"></i>
+              <span class="case-preview-toggle__label">Collapse details</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-responsive case-list-table-wrap">
+          <table id="caseListTable" class="table table-hover align-middle border-top case-list-table">
+            <thead class="bg-light text-secondary small text-uppercase fw-bold border-bottom">
+              <tr>
+                <th style="width: 50px;" class="text-center"></th>
+                <th style="width: 150px;">Status</th>
+                <th style="width: 110px;">Internal Ref</th>
+                <th style="width: 110px;"> Ref</th>
+                <th style="width: 140px;">Client</th>
+                <th>Title / </th>
+                <th style="width: 130px;">{{ inventor_column_label or "Inventor" }}</th>
+                <th style="width: 140px;">Applicant</th>
+                <th style="width: 130px;">Application No.</th>
+                <th style="width: 100px;">Filing date</th>
+              </tr>
+            </thead>
+            <tbody id="caseListTableBody" class="small">
+              {% for case in cases %}
+              {% set _x = (case_extras.get(case.matter_id, {}) if case_extras is defined and case_extras else {}) %}
+              {% set case_url = url_for('case_work.case_detail', case_id=case.matter_id) %}
+              {% set case_deadlines_url = url_for('case_work.case_detail', case_id=case.matter_id, _anchor='sec-deadlines') %}
+              {% set _title = ((case.right_name or '') or _x.get('proposal_title', '')) %}
+              <tr
+                id="case-row-{{ case.matter_id }}"
+                data-case-id="{{ case.matter_id }}"
+                data-case-url="{{ case_url }}"
+                data-case-title="{{ _title|e }}"
+                tabindex="0"
+                aria-selected="false"
+              >
+                <td class="text-center text-muted font-monospace">
+                    {{ '%06d' % (((page or 1) - 1) * (per_page or 50) + loop.index) }}
+                </td>
+                <td>
+                  {% set _disp_red = (_x.get('display_red','') or '') %}
+                  {% set _disp_blue = (_x.get('display_blue','') or '') %}
+                  <a href="{{ case_deadlines_url }}"
+                     onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                     class="text-decoration-none">
+                    <div class="d-flex flex-column gap-1 lh-sm">
+                      {% if _disp_red %}
+                        <div class="text-danger fw-bold" title="{{ _disp_red }}">
+                          {{ _disp_red|format_status }}
+                        </div>
+                      {% endif %}
+                      {% if _disp_blue %}
+                        <div class="text-primary fw-bold" title="{{ _disp_blue }}">{{ _disp_blue }}</div>
+                      {% endif %}
+                      {% if not _disp_red and not _disp_blue %}
+                        <span class="text-muted">-</span>
+                      {% endif %}
+                    </div>
+                  </a>
+                </td>
+                <td>
+                  <a href="{{ case_url }}"
+                     onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                     class="fw-bold text-dark text-decoration-none">
+                    {{ case.our_ref }}
+                  </a>
+                </td>
+                <td class="text-truncate text-secondary" title="{{ case.your_ref or '' }}">
+                  {% if case.your_ref %}
+                    <a href="{{ case_url }}"
+                       onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                       class="text-truncate d-block text-decoration-none text-secondary">
+                      {{ case.your_ref }}
+                    </a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-truncate" title="{{ case.clients or '' }}">
+                  {% set _client_id = (_x.get('client_id')|int if _x.get('client_id') else 0) %}
+                  {% set _client_label = (_x.get('client_name') or case.clients or '') %}
+                  {% if _client_label %}
+                    {% if _client_id > 0 %}
+                      <div class="d-flex align-items-center gap-1" style="min-width:0;">
+                        <a href="{{ url_for('customers.client_view', client_id=_client_id) }}"
+                           class="flex-grow-1 text-truncate text-decoration-none"
+                           style="min-width:0;"
+                           title="CRM Client Details">
+                          {{ _client_label }}
+                        </a>
+                        <a href="{{ url_for('customers.clients', q=_client_label) }}"
+                           class="link-muted flex-shrink-0 case-row-action"
+                           title="Search CRM">
+                          <i class="bi bi-search"></i>
+                        </a>
+                      </div>
+                    {% else %}
+                      <a href="{{ url_for('customers.clients', q=_client_label) }}"
+                         class="text-truncate d-block text-decoration-none"
+                         title="Search CRM">
+                        {{ _client_label }}
+                      </a>
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                    <a href="{{ case_url }}"
+                       onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                       class="text-truncate d-block fw-medium text-dark text-decoration-none"
+                       style="max-width: 100%;"
+                       title="{{ _title }}">
+                      {{ _title }}
+                    </a>
+                </td>
+                {% set _inventor = (_x.get('inventor_name', '') or '') %}
+                {% set _class_value = (_x.get('trademark_classes', '') or '') %}
+                {% set _profile = resolve_profile_case_kind(case.right_group, case.matter_type) %}
+                {% set _is_tm = (_profile[1] == 'TRADEMARK') %}
+                {% set _inventor_mode = (inventor_column_mode or 'inventor') %}
+                {% set _show_class = (_inventor_mode == 'class') or (_inventor_mode == 'mixed' and _is_tm) %}
+                {% set _display_value = (_class_value if _show_class else _inventor) %}
+                <td class="text-truncate text-muted" title="{{ _display_value }}">
+                  {% if _display_value %}
+                    {% if _show_class %}
+                      <span class="text-truncate d-block text-muted">{{ _display_value }}</span>
+                    {% else %}
+                      <a href="{{ url_for(request.endpoint, q=_display_value, per_page=(per_page or 50)) }}"
+                         class="text-truncate d-block text-decoration-none text-muted"
+                         title="Inventor to Matter Search">
+                        {{ _display_value }}
+                      </a>
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-truncate text-dark" title="{{ _x.get('applicant_name', '') or (case.applicants or '') }}">
+                  {% set _applicant = (_x.get('applicant_name', '') or (case.applicants or '')) %}
+                  {% if _applicant %}
+                    {% set _applicant_client_id = (_x.get('applicant_client_id')|int if _x.get('applicant_client_id') else 0) %}
+                    {% if _applicant_client_id > 0 %}
+                      <div class="d-flex align-items-center gap-1" style="min-width:0;">
+                        <a href="{{ url_for('customers.client_view', client_id=_applicant_client_id) }}"
+                           class="flex-grow-1 text-truncate text-decoration-none text-dark"
+                           style="min-width:0;"
+                           title="CRM Client Details (Applicant)">
+                          {{ _applicant }}
+                        </a>
+                        <a href="{{ url_for('customers.clients', q=_applicant) }}"
+                           class="link-muted flex-shrink-0"
+                           title="Search CRM">
+                          <i class="bi bi-search"></i>
+                        </a>
+                      </div>
+                    {% else %}
+                      <a href="{{ url_for('customers.clients', q=_applicant) }}"
+                         class="text-truncate d-block text-decoration-none text-dark"
+                         title="Applicant to CRM Search">
+                        {{ _applicant }}
+                      </a>
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-truncate text-secondary font-monospace" title="{{ _x.get('application_no', '') }}">
+                  {% set _app_no = (_x.get('application_no', '') or '') %}
+                  {% if _app_no %}
+                    <a href="{{ case_url }}"
+                       onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                       class="text-truncate d-block text-decoration-none text-secondary font-monospace">
+                      {{ _app_no }}
+                    </a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td class="text-secondary">
+                  {% set _app_date = (_x.get('application_date', '') or '')|date_only %}
+                  {% if _app_date %}
+                    <a href="{{ case_url }}"
+                       onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                       class="text-decoration-none text-secondary">
+                      {{ _app_date|us_date }}
+                    </a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="10" class="text-center py-5 text-muted">
+                  <i class="bi bi-folder2-open fs-1 d-block mb-3 opacity-50"></i>
+                  items  Matter none.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="case-list-mobile-cards" id="caseListMobileCards" aria-label=" Matter List">
+          {% for case in cases %}
+          {% set _x = (case_extras.get(case.matter_id, {}) if case_extras is defined and case_extras else {}) %}
+          {% set case_url = url_for('case_work.case_detail', case_id=case.matter_id) %}
+          {% set case_deadlines_url = url_for('case_work.case_detail', case_id=case.matter_id, _anchor='sec-deadlines') %}
+          {% set _title = ((case.right_name or '') or _x.get('proposal_title', '')) %}
+          {% set _disp_red = (_x.get('display_red','') or '') %}
+          {% set _disp_blue = (_x.get('display_blue','') or '') %}
+          {% set _client_id = (_x.get('client_id')|int if _x.get('client_id') else 0) %}
+          {% set _client_label = (_x.get('client_name') or case.clients or '') %}
+          {% set _applicant = (_x.get('applicant_name', '') or (case.applicants or '')) %}
+          {% set _applicant_client_id = (_x.get('applicant_client_id')|int if _x.get('applicant_client_id') else 0) %}
+          {% set _inventor = (_x.get('inventor_name', '') or '') %}
+          {% set _class_value = (_x.get('trademark_classes', '') or '') %}
+          {% set _profile = resolve_profile_case_kind(case.right_group, case.matter_type) %}
+          {% set _is_tm = (_profile[1] == 'TRADEMARK') %}
+          {% set _inventor_mode = (inventor_column_mode or 'inventor') %}
+          {% set _show_class = (_inventor_mode == 'class') or (_inventor_mode == 'mixed' and _is_tm) %}
+          {% set _display_value = (_class_value if _show_class else _inventor) %}
+          {% set _app_no = (_x.get('application_no', '') or '') %}
+          {% set _app_date = (_x.get('application_date', '') or '')|date_only %}
+          <article
+            class="case-list-mobile-card"
+            data-case-id="{{ case.matter_id }}"
+            data-case-url="{{ case_url }}"
+            tabindex="0"
+          >
+            <div class="case-list-mobile-card__head">
+              <div class="min-w-0">
+                <a
+                  class="case-list-mobile-card__ref"
+                  href="{{ case_url }}"
+                  onclick="saveCaseListPosition('{{ case.matter_id }}')"
+                >{{ case.our_ref or 'REF None' }}</a>
+                {% if case.your_ref %}
+                <div class="case-list-mobile-card__sub text-truncate"> Ref {{ case.your_ref }}</div>
+                {% endif %}
+              </div>
+              <a
+                class="btn btn-sm btn-outline-primary"
+                href="{{ case_url }}"
+                onclick="saveCaseListPosition('{{ case.matter_id }}')"
+              >Details</a>
+            </div>
+            <a
+              class="case-list-mobile-card__title"
+              href="{{ case_url }}"
+              onclick="saveCaseListPosition('{{ case.matter_id }}')"
+            >{{ _title or 'Title None' }}</a>
+            <div class="case-list-mobile-card__status">
+              {% if _disp_red %}
+                <a href="{{ case_deadlines_url }}" class="case-list-mobile-card__chip is-red" onclick="saveCaseListPosition('{{ case.matter_id }}')">{{ _disp_red|format_status }}</a>
+              {% endif %}
+              {% if _disp_blue %}
+                <a href="{{ case_deadlines_url }}" class="case-list-mobile-card__chip is-blue" onclick="saveCaseListPosition('{{ case.matter_id }}')">{{ _disp_blue }}</a>
+              {% endif %}
+              {% if not _disp_red and not _disp_blue %}
+                <span class="case-list-mobile-card__chip">Status None</span>
+              {% endif %}
+            </div>
+            <dl class="case-list-mobile-card__facts">
+              <div>
+                <dt>Client</dt>
+                <dd>
+                  {% if _client_label and _client_id > 0 %}
+                    <a href="{{ url_for('customers.client_view', client_id=_client_id) }}" class="text-decoration-none">{{ _client_label }}</a>
+                  {% elif _client_label %}
+                    <a href="{{ url_for('customers.clients', q=_client_label) }}" class="text-decoration-none">{{ _client_label }}</a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </dd>
+              </div>
+              <div>
+                <dt>{{ inventor_column_label or "Inventor" }}</dt>
+                <dd>
+                  {% if _display_value and not _show_class %}
+                    <a href="{{ url_for(request.endpoint, q=_display_value, per_page=(per_page or 50)) }}" class="text-decoration-none">{{ _display_value }}</a>
+                  {% else %}
+                    {{ _display_value or '-' }}
+                  {% endif %}
+                </dd>
+              </div>
+              <div>
+                <dt>Applicant</dt>
+                <dd>
+                  {% if _applicant and _applicant_client_id > 0 %}
+                    <a href="{{ url_for('customers.client_view', client_id=_applicant_client_id) }}" class="text-decoration-none">{{ _applicant }}</a>
+                  {% elif _applicant %}
+                    <a href="{{ url_for('customers.clients', q=_applicant) }}" class="text-decoration-none">{{ _applicant }}</a>
+                  {% else %}
+                    -
+                  {% endif %}
+                </dd>
+              </div>
+              <div>
+                <dt>Filing</dt>
+                <dd>
+                  {% if _app_no %}
+                    <a href="{{ case_url }}" onclick="saveCaseListPosition('{{ case.matter_id }}')" class="text-decoration-none">{{ _app_no }}</a>
+                  {% else %}
+                    -
+                  {% endif %}
+                  {% if _app_date %}<span class="text-muted"> · {{ _app_date|us_date }}</span>{% endif %}
+                </dd>
+              </div>
+            </dl>
+          </article>
+          {% else %}
+          <div class="case-list-mobile-empty">
+            <i class="bi bi-folder2-open"></i>
+            <span>items  Matter none.</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="split-handle" role="separator" aria-label="Matter Preview  " tabindex="0"></div>
+
+    <aside class="split-pane case-preview-pane" id="casePreviewPane" aria-live="polite">
+      <div class="case-preview-empty" id="casePreviewEmpty">
+        <div class="case-preview-empty__icon"><i class="bi bi-diagram-3"></i></div>
+        <div class="case-preview-empty__title">List-Details Preview</div>
+        <div class="case-preview-empty__body">
+           Select a matter from the list, use the table shortcuts, or open the read-only details column.
+        </div>
+      </div>
+
+      <div class="case-preview-content d-none" id="casePreviewContent">
+        <div class="case-preview-rail">
+          <div class="case-preview-rail__copy">
+            <div class="case-preview-rail__eyebrow">List-Details · Master-Detail</div>
+            <div class="case-preview-rail__title" id="casePreviewSelectionIndex">No selection</div>
+            <div class="case-preview-rail__meta" id="casePreviewSelectionContext">Current page to Previous/Next Matter   exists.</div>
+          </div>
+          <div class="case-preview-rail__actions">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="casePreviewPrevBtn" aria-label="Previous Matter">
+              <i class="bi bi-arrow-up"></i> Previous
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="casePreviewNextBtn" aria-label="Next Matter">
+              Next <i class="bi bi-arrow-down"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="case-preview-header">
+          <div class="case-preview-header__eyebrow">Quick Go</div>
+          <div class="case-preview-header__top">
+            <div class="case-preview-header__copy">
+              <h3 class="case-preview-header__title" id="casePreviewTitle">-</h3>
+              <div class="case-preview-header__refs">
+                <span class="case-preview-header__ref" id="casePreviewOurRef">-</span>
+                <span class="case-preview-header__ref d-none" id="casePreviewYourRefWrap">
+                   Ref <span id="casePreviewYourRef"></span>
+                </span>
+              </div>
+            </div>
+            <div class="case-preview-header__actions">
+              <a id="casePreviewOpenLink" class="btn btn-sm btn-primary" href="#" data-case-preview-nav="1">
+                Full matter
+              </a>
+              <a id="casePreviewDeadlineLink" class="btn btn-sm btn-outline-secondary" href="#" data-case-preview-nav="1">
+                Deadline
+              </a>
+            </div>
+          </div>
+
+          <div class="case-preview-badges">
+            <span class="case-preview-badge" id="casePreviewDivision">-</span>
+            <span class="case-preview-badge" id="casePreviewType">-</span>
+            <span class="case-preview-badge" id="casePreviewStatus">-</span>
+          </div>
+
+          <div class="case-preview-focus" id="casePreviewFocus">
+            <div class="case-preview-focus__label">Current </div>
+            <div class="case-preview-focus__value" id="casePreviewFocusValue">-</div>
+          </div>
+        </div>
+
+        <div class="case-preview-next-step" id="casePreviewNextStep" data-tone="default">
+          <div class="case-preview-next-step__eyebrow"> Actions</div>
+          <div class="case-preview-next-step__title" id="casePreviewNextStepTitle">detail context  In Progress.</div>
+          <div class="case-preview-next-step__body" id="casePreviewNextStepBody">Current Matterfrom  Confirm  Section .</div>
+          <a id="casePreviewNextStepLink" class="case-preview-next-step__link" href="#" data-case-preview-nav="1"> Section Open</a>
+        </div>
+
+        <div class="case-preview-kpis">
+          <a id="casePreviewNextDeadlineCard" class="case-preview-kpi" href="#" data-case-preview-nav="1">
+            <div class="case-preview-kpi__label">Next Deadline</div>
+            <div class="case-preview-kpi__value" id="casePreviewNextDeadlineValue">-</div>
+            <div class="case-preview-kpi__meta" id="casePreviewNextDeadlineMeta"> Deadline none.</div>
+          </a>
+          <a id="casePreviewOpenDeadlineCard" class="case-preview-kpi" href="#" data-case-preview-nav="1">
+            <div class="case-preview-kpi__label">column Deadline</div>
+            <div class="case-preview-kpi__value" id="casePreviewOpenDeadlineValue">0</div>
+            <div class="case-preview-kpi__meta" id="casePreviewOpenDeadlineMeta"> Confirm</div>
+          </a>
+          <a id="casePreviewWorkflowCard" class="case-preview-kpi" href="#" data-case-preview-nav="1">
+            <div class="case-preview-kpi__label">Task</div>
+            <div class="case-preview-kpi__value" id="casePreviewWorkflowValue">0</div>
+            <div class="case-preview-kpi__meta" id="casePreviewWorkflowMeta">Open tasks 0</div>
+          </a>
+          <a id="casePreviewFinanceCard" class="case-preview-kpi" href="#" data-case-preview-nav="1">
+            <div class="case-preview-kpi__label">Outstanding balance</div>
+            <div class="case-preview-kpi__value" id="casePreviewFinanceValue">-</div>
+            <div class="case-preview-kpi__meta" id="casePreviewFinanceMeta">Invoice Details</div>
+          </a>
+        </div>
+
+        <div class="case-preview-facts">
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Client</div>
+            <div class="case-preview-fact__value" id="casePreviewClient">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Applicant</div>
+            <div class="case-preview-fact__value" id="casePreviewApplicant">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Application No.</div>
+            <div class="case-preview-fact__value" id="casePreviewAppNo">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Filing date</div>
+            <div class="case-preview-fact__value" id="casePreviewAppDate">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Responsible attorney</div>
+            <div class="case-preview-fact__value" id="casePreviewAttorney">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Handler / Manager</div>
+            <div class="case-preview-fact__value" id="casePreviewOps">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Notes / File</div>
+            <div class="case-preview-fact__value" id="casePreviewRecordCounts">-</div>
+          </div>
+          <div class="case-preview-fact">
+            <div class="case-preview-fact__label">Recent Change</div>
+            <div class="case-preview-fact__value" id="casePreviewLastActivity">-</div>
+          </div>
+        </div>
+
+        <div class="case-preview-drill-shell">
+          <div class="case-preview-embedded-head case-preview-drill-head">
+            <div>
+              <div class="case-preview-section-title">Quick </div>
+              <div class="case-preview-section-subtitle">  Section List    from  Confirm.</div>
+            </div>
+            <div class="case-preview-shortcuts" aria-label="Quick  ">
+              <span class="case-preview-shortcut"><kbd>1</kbd> Deadline</span>
+              <span class="case-preview-shortcut"><kbd>2</kbd> </span>
+              <span class="case-preview-shortcut"><kbd>3</kbd> Notes</span>
+              <span class="case-preview-shortcut"><kbd>4</kbd> </span>
+            </div>
+          </div>
+
+          <div class="case-preview-inline-grid">
+            <section class="case-preview-inline-card" data-inline-tab-card="deadlines">
+              <div class="case-preview-inline-card__head">
+                <div>
+                  <div class="case-preview-inline-card__eyebrow"></div>
+                  <div class="case-preview-inline-card__title">Deadline</div>
+                </div>
+                <a id="casePreviewLinkDeadlinesInline" class="case-preview-inline-card__detail" href="#" data-case-preview-nav="1">Details</a>
+              </div>
+              <button type="button" class="case-preview-inline-card__button" id="casePreviewInlineDeadlines" data-preview-tab-target="deadlines">
+                <span class="case-preview-inline-card__badge" id="casePreviewInlineDeadlinesBadge">-</span>
+                <span class="case-preview-inline-card__meta" id="casePreviewInlineDeadlinesMeta"> Deadline none.</span>
+                <span class="case-preview-inline-card__cta">from View</span>
+              </button>
+            </section>
+
+            <section class="case-preview-inline-card" data-inline-tab-card="history">
+              <div class="case-preview-inline-card__head">
+                <div>
+                  <div class="case-preview-inline-card__eyebrow"></div>
+                  <div class="case-preview-inline-card__title"></div>
+                </div>
+                <a id="casePreviewLinkHistory" class="case-preview-inline-card__detail" href="#" data-case-preview-nav="1">Details</a>
+              </div>
+              <button type="button" class="case-preview-inline-card__button" id="casePreviewInlineHistory" data-preview-tab-target="history">
+                <span class="case-preview-inline-card__badge" id="casePreviewInlineHistoryBadge">-</span>
+                <span class="case-preview-inline-card__meta" id="casePreviewInlineHistoryMeta">Recent   Confirm.</span>
+                <span class="case-preview-inline-card__cta">from View</span>
+              </button>
+            </section>
+
+            <section class="case-preview-inline-card" data-inline-tab-card="memo">
+              <div class="case-preview-inline-card__head">
+                <div>
+                  <div class="case-preview-inline-card__eyebrow"></div>
+                  <div class="case-preview-inline-card__title">Notes</div>
+                </div>
+                <a id="casePreviewLinkMemo" class="case-preview-inline-card__detail" href="#" data-case-preview-nav="1">Details</a>
+              </div>
+              <button type="button" class="case-preview-inline-card__button" id="casePreviewInlineMemo" data-preview-tab-target="memo">
+                <span class="case-preview-inline-card__badge" id="casePreviewInlineMemoBadge">-</span>
+                <span class="case-preview-inline-card__meta" id="casePreviewInlineMemoMeta">Registration Notes  .</span>
+                <span class="case-preview-inline-card__cta">from View</span>
+              </button>
+            </section>
+
+            <section class="case-preview-inline-card" data-inline-tab-card="files">
+              <div class="case-preview-inline-card__head">
+                <div>
+                  <div class="case-preview-inline-card__eyebrow"></div>
+                  <div class="case-preview-inline-card__title"></div>
+                </div>
+                <a id="casePreviewLinkFiles" class="case-preview-inline-card__detail" href="#" data-case-preview-nav="1">Details</a>
+              </div>
+              <button type="button" class="case-preview-inline-card__button" id="casePreviewInlineFiles" data-preview-tab-target="files">
+                <span class="case-preview-inline-card__badge" id="casePreviewInlineFilesBadge">-</span>
+                <span class="case-preview-inline-card__meta" id="casePreviewInlineFilesMeta">Files are read-only.</span>
+                <span class="case-preview-inline-card__cta">from View</span>
+              </button>
+            </section>
+          </div>
+
+          <div class="case-preview-detail-grid">
+            <section class="case-preview-detail-card">
+              <div class="case-preview-detail-card__head">
+                <div class="case-preview-detail-card__title">Task</div>
+                <div class="case-preview-detail-card__badge" id="casePreviewDetailWorkflowBadge">-</div>
+              </div>
+              <div class="case-preview-detail-card__meta" id="casePreviewDetailWorkflowMeta">Open tasks Confirm.</div>
+              <a id="casePreviewLinkWorkflow" class="case-preview-detail-card__action" href="#" data-case-preview-nav="1">View tasks</a>
+            </section>
+
+            <section class="case-preview-detail-card">
+              <div class="case-preview-detail-card__head">
+                <div class="case-preview-detail-card__title">Billing / Invoice</div>
+                <div class="case-preview-detail-card__badge" id="casePreviewDetailFinanceBadge">-</div>
+              </div>
+              <div class="case-preview-detail-card__meta" id="casePreviewDetailFinanceMeta">Outstanding balance Billing status Confirm.</div>
+              <a id="casePreviewLinkFinance" class="case-preview-detail-card__action" href="#" data-case-preview-nav="1">View billing</a>
+            </section>
+
+            <section class="case-preview-detail-card">
+              <div class="case-preview-detail-card__head">
+                <div class="case-preview-detail-card__title"> Filing</div>
+                <div class="case-preview-detail-card__badge" id="casePreviewDetailFamilyBadge">-</div>
+              </div>
+              <div class="case-preview-detail-card__meta" id="casePreviewDetailFamilyMeta">Family  Matter Confirm.</div>
+              <a id="casePreviewLinkFamily" class="case-preview-detail-card__action" href="#" data-case-preview-nav="1"> Filing View</a>
+            </section>
+
+            <section class="case-preview-detail-card">
+              <div class="case-preview-detail-card__head">
+                <div class="case-preview-detail-card__title">CRM Client</div>
+                <div class="case-preview-detail-card__badge" id="casePreviewDetailCrmBadge">-</div>
+              </div>
+              <div class="case-preview-detail-card__meta" id="casePreviewDetailCrmMeta">Search linked client information.</div>
+              <div class="case-preview-detail-card__actions">
+                <a id="casePreviewLinkClient" class="case-preview-detail-card__action" href="#">Client Open</a>
+                <a id="casePreviewLinkClientSearch" class="case-preview-detail-card__action case-preview-detail-card__action--secondary" href="#">CRM Search</a>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div class="case-preview-embedded-shell">
+          <div class="case-preview-embedded-head">
+            <div>
+              <div class="case-preview-section-title">Quick Details</div>
+              <div class="case-preview-section-subtitle">Quick   read-only  row  Confirm.</div>
+            </div>
+            <div class="case-preview-tabs" role="tablist" aria-label="Matter Preview ">
+              <button type="button" class="case-preview-tab is-active" data-preview-tab="deadlines" role="tab" aria-selected="true">Deadline</button>
+              <button type="button" class="case-preview-tab" data-preview-tab="history" role="tab" aria-selected="false"></button>
+              <button type="button" class="case-preview-tab" data-preview-tab="memo" role="tab" aria-selected="false">Notes</button>
+              <button type="button" class="case-preview-tab" data-preview-tab="files" role="tab" aria-selected="false"></button>
+            </div>
+          </div>
+          <div class="case-preview-embedded" id="casePreviewEmbedded">
+            <div class="case-preview-embedded__status" id="casePreviewEmbeddedStatus">Details Loading.</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+{% set case_pagination_args = request.args.to_dict(flat=True) %}
+{% set _ = case_pagination_args.update({'per_page': per_page or 50}) %}
+{{ ui.pagination(request.endpoint, page or 1, pages or 1, case_pagination_args, 'Matter Pagination') }}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ static_asset_url('js/split_pane.js') }}"></script>
+  <script src="{{ static_asset_url('js/case_list.js') }}"></script>
+{% endblock %}

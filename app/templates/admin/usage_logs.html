@@ -1,0 +1,208 @@
+{% extends "admin/layout.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block title %}Activity Logs{% endblock %}
+
+{% block admin_content %}
+  <div class="mb-3">
+    <div class="small text-muted">Search user activity by request path, method, status, and date range.</div>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold" for="f-user">User</label>
+          <select name="user_id" id="f-user" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for user in users %}
+              <option value="{{ user['id'] }}" {% if user_filter == user['id']|string %}selected{% endif %}>
+                {{ user['username'] }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold" for="f-method">Method</label>
+          <select name="method" id="f-method" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for m in ["GET","POST","PUT","PATCH","DELETE","HEAD"] %}
+              <option value="{{ m }}" {% if method_filter == m %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold" for="f-status">Status</label>
+          <select name="status" id="f-status" class="form-select form-select-sm">
+            <option value="">All</option>
+            <option value="2xx" {% if status_filter == "2xx" %}selected{% endif %}>2xx</option>
+            <option value="3xx" {% if status_filter == "3xx" %}selected{% endif %}>3xx</option>
+            <option value="4xx" {% if status_filter == "4xx" %}selected{% endif %}>4xx</option>
+            <option value="5xx" {% if status_filter == "5xx" %}selected{% endif %}>5xx</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold" for="f-path">Path</label>
+          <input
+            type="text"
+            name="path"
+            id="f-path"
+            class="form-control form-control-sm"
+            placeholder="/case/..."
+            value="{{ path_filter }}"
+          />
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold" for="f-date-from">Start Date</label>
+          <input type="date" name="date_from" id="f-date-from" class="form-control form-control-sm" value="{{ date_from }}" />
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold" for="f-date-to">End Date</label>
+          <input type="date" name="date_to" id="f-date-to" class="form-control form-control-sm" value="{{ date_to }}" />
+        </div>
+
+        <div class="col-md-2 d-flex gap-2">
+          <button class="btn btn-primary btn-sm" type="submit">Search</button>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.usage_logs_page') }}">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div>
+        <span class="fw-semibold">Activity Logs</span>
+        <span class="badge bg-secondary ms-2">{{ total_count }}</span>
+      </div>
+      <div class="small text-muted">page {{ page }} / {{ total_pages }}</div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 160px;">Timestamp</th>
+            <th style="width: 140px;">User</th>
+            <th style="width: 70px;">Method</th>
+            <th style="width: 70px;">Status</th>
+            <th>Path</th>
+            <th style="width: 90px;">Duration (ms)</th>
+            <th style="width: 140px;">IP</th>
+            <th style="width: 220px;">UA</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td><small>{{ log['created_at']|local_dt if log['created_at'] else '-' }}</small></td>
+            <td>
+              {% if log['username'] %}
+                <strong>{{ log['username'] }}</strong>
+              {% else %}
+                <span class="text-muted">#{{ log['user_id'] }}</span>
+              {% endif %}
+            </td>
+            <td><span class="badge bg-light text-dark">{{ log['method'] }}</span></td>
+            <td>
+              {% if log['status_code'] %}
+                {% set sc = log['status_code']|int %}
+                {% if sc >= 500 %}
+                  <span class="badge bg-danger">{{ sc }}</span>
+                {% elif sc >= 400 %}
+                  <span class="badge bg-warning text-dark">{{ sc }}</span>
+                {% elif sc >= 300 %}
+                  <span class="badge bg-secondary">{{ sc }}</span>
+                {% else %}
+                  <span class="badge bg-success">{{ sc }}</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="text-truncate" style="max-width: 520px;">
+                <code>{{ log['path'] }}</code>
+              </div>
+              {% if log['endpoint'] or log['blueprint'] or log['request_id'] %}
+              <div class="small text-muted">
+                {% if log['blueprint'] %}<span class="me-2">bp={{ log['blueprint'] }}</span>{% endif %}
+                {% if log['endpoint'] %}<span class="me-2">ep={{ log['endpoint'] }}</span>{% endif %}
+                {% if log['request_id'] %}<span>rid={{ log['request_id'] }}</span>{% endif %}
+              </div>
+              {% endif %}
+              {% if log['referer'] %}
+              <div class="small text-muted text-truncate" style="max-width: 520px;">ref={{ log['referer'] }}</div>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if log['duration_ms'] is not none %}
+                {{ log['duration_ms'] }}
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if log['remote_addr'] %}
+                <code>{{ log['remote_addr'] }}</code>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if log['user_agent'] %}
+                <span class="small" title="{{ log['user_agent'] }}">{{ log['user_agent'] }}</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">No activity logs found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% set usage_pagination_args = request.args.to_dict(flat=True) %}
+  {{ ui.pagination('admin.usage_logs_page', page, total_pages, usage_pagination_args, 'Activity Log Pagination') }}
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header bg-white">
+      <span class="fw-semibold">Purge Activity Logs</span>
+      <span class="small text-muted ms-2">Delete logs older than the selected retention period.</span>
+    </div>
+    <div class="card-body">
+      <form method="post" action="{{ url_for('admin.usage_logs_purge') }}" data-confirm="Delete matching activity logs?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold" for="purge-user">User (optional)</label>
+            <select name="user_id" id="purge-user" class="form-select form-select-sm">
+              <option value="">All</option>
+              {% for user in users %}
+                <option value="{{ user['id'] }}">{{ user['username'] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold" for="purge-days">Older Than (days)</label>
+            <input type="number" min="1" max="3650" step="1" name="days" id="purge-days" class="form-control form-control-sm" value="90">
+            <div class="form-text small">Example: 90 deletes logs older than 90 days.</div>
+          </div>
+          <div class="col-md-3">
+            <button class="btn btn-danger btn-sm" type="submit">Delete Logs</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% endblock %}

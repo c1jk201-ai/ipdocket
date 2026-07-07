@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Client Registration Done</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      .wrap {
+        padding: 20px;
+        padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .title {
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .desc {
+        font-size: 14px;
+        color: #475569;
+      }
+      .btn {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 6px;
+        background: #005EA8;
+        color: #fff;
+        text-decoration: none;
+        font-size: 14px;
+      }
+      @media (max-width: 480px) {
+        .wrap {
+          padding: 16px;
+          padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+        }
+        .btn {
+          align-self: stretch;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="title">Client Registration.</div>
+      <div class="desc">The client record was created automatically.</div>
+      <a class="btn" href="{{ url_for('customers.client_view', client_id=client_payload.client_id) }}" target="_top">Client Details</a>
+    </div>
+    <script>
+      (function () {
+        const payload = {{ client_payload | tojson }};
+        if (window.parent && typeof window.parent.clientCreateSuccess === "function") {
+          window.parent.clientCreateSuccess(payload);
+        }
+      })();
+    </script>
+  </body>
+</html>

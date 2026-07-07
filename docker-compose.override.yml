@@ -1,0 +1,86 @@
+services:
+  # Local runtime source bind mounts.
+  app:
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPYCACHEPREFIX: /tmp/ipm-pycache
+      TEMPLATES_AUTO_RELOAD: "1"
+    volumes:
+      - type: bind
+        source: ./app
+        target: /app/app
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./app_config
+        target: /app/app_config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./run.py
+        target: /app/run.py
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./config.py
+        target: /app/config.py
+        read_only: true
+        bind:
+          create_host_path: false
+
+  scheduler:
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPYCACHEPREFIX: /tmp/ipm-pycache
+    volumes:
+      - type: bind
+        source: ./app
+        target: /app/app
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./app_config
+        target: /app/app_config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./run.py
+        target: /app/run.py
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./config.py
+        target: /app/config.py
+        read_only: true
+        bind:
+          create_host_path: false
+
+  worker:
+    environment:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONPYCACHEPREFIX: /tmp/ipm-pycache
+    volumes:
+      - type: bind
+        source: ./app
+        target: /app/app
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./app_config
+        target: /app/app_config
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./run.py
+        target: /app/run.py
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./config.py
+        target: /app/config.py
+        read_only: true
+        bind:
+          create_host_path: false

@@ -1,0 +1,212 @@
+{% extends 'invoice_base.html' %} {% block invoice_content %}
+<div class="row wrap" style="align-items: center">
+ <h2 style="margin: 0">Backup </h2>
+ <div class="spacer"></div>
+ <form
+  method="post"
+  action="{{ url_for('billing_invoices.admin.create_backup') }}" data-confirm="Current Status Restore ?"
+  style="display: inline"
+>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+  <button class="btn btn-primary" type="submit">📦 Create restore point</button>
+ </form>
+ <form
+  method="post"
+  action="{{ url_for('billing_invoices.admin.create_backup_with_attachments') }}" data-confirm="DB Backup File ZIP ?"
+  style="display: inline; margin-left: 8px"
+>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+  <button class="btn" type="submit">📦+📎  Backup</button>
+ </form>
+ <form
+  method="post"
+  action="{{ url_for('billing_invoices.admin.cleanup_orphan_attachments') }}" data-confirm="DB File( File) ?  none."
+  style="display: inline; margin-left: 8px"
+>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+  <button class="btn btn-warning" type="submit">🧹 File </button>
+ </form>
+</div>
+
+<div class="card" style="margin-top: 12px">
+ <div class="table-card">
+  <table class="responsive table-compact">
+   <thead>
+    <tr>
+     <th></th>
+     <th></th>
+     <th></th>
+     <th>/</th>
+     <th>Current</th>
+     <th class="right">Actions</th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for b in backups %} {% set typ = b.source or ('pre-restore' if
+    b.name[:12]=='pre-restore-' else 'backup') %}
+    <tr>
+     <td data-label="">
+      {{ b.dt_kst_str or b.meta_created_at_kst_str or '-' }}
+     </td>
+     <td data-label="">
+      <span class="pill">{{ typ }}</span>
+     </td>
+     <td data-label="">
+      {{ '{:,.0f}'.format(b.size) if b.size is not none else '-' }} B
+     </td>
+     <td data-label="/">
+      <form
+       method="post"
+       action="{{ url_for('billing_invoices.admin.backups_label') }}"
+       class="row wrap"
+       style="gap: 6px; align-items: end"
+     >
+       <input
+        type="hidden"
+        name="csrf_token"
+        value="{{ csrf_token() }}"
+       />
+       <input type="hidden" name="name" value="{{ b.name }}" />
+       <div>
+        <label></label>
+        <input
+         type="text"
+         name="note"
+         value="{{ b.note or '' }}"
+         placeholder=":  Previous"
+        />
+       </div>
+       <div>
+        <label> ( Type)</label>
+        <input
+         type="text"
+         name="tags"
+         value="{{ b.tags|join(', ') if b.tags else '' }}"
+         placeholder="tag1, tag2"
+        />
+       </div>
+       <div>
+        <button class="btn" type="submit">Save</button>
+       </div>
+      </form>
+     </td>
+     <td data-label="Current">
+      {% if b.is_current %}
+      <span class="pill btn-success">Current Status</span>
+      {% else %}
+      <span class="muted">-</span>
+      {% endif %}
+     </td>
+     <td data-label="Actions" class="right">
+      <div class="row" style="gap: 6px; justify-content: flex-end">
+       <button
+        class="btn"
+        type="button"
+        onclick="openDiff('{{ b.name }}')"
+      >
+        Preview
+       </button>
+       <form
+        method="post"
+        action="{{ url_for('billing_invoices.admin.restore_backup_file') }}"
+        style="display: inline" data-confirm=" Backupto Restore Current DB Restore Snapshot(pre-restore)to Save."
+      >
+        <input
+         type="hidden"
+         name="csrf_token"
+         value="{{ csrf_token() }}"
+        />
+        <input type="hidden" name="name" value="{{ b.name }}" />
+        <button class="btn btn-warning" type="submit">⏪ Restore</button>
+       </form>
+       <a
+        class="btn"
+        href="{{ url_for('billing_invoices.admin.backups_download', name=b.name) }}"
+       >Download</a
+      >
+      </div>
+     </td>
+    </tr>
+    {% else %}
+    <tr>
+     <td colspan="6" class="muted">Backup none.</td>
+    </tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+
+<div id="diffModal" class="modal-overlay" hidden>
+ <div class="modal-card">
+  <h3 style="margin-top: 0">Change Preview</h3>
+  <div
+   id="diffBody"
+   style="
+    max-height: 60vh;
+    overflow: auto;
+    font-family: 'Cascadia Mono', Consolas, 'Liberation Mono',
+     'Courier New', monospace;
+   "
+ ></div>
+  <div class="modal-actions">
+   <button class="btn" type="button" onclick="closeDiff()">Close</button>
+  </div>
+ </div>
+</div>
+
+<script>
+ // Ensure body has padding for fixed actionbar on browsers without :has support
+ document.addEventListener('DOMContentLoaded', function(){ try { document.body.classList.add('has-actionbar'); } catch(e) {} });
+   function closeDiff(){
+    const m = document.getElementById('diffModal');
+    m.classList.remove('show');
+    m.setAttribute('hidden','');
+   }
+   function openDiff(name){
+    const modal = document.getElementById('diffModal');
+    const body = document.getElementById('diffBody');
+    body.innerHTML = '';
+    const loading = document.createElement('div');
+    loading.className = 'muted';
+    loading.textContent = '...';
+    body.appendChild(loading);
+
+    modal.removeAttribute('hidden');
+    modal.classList.add('show');
+    fetch('{{ url_for('billing_invoices.admin.backups_diff') }}?name=' + encodeURIComponent(name))
+     .then(r => r.json())
+     .then(data => {
+      body.innerHTML = '';
+      if (!data || !data.tables) {
+        body.textContent = ': ' + (data.error || '  Error');
+        return;
+      }
+      const entries = Object.entries(data.tables);
+      if (!entries.length) {
+        const no = document.createElement('div');
+        no.className = 'muted';
+        no.textContent = 'Change ';
+        body.appendChild(no);
+        return;
+      }
+      entries.forEach(([t, d]) => {
+       const div = document.createElement('div');
+       div.style.padding = '6px 8px';
+       if (d.changed) {
+         div.style.background = '#fff7ed';
+         div.style.borderLeft = '4px solid #fb923c';
+       } else {
+         div.style.opacity = '.7';
+       }
+       const strong = document.createElement('strong');
+       strong.textContent = t;
+       div.appendChild(strong);
+       div.appendChild(document.createTextNode(` — ${d.count_b} rows (${d.count_a} → ${d.count_b}), hash: ${d.hash_a} → ${d.hash_b}`));
+       body.appendChild(div);
+      });
+     })
+     .catch(err => { body.textContent = ': ' + err; });
+   }
+</script>
+{% endblock %}

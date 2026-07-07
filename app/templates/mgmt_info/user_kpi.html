@@ -1,0 +1,546 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set filters = dashboard.filters %}
+{% set summary = dashboard.summary %}
+{% set rows = dashboard.rows %}
+{% set charts = dashboard.charts %}
+{% set highlights = dashboard.highlights %}
+<style>
+ .user-kpi-page {
+  --kpi-accent: #0f5f7b;
+  --kpi-soft: #eef7fb;
+  --kpi-ink: #0f172a;
+  --kpi-border: rgba(15, 95, 123, 0.12);
+ }
+ .user-kpi-page .hero-card {
+  background: linear-gradient(135deg, #0f2940 0%, #0f5f7b 52%, #d7ebe6 100%);
+  color: #fff;
+  border: 0;
+ }
+ .user-kpi-page .hero-card .subnote,
+ .user-kpi-page .hero-card .small {
+  color: rgba(255, 255, 255, 0.82);
+ }
+ .user-kpi-page .summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.75rem;
+ }
+ .user-kpi-page .metric-card,
+ .user-kpi-page .panel-card {
+  border: 1px solid var(--kpi-border);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+ }
+ .user-kpi-page .metric-card .metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--kpi-ink);
+ }
+ .user-kpi-page .metric-card .metric-note {
+  color: var(--bs-secondary-color);
+  font-size: 0.82rem;
+ }
+ .user-kpi-page .soft-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbfd 100%);
+ }
+ .user-kpi-page .coverage-card {
+  border-left: 4px solid #fd7e14;
+ }
+ .user-kpi-page .chart-wrap {
+  position: relative;
+  min-height: 250px;
+ }
+ .user-kpi-page .chart-wrap.chart-wrap--short {
+  min-height: 210px;
+ }
+ .user-kpi-page .kpi-table th {
+  white-space: nowrap;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+ }
+ .user-kpi-page .kpi-table td {
+  vertical-align: top;
+ }
+ .user-kpi-page .kpi-table .name-cell {
+  min-width: 13rem;
+ }
+ .user-kpi-page .kpi-table .wide-cell {
+  min-width: 11rem;
+  white-space: normal;
+ }
+ .user-kpi-page .kpi-table .note-cell {
+  min-width: 12rem;
+  white-space: normal;
+ }
+ .user-kpi-page .insight-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #e8f4f9;
+  color: #155e75;
+  font-size: 0.76rem;
+  font-weight: 600;
+ }
+ @media (max-width: 1399px) {
+  .user-kpi-page .summary-grid {
+   grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+ }
+ @media (max-width: 991px) {
+  .user-kpi-page .summary-grid {
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+ }
+ @media (max-width: 575px) {
+  .user-kpi-page .summary-grid {
+   grid-template-columns: 1fr;
+  }
+ }
+</style>
+
+<div class="container-fluid py-3 user-kpi-page">
+ <div class="card hero-card shadow-sm mb-3">
+  <div class="card-body p-4">
+   <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+     <div class="small text-uppercase fw-semibold mb-2">Operations KPI Board</div>
+     <h3 class="fw-semibold mb-2">User Task·Revenue KPI </h3>
+     <div class="subnote">
+      Matter Contact to Done Task, backlog, Attributed service revenue 
+      Task  Deadline compliance, Activity density, Recent  .
+     </div>
+    </div>
+    <div class="small text-end">
+     <div>Reporting period: {{ summary.start|us_date }} ~ {{ summary.end|us_date }} ({{ summary.period_days }}days)</div>
+     <div>Attribution basis: {{ summary.owner_basis_label }}</div>
+     <div>Snapshot: {{ snapshot_at|local_dt_min if snapshot_at else "-" }}</div>
+    </div>
+   </div>
+   <form method="get" class="row g-2 align-items-end mt-3">
+    <div class="col-12 col-md-3 col-xl-2">
+     <label class="form-label form-label-sm text-white-50 mb-1">Start date</label>
+     <input type="date" name="start" class="form-control" value="{{ filters.start.isoformat() }}">
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+     <label class="form-label form-label-sm text-white-50 mb-1">End date</label>
+     <input type="date" name="end" class="form-control" value="{{ filters.end.isoformat() }}">
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+     <label class="form-label form-label-sm text-white-50 mb-1">Revenue Attributed</label>
+     <select name="owner_basis" class="form-select">
+      {% for option in dashboard.owner_basis_options %}
+      <option value="{{ option.value }}" {% if option.value == filters.owner_basis %}selected{% endif %}>{{ option.label }}</option>
+      {% endfor %}
+     </select>
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+     <label class="form-label form-label-sm text-white-50 mb-1">Sort</label>
+     <select name="sort" class="form-select">
+      {% for option in dashboard.sort_options %}
+      <option value="{{ option.value }}" {% if option.value == filters.sort_key %}selected{% endif %}>{{ option.label }}</option>
+      {% endfor %}
+     </select>
+    </div>
+    <div class="col-12 col-xl-4 d-flex gap-2 flex-wrap">
+     <button type="submit" class="btn btn-light">Apply</button>
+     <a href="{{ url_for('mgmt_info.user_kpi') }}" class="btn btn-outline-light">Recent 90days</a>
+     <a href="{{ url_for('mgmt_info.index') }}" class="btn btn-outline-light">Operations Home</a>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <div class="card panel-card soft-card mb-3">
+  <div class="card-body py-2">
+   <div class="small text-muted">
+    Task Done Task + Done Task , Task Task Done .
+    backlog Current Task + Deadline .
+    Service Revenue Taxable amount to Sales tax, admin, foreign  .
+   </div>
+  </div>
+ </div>
+
+ <div class="summary-grid mb-3">
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">Display Contact</div>
+    <div class="metric-value">{{ summary.visible_user_count }}</div>
+    <div class="metric-note">active {{ summary.active_staff_count }}people</div>
+   </div>
+  </div>
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">Done Task</div>
+    <div class="metric-value">{{ summary.activity_total }}</div>
+    <div class="metric-note">WF {{ summary.workflow_completed_total }} / WL {{ summary.worklog_completed_total }}</div>
+   </div>
+  </div>
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">WorkLog Deadline compliance</div>
+    <div class="metric-value">{{ "%.1f"|format(summary.worklog_on_time_rate) }}%</div>
+    <div class="metric-note">Due date {{ "%.1f"|format(summary.worklog_due_coverage) }}% · Average Delayed {{ "%.1f"|format(summary.worklog_avg_delay_days) }}days</div>
+   </div>
+  </div>
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">Task Activity density</div>
+    <div class="metric-value">{{ "%.1f"|format(summary.worklog_active_days_avg) }}days</div>
+    <div class="metric-note">Per active day {{ "%.1f"|format(summary.worklog_daily_throughput_avg) }}items · Recent 7days {{ summary.recent_active_staff_count }}people</div>
+   </div>
+  </div>
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">Attributed service revenue</div>
+    <div class="metric-value" style="font-size: 1.05rem;">{{ summary.billed_display }}</div>
+    <div class="metric-note">Attributed Invoice {{ summary.attributed_invoice_count_display }}items</div>
+   </div>
+  </div>
+  <div class="card metric-card">
+   <div class="card-body">
+    <div class="small text-muted">Collection and operating risk</div>
+    <div class="metric-value">{{ "%.1f"|format(summary.collection_progress_avg) }}%</div>
+    <div class="metric-note">Delayed {{ summary.overdue_total }}items · 14days  {{ summary.stale_staff_count }}people</div>
+   </div>
+  </div>
+ </div>
+
+ {% if summary.unattributed_invoice_count> 0 %}
+ <div class="card panel-card coverage-card mb-3">
+  <div class="card-body d-flex justify-content-between align-items-start flex-wrap gap-3">
+   <div>
+    <div class="fw-semibold">Unattributed Invoice {{ summary.unattributed_invoice_count }}items</div>
+    <div class="small text-muted">
+     Coverage {{ "%.1f"|format(summary.invoice_capture_rate) }}% · Attributed service revenue {{ summary.unattributed_billed_display }}
+    </div>
+   </div>
+   <div class="small text-muted">
+    {% if dashboard.unattributed_examples %}
+     Example:
+     {% for item in dashboard.unattributed_examples %}
+      {{ item.number }}{% if item.date %} ({{ item.date }}){% endif %}{% if not loop.last %}, {% endif %}
+     {% endfor %}
+    {% endif %}
+   </div>
+  </div>
+ </div>
+ {% endif %}
+
+ <div class="row g-3 mb-3">
+  <div class="col-12 col-xl-4">
+   <div class="card panel-card soft-card h-100">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+     <strong>Key insights</strong>
+     <span class="small text-muted">{{ highlights|length }}items</span>
+    </div>
+    <div class="list-group list-group-flush">
+     {% if not highlights %}
+     <div class="list-group-item text-muted small">No insights to display.</div>
+     {% endif %}
+     {% for item in highlights %}
+     <div class="list-group-item">
+      <div class="fw-semibold">{{ item.title }}</div>
+      <div class="small text-muted">{{ item.body }}</div>
+     </div>
+     {% endfor %}
+    </div>
+   </div>
+  </div>
+  <div class="col-12 col-xl-8">
+   <div class="row g-3">
+    <div class="col-12 col-lg-6">
+     <div class="card panel-card h-100">
+      <div class="card-body">
+       <div class="fw-semibold">Task Processing volume Top 12</div>
+       <div class="small text-muted mb-3">Done Task Delayed items .</div>
+       {% if charts.activity.labels %}
+       <div class="chart-wrap">
+        <canvas id="kpiActivityChart"></canvas>
+       </div>
+       {% else %}
+       <div class="text-muted small py-5 text-center">No chart data.</div>
+       {% endif %}
+      </div>
+     </div>
+    </div>
+    <div class="col-12 col-lg-6">
+     <div class="card panel-card h-100">
+      <div class="card-body">
+       <div class="fw-semibold">Task vs Revenue </div>
+       <div class="small text-muted mb-3">X Done Task, Y Attributed Invoice ,  Delayed items.</div>
+       {% if charts.scatter %}
+       <div class="chart-wrap">
+        <canvas id="kpiScatterChart"></canvas>
+       </div>
+       {% else %}
+       <div class="text-muted small py-5 text-center">No chart data.</div>
+       {% endif %}
+      </div>
+     </div>
+    </div>
+    <div class="col-12">
+     <div class="card panel-card h-100">
+      <div class="card-body">
+       <div class="fw-semibold">Task Deadline compliance </div>
+       <div class="small text-muted mb-3">On-time completion rate Per active day Processing volume , Process to Process  .</div>
+       {% if charts.worklog_quality.labels %}
+       <div class="chart-wrap chart-wrap--short">
+        <canvas id="kpiWorklogChart"></canvas>
+       </div>
+       {% else %}
+       <div class="text-muted small py-5 text-center">No chart data.</div>
+       {% endif %}
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <div class="card panel-card shadow-sm">
+  <div class="card-header bg-light d-flex justify-content-between align-items-start flex-wrap gap-2">
+   <div>
+    <strong>User Details KPI</strong>
+    <div class="small text-muted">
+     Processing volume, Task-log rhythm, Deadline compliance, backlog, Revenue·Collection from .
+    </div>
+   </div>
+   <div class="small text-muted text-end">
+    <div>Sort: {{ filters.sort_label }}</div>
+    <div>Revenue Attributed: {{ filters.owner_basis_label }}</div>
+   </div>
+  </div>
+  <div class="card-body p-0">
+   <div class="table-responsive">
+    <table class="table table-sm table-hover kpi-table align-middle mb-0">
+     <thead class="table-light">
+      <tr>
+       <th>Contact</th>
+       <th class="text-end">Processing volume</th>
+       <th class="text-end">Task-log rhythm</th>
+       <th class="text-end">Deadline compliance</th>
+       <th class="text-end">Open·Delayed</th>
+       <th class="wide-cell">Revenue </th>
+       <th class="wide-cell">Collection</th>
+       <th class="wide-cell">Task profile</th>
+       <th class="note-cell">Observation</th>
+      </tr>
+     </thead>
+     <tbody>
+      {% if not rows %}
+      <tr>
+       <td colspan="9" class="text-center text-muted py-4">Display KPI No data.</td>
+      </tr>
+      {% endif %}
+      {% for row in rows %}
+      <tr>
+       <td class="name-cell">
+        <div class="fw-semibold">{{ row.assignee }}</div>
+        <div class="small text-muted d-flex flex-wrap gap-1 mt-1">
+         <span class="badge bg-light text-dark border">{{ row.role or '-' }}</span>
+         {% if not row.is_active %}<span class="badge bg-light text-dark border">inactive</span>{% endif %}
+         {% if row.staff_party_id %}<span class="badge bg-light text-dark border">{{ row.staff_party_id[:8] }}</span>{% endif %}
+        </div>
+       </td>
+       <td class="text-end">
+        <div class="fw-semibold">{{ row.activity_total }}</div>
+        <div class="small text-muted">WF {{ row.workflow_completed }} / WL {{ row.worklog_completed }} · TC {{ "%.1f"|format(row.tc_hours) }}h</div>
+        <div class="small {% if row.trend_pct is not none and row.trend_pct < 0 %}text-danger{% elif row.trend_pct is not none and row.trend_pct> 0 %}text-success{% else %}text-muted{% endif %}">
+         {% if row.trend_pct is not none %}{{ "%+.1f"|format(row.trend_pct) }}%{% else %}-{% endif %}
+        </div>
+       </td>
+       <td class="text-end">
+        <div class="fw-semibold">{{ row.worklog_active_days }}days</div>
+        <div class="small text-muted">Per active day {{ "%.1f"|format(row.worklog_daily_throughput) }}items</div>
+        <div class="small text-muted">
+         {% if row.days_since_last_activity is not none %}
+         Recent Done {{ row.days_since_last_activity }}days 
+         {% else %}
+         Recent Done 
+         {% endif %}
+        </div>
+       </td>
+       <td class="text-end">
+        {% if row.worklog_due_tracked_completed> 0 %}
+        <div class="fw-semibold {% if row.worklog_due_tracked_completed>= 3 and row.worklog_on_time_rate < 70 %}text-danger{% elif row.worklog_due_tracked_completed>= 3 and row.worklog_on_time_rate>= 90 %}text-success{% endif %}">
+         {{ "%.1f"|format(row.worklog_on_time_rate) }}%
+        </div>
+        <div class="small text-muted">Due date {{ row.worklog_due_tracked_completed }}items · {{ "%.1f"|format(row.worklog_due_coverage) }}%</div>
+        <div class="small text-muted">Delayed {{ row.worklog_delayed_completed }}items · Average {{ "%.1f"|format(row.worklog_avg_delay_days) }}days</div>
+        {% else %}
+        <div class="fw-semibold text-muted">-</div>
+        <div class="small text-muted">Due date Task </div>
+        {% endif %}
+       </td>
+       <td class="text-end">
+        <div class="fw-semibold">{{ row.backlog_total }}</div>
+        <div class="small text-muted">Task {{ row.open_workflow }} / Deadline {{ row.open_docket }}</div>
+        <div class="small {% if row.overdue_total> 0 %}text-danger{% else %}text-muted{% endif %}">Delayed {{ row.overdue_total }}items</div>
+       </td>
+       <td class="wide-cell">
+        <div class="fw-semibold">{{ row.invoice_count_display }}items</div>
+        <div class="small text-muted">{{ row.billed_display }}</div>
+       </td>
+       <td class="wide-cell">
+        <div class="fw-semibold">{{ row.collected_display }}</div>
+        <div class="small text-muted">Collection {{ "%.1f"|format(row.collection_progress) }}% · {{ "%.1f"|format(row.paid_invoice_share) }}%</div>
+       </td>
+       <td class="wide-cell">
+        <div class="fw-semibold">{{ row.worklog_focus_label }}</div>
+        <div class="small text-muted">{{ row.worklog_mix_display }}</div>
+       </td>
+       <td class="note-cell">
+        {% for tag in row.insight_tags %}
+        <span class="insight-chip me-1 mb-1">{{ tag }}</span>
+        {% endfor %}
+       </td>
+      </tr>
+      {% endfor %}
+     </tbody>
+    </table>
+   </div>
+  </div>
+ </div>
+</div>
+
+<script src="{{ static_asset_url('vendor/chart/chart.umd.min.js') }}"></script>
+<script>
+ (() => {
+  const activityData = {{ charts.activity|tojson }};
+  const worklogQualityData = {{ charts.worklog_quality|tojson }};
+  const scatterData = {{ charts.scatter|tojson }};
+  const ChartLib = window.Chart;
+  if (!ChartLib) return;
+
+  const activityCanvas = document.getElementById("kpiActivityChart");
+  if (activityCanvas && activityData && (activityData.labels || []).length) {
+   new ChartLib(activityCanvas.getContext("2d"), {
+    type: "bar",
+    data: {
+     labels: activityData.labels || [],
+     datasets: [
+      {
+       label: "Done Task",
+       data: activityData.activity || [],
+       backgroundColor: "rgba(14, 116, 144, 0.78)",
+       borderRadius: 8
+      },
+      {
+       label: "Delayed",
+       data: activityData.overdue || [],
+       backgroundColor: "rgba(220, 38, 38, 0.55)",
+       borderRadius: 8
+      }
+     ]
+    },
+    options: {
+     responsive: true,
+     maintainAspectRatio: false,
+     plugins: {
+      legend: { position: "bottom" }
+     },
+     scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, ticks: { precision: 0 } }
+     }
+    }
+   });
+  }
+
+  const worklogCanvas = document.getElementById("kpiWorklogChart");
+  if (worklogCanvas && worklogQualityData && (worklogQualityData.labels || []).length) {
+   new ChartLib(worklogCanvas.getContext("2d"), {
+    data: {
+     labels: worklogQualityData.labels || [],
+     datasets: [
+      {
+       type: "bar",
+       label: "On-time completion rate",
+       data: worklogQualityData.on_time_rate || [],
+       backgroundColor: "rgba(2, 132, 199, 0.72)",
+       borderRadius: 8,
+       yAxisID: "y"
+      },
+      {
+       type: "line",
+       label: "Per active day Done",
+       data: worklogQualityData.daily_throughput || [],
+       borderColor: "rgba(245, 158, 11, 0.95)",
+       backgroundColor: "rgba(245, 158, 11, 0.18)",
+       pointBackgroundColor: "rgba(245, 158, 11, 0.95)",
+       tension: 0.28,
+       yAxisID: "y1"
+      }
+     ]
+    },
+    options: {
+     responsive: true,
+     maintainAspectRatio: false,
+     plugins: {
+      legend: { position: "bottom" }
+     },
+     scales: {
+      x: { grid: { display: false } },
+      y: {
+       beginAtZero: true,
+       max: 100,
+       title: { display: true, text: "On-time completion rate (%)" }
+      },
+      y1: {
+       beginAtZero: true,
+       position: "right",
+       grid: { drawOnChartArea: false },
+       title: { display: true, text: "Per active day Done" }
+      }
+     }
+    }
+   });
+  }
+
+  const scatterCanvas = document.getElementById("kpiScatterChart");
+  if (scatterCanvas && scatterData && scatterData.length) {
+   new ChartLib(scatterCanvas.getContext("2d"), {
+    type: "bubble",
+    data: {
+     datasets: [
+      {
+       label: "Contact ",
+       data: scatterData,
+       backgroundColor: "rgba(0, 166, 166, 0.55)",
+       borderColor: "rgba(0, 94, 168, 0.9)"
+      }
+     ]
+    },
+    options: {
+     responsive: true,
+     maintainAspectRatio: false,
+     plugins: {
+      legend: { display: false },
+      tooltip: {
+       callbacks: {
+        label(context) {
+         const raw = context.raw || {};
+         return `${raw.label || ""} · Done ${raw.x || 0}items / Invoice ${raw.y || 0}items / Delayed ${raw.overdue || 0}items`;
+        }
+       }
+      }
+     },
+     scales: {
+      x: {
+       beginAtZero: true,
+       title: { display: true, text: "Done Task" },
+       ticks: { precision: 0 }
+      },
+      y: {
+       beginAtZero: true,
+       title: { display: true, text: "Attributed Invoice " }
+      }
+     }
+    }
+   });
+  }
+ })();
+</script>
+{% endblock %}

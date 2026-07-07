@@ -1,0 +1,50 @@
+{% extends "layouts/base.html" %}
+{% block body_class %}
+  {{ super() }} page-case-view{% if request.args.get('popup') != '1' %} case-mobile-bar-enabled{% endif %}
+{% endblock %}
+{% block styles %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ static_asset_url('css/case_matter_view.css') }}">
+{% endblock %}
+{% block content %}
+{% from "_entity_links.html" import invoice_any with context %}
+  <div
+    id="app-page-meta"
+    class="d-none"
+    data-type="matter"
+    data-id="{{ matter.matter_id }}"
+    data-title="{{ (matter.our_ref or matter.right_name or 'Matter') }}"
+    data-subtitle="{{ (matter.right_name or '') if (matter.our_ref or '') else '' }}"
+    data-url="{{ request.path }}"
+  ></div>
+
+  {% if can_edit_case or can_invoice %}
+    {% include "case/_case_quick_panel.html" %}
+  {% endif %}
+
+  <div
+    id="caseViewRoot"
+    class="container-fluid mt-2"
+    data-current-user-role="{{ (current_user.role or '')|lower }}"
+    data-case-id="{{ matter.matter_id }}"
+    data-can-edit-case="{{ 1 if can_edit_case else 0 }}"
+    data-can-assign-staff="{{ 1 if can_assign_staff else 0 }}"
+    data-can-invoice="{{ 1 if can_invoice else 0 }}"
+    data-can-delete-case="{{ 1 if can_delete_case else 0 }}"
+  >
+    {% include "case/matter_view/_summary.html" %}
+    {% include "case/matter_view/_content.html" %}
+    {% include "case/matter_view/_sections_after_files.html" %}
+  </div>
+  {% include "case/matter_view/_modals.html" %}
+  {% if request.args.get('popup') != '1' %}
+    {% include "case/matter_view/_mobile_tools.html" %}
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+  {% include "case/matter_view/_config_script.html" %}
+  <script type="module" src="{{ static_asset_url('js/case_matter_view.js') }}"></script>
+{% endblock %}

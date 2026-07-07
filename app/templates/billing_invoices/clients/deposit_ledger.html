@@ -1,0 +1,391 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ <div class="page-header">
+  <div>
+   <h2 class="invoice-page-title">Retainer ledger</h2>
+   <div class="muted" style="margin-top:2px;">{{ client['name'] }} · #{{ client['id'] }}</div>
+  </div>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id']) }}">Clientto</a>
+   <a class="btn" href="{{ url_for('billing_invoices.clients.list_clients') }}">List</a>
+  </div>
+ </div>
+
+ <div class="note-strip is-info" style="margin-top:12px;">
+  <div class="note-strip__head">
+   <div class="note-strip__status text-strong">Task </div>
+  </div>
+  <div class="note-strip__help">
+   Retainer <span class="text-strong">Client + Retainer ( All Business profile) + Currency</span> .
+   // pagefrom, /Cancel <span class="text-strong">Invoice Details</span>from Process.
+  </div>
+ </div>
+
+ <div class="invoice-filter-panel">
+   <div class="page-header">
+    <h3 class="invoice-section-title">Search and filters</h3>
+   <div class="page-actions">
+    <div class="filter-actions">
+     {% if scope_kind == 'business_profile' and business_profile_id is not none %}
+      {% set p = profiles_by_id.get(business_profile_id) %}
+      <span class="pill pill-info pill-sm">: Business profile #{{ business_profile_id }}{% if p %} · {{ p['name'] }}{% endif %}</span>
+     {% elif scope_kind == 'global' %}
+      <span class="pill pill-info pill-sm">: All()</span>
+     {% else %}
+      <span class="pill pill-sm">: All times</span>
+     {% endif %}
+     {% if currency %}
+      <span class="pill pill-info pill-sm">Currency: {{ currency }}</span>
+     {% endif %}
+     {% if q %}
+      <span class="pill pill-info pill-sm">Search: {{ q }}</span>
+     {% endif %}
+    </div>
+    <a class="btn btn-ghost" href="{{ url_for('billing_invoices.clients.client_deposit_ledger', client_id=client['id']) }}">Filters Reset</a>
+   </div>
+  </div>
+
+  <form method="get" class="filter-form" style="margin-top:10px;">
+   <div style="min-width:240px;">
+    <label>Scope</label>
+    <select name="business_profile_id" onchange="this.form.submit()">
+     <option value="" {% if scope_kind == 'all' %}selected{% endif %}>All times</option>
+     <option value="global" {% if scope_kind == 'global' %}selected{% endif %}> All()</option>
+     {% for p in all_profiles %}
+      <option value="{{ p['id'] }}" {% if scope_kind == 'business_profile' and p['id'] == business_profile_id %}selected{% endif %}>#{{ p['id'] }} · {{ p['name'] }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div style="min-width:160px;">
+    <label>Currency</label>
+    <select name="currency" onchange="this.form.submit()">
+     <option value="">(All)</option>
+     {% for c in currency_options %}
+      <option value="{{ c }}" {% if c == currency %}selected{% endif %}>{{ c }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="flex-1" style="min-width:240px;">
+    <label>Search</label>
+    <input name="q" value="{{ q }}" placeholder="Notes / TID / Invoice number/ID" />
+   </div>
+   <div class="filter-actions">
+    <input type="hidden" name="per_page" value="{{ per_page }}" />
+    <button class="btn btn-ghost" type="submit">Search</button>
+   </div>
+  </form>
+
+  <div style="margin-top:12px;" class="grid grid-3">
+   {% for cur_code, bal_minor in balances_sorted %}
+    <div class="card" style="padding:12px 14px; background: var(--surface-soft); border:1px solid var(--border-subtle);">
+     <div class="muted">Current · {{ cur_code }}</div>
+     <div class="text-xl text-strong" style="margin-top:4px;">{{ bal_minor|currency_minor(cur_code) }}</div>
+    </div>
+   {% endfor %}
+   {% if not balances_sorted %}
+    <div class="muted">Retainer none.</div>
+   {% endif %}
+  </div>
+ </div>
+
+ {% if has_role('admin','staff') %}
+  <div class="card" style="margin-top:12px;">
+   <div class="page-header">
+    <h3 class="invoice-section-title">Retainer actions</h3>
+    <div class="page-actions">
+     <div class="muted">// Undo .</div>
+    </div>
+   </div>
+
+   <div class="grid grid-3" style="margin-top:10px;">
+    <details class="card deposit-action" open>
+     <summary> <span class="muted text-sm"> </span></summary>
+     <div class="deposit-action-body">
+      <form method="post" action="{{ url_for('billing_invoices.clients.client_deposit_topup', client_id=client['id']) }}" data-prevent-double-submit="true">
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+       <input type="hidden" name="next" value="{{ next_url }}" />
+       <div class="grid grid-2">
+        <div>
+         <label>Retainer </label>
+         {% if all_profiles %}
+          <select name="business_profile_id">
+           <option value="global" {% if scope_kind != 'business_profile' %}selected{% endif %}> All()</option>
+           {% for p in all_profiles %}
+            <option value="{{ p['id'] }}"
+             {% if scope_kind == 'business_profile' and p['id'] == business_profile_id %}selected{% endif %}
+           >#{{ p['id'] }} · {{ p['name'] }}</option>
+           {% endfor %}
+          </select>
+         {% else %}
+          <input type="hidden" name="business_profile_id" value="global" />
+          <div class="muted" style="padding:6px 0;"> All()</div>
+         {% endif %}
+        </div>
+        <div>
+         <label class="req">Currency</label>
+         <select name="currency" required>
+          {% for c in currency_options %}
+           <option value="{{ c }}" {% if (currency or default_currency) == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+         </select>
+        </div>
+        <div class="span-full">
+         <label class="req">Amount</label>
+         <input name="amount" required placeholder=": 100000" />
+         <div class="help-text"> Input(). Currency  enter.</div>
+        </div>
+        <div class="span-full">
+         <label>Bank activity TID (Select)</label>
+         <input name="related_bank_transaction_id" class="mono" placeholder="tid" />
+        </div>
+        <div class="span-full">
+         <label>Notes (Select)</label>
+         <input name="memo" placeholder="" />
+        </div>
+        <div class="form-actions">
+         <button class="btn btn-primary" type="submit"> Registration</button>
+        </div>
+       </div>
+      </form>
+     </div>
+    </details>
+
+    <details class="card deposit-action">
+     <summary> <span class="muted text-sm"> </span></summary>
+     <div class="deposit-action-body">
+      <form
+       method="post"
+       action="{{ url_for('billing_invoices.clients.client_deposit_refund', client_id=client['id']) }}"
+       data-prevent-double-submit="true"
+       data-confirm="Retainer RegistrationNew (  Add .)"
+     >
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+       <input type="hidden" name="next" value="{{ next_url }}" />
+       <div class="grid grid-2">
+        <div>
+         <label>Retainer </label>
+         {% if all_profiles %}
+          <select name="business_profile_id">
+           <option value="global" {% if scope_kind != 'business_profile' %}selected{% endif %}> All()</option>
+           {% for p in all_profiles %}
+            <option value="{{ p['id'] }}"
+             {% if scope_kind == 'business_profile' and p['id'] == business_profile_id %}selected{% endif %}
+           >#{{ p['id'] }} · {{ p['name'] }}</option>
+           {% endfor %}
+          </select>
+         {% else %}
+          <input type="hidden" name="business_profile_id" value="global" />
+          <div class="muted" style="padding:6px 0;"> All()</div>
+         {% endif %}
+        </div>
+        <div>
+         <label class="req">Currency</label>
+         <select name="currency" required>
+          {% for c in currency_options %}
+           <option value="{{ c }}" {% if (currency or default_currency) == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+         </select>
+        </div>
+        <div class="span-full">
+         <label class="req">Amount</label>
+         <input name="amount" required placeholder=": 50000" />
+         <div class="help-text">Credits are applied automatically as negative adjustments.</div>
+        </div>
+        <div class="span-full">
+         <label>Notes (Select)</label>
+         <input name="memo" placeholder="" />
+        </div>
+        <div class="form-actions">
+         <button class="btn btn-danger" type="submit"> Registration</button>
+        </div>
+       </div>
+      </form>
+     </div>
+    </details>
+
+    <details class="card deposit-action">
+     <summary> <span class="muted text-sm">/ErrorEdit</span></summary>
+     <div class="deposit-action-body">
+      <form
+       method="post"
+       action="{{ url_for('billing_invoices.clients.client_deposit_adjust', client_id=client['id']) }}"
+       data-prevent-double-submit="true"
+       data-confirm="Retainer RegistrationNew (+/- Input)"
+     >
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+       <input type="hidden" name="next" value="{{ next_url }}" />
+       <div class="grid grid-2">
+        <div>
+         <label>Retainer </label>
+         {% if all_profiles %}
+          <select name="business_profile_id">
+           <option value="global" {% if scope_kind != 'business_profile' %}selected{% endif %}> All()</option>
+           {% for p in all_profiles %}
+            <option value="{{ p['id'] }}"
+             {% if scope_kind == 'business_profile' and p['id'] == business_profile_id %}selected{% endif %}
+           >#{{ p['id'] }} · {{ p['name'] }}</option>
+           {% endfor %}
+          </select>
+         {% else %}
+          <input type="hidden" name="business_profile_id" value="global" />
+          <div class="muted" style="padding:6px 0;"> All()</div>
+         {% endif %}
+        </div>
+        <div>
+         <label class="req">Currency</label>
+         <select name="currency" required>
+          {% for c in currency_options %}
+           <option value="{{ c }}" {% if (currency or default_currency) == c %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+         </select>
+        </div>
+        <div class="span-full">
+         <label class="req">Amount (+/-)</label>
+         <input name="amount" required placeholder=": 1000 -1000" />
+        </div>
+        <div class="span-full">
+         <label>Notes (Select)</label>
+         <input name="memo" placeholder="" />
+        </div>
+        <div class="form-actions">
+         <button class="btn btn-warning" type="submit"> Registration</button>
+        </div>
+       </div>
+      </form>
+     </div>
+    </details>
+   </div>
+  </div>
+ {% endif %}
+
+ <div class="card" style="margin-top:12px;">
+  <div class="page-header">
+   <h3 style="margin:0;"> </h3>
+   <div class="page-actions">
+    <div class="muted">Total {{ total_count }}items</div>
+   </div>
+  </div>
+
+  <div class="table-card" style="margin-top:10px;">
+   <table class="responsive table-compact" style="width:100%; border-collapse: collapse;">
+    <thead>
+     <tr>
+      <th style="text-align:left;">days</th>
+      <th style="text-align:left;">Business profile/Currency</th>
+      <th style="text-align:left;">Type</th>
+      <th style="text-align:right;">Amount</th>
+      <th style="text-align:left;">Notes</th>
+      <th style="text-align:left;">Link</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for e in entries %}
+      <tr>
+       {% set amt_minor = (e['amount_minor'] or 0) %}
+       {% set amt_class = 'pos' if amt_minor> 0 else ('neg' if amt_minor < 0 else 'zero') %}
+       {% set t = (e['entry_type'] or '') %}
+       {% if t == 'topup' %}
+        {% set type_label = '' %}
+        {% set type_pill = 'pill-success' %}
+       {% elif t == 'apply' %}
+        {% set type_label = '' %}
+        {% set type_pill = 'pill-warning' %}
+       {% elif t == 'cancel_apply' %}
+        {% set type_label = 'Cancel' %}
+        {% set type_pill = 'pill-info' %}
+       {% elif t == 'refund' %}
+        {% set type_label = '' %}
+        {% set type_pill = 'pill-danger' %}
+       {% elif t == 'adjust' %}
+        {% set type_label = '' %}
+        {% if amt_minor> 0 %}
+         {% set type_pill = 'pill-success' %}
+        {% elif amt_minor < 0 %}
+         {% set type_pill = 'pill-danger' %}
+        {% else %}
+         {% set type_pill = 'pill-warning' %}
+        {% endif %}
+       {% else %}
+        {% set type_label = t %}
+        {% set type_pill = '' %}
+       {% endif %}
+
+       <td data-label="days" class="text-nowrap">
+        {{ e['created_at']|local_dt }}
+        <div class="muted text-xs">#{{ e['id'] }}</div>
+       </td>
+       <td data-label="Business profile/Currency" class="text-nowrap">
+        {% if e['business_profile_id'] is not none %}
+         {% set bp = profiles_by_id.get(e['business_profile_id']) %}
+         <div class="text-strong">#{{ e['business_profile_id'] }}{% if bp %} · {{ bp['name'] }}{% endif %}</div>
+        {% else %}
+         <div class="text-strong"> All()</div>
+        {% endif %}
+        <div class="muted text-xs">{{ e['currency'] }}</div>
+       </td>
+       <td data-label="Type" class="text-nowrap">
+        <span class="pill {{ type_pill }}">{{ type_label }}</span>
+        {% if e['related_entry_id'] %}
+         <div class="muted text-xs">ref #{{ e['related_entry_id'] }}</div>
+        {% endif %}
+       </td>
+       <td data-label="Amount" class="right a_r text-nowrap">
+        <span class="deposit-amount {{ amt_class }}">
+         {% if amt_minor> 0 %}+{% endif %}{{ amt_minor|currency_minor(e['currency']) }}
+        </span>
+       </td>
+       <td data-label="Notes">{{ e['memo'] or '-' }}</td>
+       <td data-label="Link">
+        {% if e['related_invoice_id'] %}
+         <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=e['related_invoice_id']) }}">
+          {% if e['related_invoice_number'] %}{{ e['related_invoice_number'] }}{% else %}Invoice #{{ e['related_invoice_id'] }}{% endif %}
+         </a>
+        {% endif %}
+        {% if e['related_bank_transaction_id'] %}
+         {% if e['related_invoice_id'] %}<div class="muted text-xs">{% endif %}
+         TID: <span class="mono">{{ e['related_bank_transaction_id'] }}</span>
+         {% if e['related_invoice_id'] %}</div>{% endif %}
+        {% endif %}
+        {% if not e['related_invoice_id'] and not e['related_bank_transaction_id'] %}-{% endif %}
+        {% if e['created_by'] %}
+         <div class="muted text-xs">by #{{ e['created_by'] }}</div>
+        {% endif %}
+       </td>
+      </tr>
+     {% endfor %}
+     {% if not entries %}
+      <tr>
+       <td colspan="6" class="muted" style="padding:12px;">Display none.</td>
+      </tr>
+     {% endif %}
+    </tbody>
+   </table>
+  </div>
+
+  {% set deposit_ledger_pagination_args = request.args.to_dict(flat=True) %}
+  {% set _ = deposit_ledger_pagination_args.update({'client_id': client['id'], 'business_profile_id': business_profile_filter_value, 'currency': currency, 'q': q, 'per_page': per_page}) %}
+  {{ ui.pagination(
+   'billing_invoices.clients.client_deposit_ledger',
+   page,
+   total_pages,
+   deposit_ledger_pagination_args,
+   'Retainer Details Pagination',
+   url_for('billing_invoices.clients.client_deposit_ledger', client_id=client['id']),
+   ['client_id']
+  ) }}
+
+  <form method="get" class="filter-actions justify-content-center mt-3">
+   <input type="hidden" name="business_profile_id" value="{{ business_profile_filter_value }}" />
+   <input type="hidden" name="currency" value="{{ currency }}" />
+   <input type="hidden" name="q" value="{{ q }}" />
+   <label class="muted" style="font-size:13px;">Rows per page:</label>
+   <select name="per_page" onchange="this.form.submit()" style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;">
+    <option value="20" {% if per_page==20 %}selected{% endif %}>20 items</option>
+    <option value="50" {% if per_page==50 %}selected{% endif %}>50 items</option>
+    <option value="100" {% if per_page==100 %}selected{% endif %}>100 items</option>
+    <option value="200" {% if per_page==200 %}selected{% endif %}>200 items</option>
+   </select>
+  </form>
+ </div>
+{% endblock %}

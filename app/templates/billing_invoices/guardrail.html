@@ -1,0 +1,167 @@
+{% extends "billing_invoices/invoice_base.html" %}
+{% set app_title = "Billing Guardrail" %}
+
+{% block invoice_content %}
+<div class="container-fluid py-3">
+ <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+   <h3 class="fw-semibold mb-1">Billing Guardrail</h3>
+   <div class="text-muted small">Matter , , Invoice, Deposit Status Billing   .</div>
+  </div>
+  <form method="post" action="{{ url_for('billing_invoices.guardrail.refresh') }}" class="d-flex gap-2">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+   <input type="hidden" name="scan_limit" value="500" />
+   <button class="btn btn-primary btn-sm" type="submit">
+    <i class="bi bi-arrow-clockwise"></i> 
+   </button>
+  </form>
+ </div>
+
+ {% if sync_result %}
+  <div class="alert alert-light border small py-2">
+    : {{ sync_result.scanned }}items, {{ sync_result.created }}items, Updated {{ sync_result.updated }}items
+  </div>
+ {% endif %}
+
+ <div class="row g-3 mb-3">
+  <div class="col-md-3">
+   <div class="border rounded p-3 bg-white h-100">
+    <div class="text-muted small">column</div>
+    <div class="fs-4 fw-semibold">{{ summary.open_count }}</div>
+   </div>
+  </div>
+  <div class="col-md-3">
+   <div class="border rounded p-3 bg-white h-100">
+    <div class="text-muted small"></div>
+    <div class="fs-4 fw-semibold">{{ summary.reviewing_count }}</div>
+   </div>
+  </div>
+  <div class="col-md-3">
+   <div class="border rounded p-3 bg-white h-100">
+    <div class="text-muted small">Collection/ </div>
+    <div class="fs-4 fw-semibold text-danger">{{ summary.open_gap_minor|currency_minor('USD') }}</div>
+   </div>
+  </div>
+  <div class="col-md-3">
+   <div class="border rounded p-3 bg-white h-100">
+    <div class="text-muted small">/</div>
+    <div class="fs-4 fw-semibold">{{ summary.resolved_count + summary.dismissed_count }}</div>
+   </div>
+  </div>
+ </div>
+
+ <div class="card shadow-sm mb-3">
+  <div class="card-body">
+   <form method="get" class="row g-2 align-items-end">
+    <input type="hidden" name="refresh" value="0" />
+    <div class="col-md-2">
+     <label class="form-label small text-muted">Status</label>
+     <select class="form-select form-select-sm" name="status">
+      <option value="open" {% if selected_status == 'open' %}selected{% endif %}>column</option>
+      <option value="reviewing" {% if selected_status == 'reviewing' %}selected{% endif %}></option>
+      <option value="resolved" {% if selected_status == 'resolved' %}selected{% endif %}></option>
+      <option value="dismissed" {% if selected_status == 'dismissed' %}selected{% endif %}></option>
+      <option value="all" {% if selected_status == 'all' %}selected{% endif %}>All</option>
+     </select>
+    </div>
+    <div class="col-md-3">
+     <label class="form-label small text-muted"></label>
+     <select class="form-select form-select-sm" name="type">
+      <option value="">All</option>
+      {% for key, label in type_labels.items() %}
+       <option value="{{ key }}" {% if selected_type == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+     </select>
+    </div>
+    <div class="col-md-2">
+     <label class="form-label small text-muted"></label>
+     <select class="form-select form-select-sm" name="severity">
+      <option value="">All</option>
+      {% for key, label in severity_labels.items() %}
+       <option value="{{ key }}" {% if selected_severity == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+     </select>
+    </div>
+    <div class="col-md-3">
+     <label class="form-label small text-muted">Search</label>
+     <input class="form-control form-control-sm" name="q" value="{{ q }}" placeholder="Matter reference, , " />
+    </div>
+    <div class="col-md-2">
+     <button class="btn btn-outline-secondary btn-sm w-100" type="submit">times</button>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <div class="card shadow-sm">
+  <div class="table-responsive">
+   <table class="table table-hover align-middle mb-0">
+    <thead class="table-light">
+     <tr>
+      <th></th>
+      <th>Matter</th>
+      <th>Item</th>
+      <th class="text-end">Estimated</th>
+      <th class="text-end">Confirm</th>
+      <th class="text-end"></th>
+      <th>Status</th>
+      <th class="text-end">Actions</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for row in rows %}
+      <tr>
+       <td>
+        <div class="fw-semibold">{{ type_labels.get(row.finding_type, row.finding_type) }}</div>
+        <span class="badge {% if row.severity == 'high' %}text-bg-danger{% elif row.severity == 'medium' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+         {{ severity_labels.get(row.severity, row.severity) }}
+        </span>
+        <span class="badge text-bg-light border">{{ row.confidence }}%</span>
+       </td>
+       <td>
+        {% if row.matter_id %}
+         <a href="{{ url_for('case_work.case_detail', case_id=row.matter_id) }}">{{ row.our_ref or row.matter_id }}</a>
+        {% else %}
+         -
+        {% endif %}
+       </td>
+       <td>
+        <div class="fw-semibold">{{ row.title }}</div>
+        <div class="text-muted small">{{ row.detail or '-' }}</div>
+        <div class="text-muted small mt-1">{{ row.source_type }} #{{ row.source_id }}</div>
+       </td>
+       <td class="text-end">{{ row.expected_amount_minor|currency_minor(row.currency or 'USD') if row.expected_amount_minor is not none else '-' }}</td>
+       <td class="text-end">{{ row.actual_amount_minor|currency_minor(row.currency or 'USD') if row.actual_amount_minor is not none else '-' }}</td>
+       <td class="text-end fw-semibold {% if (row.gap_amount_minor or 0)> 0 %}text-danger{% endif %}">
+        {{ row.gap_amount_minor|currency_minor(row.currency or 'USD') if row.gap_amount_minor is not none else '-' }}
+       </td>
+       <td>
+        <span class="badge text-bg-light border">{{ status_labels.get(row.status, row.status) }}</span>
+        <div class="text-muted small mt-1">{{ row.last_seen_at|local_dt }}</div>
+       </td>
+       <td class="text-end">
+        <form method="post" action="{{ url_for('billing_invoices.guardrail.update_status', finding_id=row.id) }}" class="d-inline-flex gap-1">
+         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+         {% if row.status != 'reviewing' %}
+          <button class="btn btn-sm btn-outline-primary" name="status" value="reviewing" type="submit"></button>
+         {% endif %}
+         {% if row.status != 'resolved' %}
+          <button class="btn btn-sm btn-outline-success" name="status" value="resolved" type="submit"></button>
+         {% endif %}
+         {% if row.status != 'dismissed' %}
+          <button class="btn btn-sm btn-outline-secondary" name="status" value="dismissed" type="submit"></button>
+         {% endif %}
+        </form>
+       </td>
+      </tr>
+     {% else %}
+      <tr>
+       <td colspan="8" class="text-center text-muted py-5">Display Guardrail item none.</td>
+      </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+</div>
+{% endblock %}

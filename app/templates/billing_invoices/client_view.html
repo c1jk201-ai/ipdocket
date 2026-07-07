@@ -1,0 +1,611 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<style>
+ :root {
+  --sidebar-width: 340px;
+  --gap-size: 24px;
+  --card-radius: 12px;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  --primary-soft: #EAF4FF;
+  --primary-text: #005EA8;
+  --muted-text: #64748b;
+  --border-color: #e2e8f0;
+ }
+
+ .client-dashboard-layout {
+  display: grid;
+  gap: var(--gap-size);
+  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+ }
+
+ @media (min-width: 1024px) {
+  .client-dashboard-layout {
+   grid-template-columns: var(--sidebar-width) 1fr;
+   align-items: start;
+  }
+ }
+
+ /* Universal Card Style Overrides */
+ .card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  background: #fff;
+  overflow: hidden;
+  margin-bottom: 0 !important; /* Managed by grid gap */
+ }
+
+ .card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: #fff;
+  font-weight: 600;
+  font-size: 1.05em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+ }
+
+ .card-body {
+  padding: 20px;
+ }
+
+ /* Sidebar Styles */
+ .sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-size);
+ }
+
+ .profile-card .avatar {
+  width: 64px;
+  height: 64px;
+  background: var(--primary-soft);
+  color: var(--primary-text);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+ }
+
+ .info-row {
+  margin-bottom: 12px;
+ }
+ .info-label {
+  font-size: 13px;
+  color: var(--muted-text);
+  margin-bottom: 2px;
+ }
+ .info-val {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1e293b;
+  word-break: break-all;
+ }
+
+ /* Main Content Styles */
+ .main-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-size);
+ }
+
+ .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+ }
+
+ .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+ }
+
+ .stat-card {
+  background: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+ }
+ .stat-label { font-size: 13px; color: var(--muted-text); }
+ .stat-value { font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 4px; }
+ .stat-curr { font-size: 14px; font-weight: 600; color: var(--muted-text); margin-right: 4px; }
+
+ /* Tab-like Attachments */
+ .tab-like-header {
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  gap: 24px;
+  padding: 0 20px;
+ }
+ .tab-link {
+  padding: 16px 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted-text);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+ }
+ .tab-link.active {
+  color: var(--primary-text);
+  border-bottom-color: var(--primary-text);
+ }
+
+ /* Table tweaks */
+ .table-clean th { background: #f8fafc; font-weight: 600; color: var(--muted-text); text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; }
+ .table-clean td { vertical-align: middle; border-bottom: 1px solid #f1f5f9; padding: 12px 16px; }
+ .table-clean tr:last-child td { border-bottom: none; }
+
+ /* Reassign Bar Scoped */
+ #reassignBar {
+  background: #2f3542;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+ }
+ #reassignBar .btn-ghost { color: #ccc; }
+ #reassignBar .btn-ghost:hover { color: #fff; background: rgba(255,255,255,0.1); }
+</style>
+
+<div id="clientViewMeta" data-client-id="{{ client['id'] }}" style="display:none;"></div>
+
+<div class="client-dashboard-layout">
+
+ <!-- LEFT SIDEBAR -->
+ <aside class="sidebar-section">
+
+  <!-- 1. Client Profile -->
+  <div class="card profile-card">
+   <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-4">
+     <div class="avatar">{{ client['name'][:1] }}</div>
+     <div>
+      <h2 style="margin:0; font-size:20px; font-weight:700;">{{ client['name'] }}</h2>
+      <div style="font-size:13px; color:var(--muted-text); margin-top:2px;">ID: #{{ client['id'] }}</div>
+     </div>
+    </div>
+
+    <div class="info-row">
+     <div class="info-label">Email</div>
+     <div class="info-val">{{ client_email_display or '-' }}</div>
+    </div>
+    <div class="info-row">
+     <div class="info-label">Phone</div>
+     <div class="info-val">{{ client['phone'] or '-' }}</div>
+    </div>
+    <div class="info-row">
+     <div class="info-label">Contact</div>
+     <div class="info-val">{{ client_manager_display or '-' }}</div>
+    </div>
+    <div class="info-row">
+     <div class="info-label">Address</div>
+     <div class="info-val">{{ client_address_display or '-' }}</div>
+    </div>
+
+    <div class="info-row" style="margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
+     <div class="info-label">Internal Notes ( )</div>
+     <div style="font-size:14px; white-space:pre-wrap; color:#334155;">{{ (client['notes'] or '')|trim or '-' }}</div>
+     <div style="margin-top:8px;">
+      <a href="{{ url_for('billing_invoices.clients.edit_client', client_id=client['id']) }}#notes" class="btn btn-ghost btn-xs">Notes Edit</a>
+     </div>
+    </div>
+
+    <div style="margin-top:24px; display:flex; gap:8px; flex-wrap:wrap;">
+      <a href="{{ url_for('billing_invoices.clients.edit_client', client_id=client['id']) }}" class="btn btn-outline-secondary btn-sm flex-fill"> Edit</a>
+      {% set unified_mode = config.get('INVOICEAPP_UNIFIED_CLIENTS') %}
+      {% set crm_id = (client['id'] if unified_mode else (client.get('ipm_client_id') or None)) %}
+      {% if crm_id %}
+      <a href="/crm/clients/{{ crm_id }}" class="btn btn-outline-primary btn-sm flex-fill">CRM View</a>
+      {% else %}
+      <form method="post" action="{{ url_for('customers.sync_from_invoice_client') }}" class="flex-fill m-0" data-confirm="CRM Client /Link ? ">
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+       <input type="hidden" name="invoice_client_id" value="{{ client['id'] }}">
+       <input type="hidden" name="next" value="{{ url_for('billing_invoices.clients.view_client', client_id=client['id']) }}">
+       <button type="submit" class="btn btn-primary btn-sm w-100">CRM Link</button>
+      </form>
+      {% endif %}
+    </div>
+   </div>
+  </div>
+
+  <!-- 2. Deposit Summary -->
+  <div class="card">
+    <div class="card-header">
+      <span>Retainer balance</span>
+      <a href="{{ url_for('billing_invoices.clients.client_deposit_ledger', client_id=client['id']) }}" class="btn btn-ghost btn-ui-xs text-decoration-none"> &rarr;</a>
+    </div>
+    <div class="card-body" style="padding-top:12px;">
+      {% if deposit_balances_sorted and deposit_balances_sorted|length> 0 %}
+        <div class="d-flex flex-column gap-2">
+        {% for cur_code, bal_minor in deposit_balances_sorted %}
+          <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f8fafc;">
+            <span style="font-weight:600; color:var(--muted-text);">{{ cur_code }}</span>
+            <span style="font-weight:700; color:#0f172a;">{{ bal_minor|currency_minor(cur_code) }}</span>
+          </div>
+        {% endfor %}
+        </div>
+      {% else %}
+        <div class="text-center muted py-3"> </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 3. Business Info -->
+  <div class="card">
+    <div class="card-header">Business profile information</div>
+    <div class="card-body">
+      <div id="bizInfoGrid" class="d-flex flex-column gap-3">
+        {% macro biz_item(label, id, val) %}
+        <div>
+          <div class="info-label">{{ label }}</div>
+          <div id="{{ id }}" class="info-val">{{ val or '-' }}</div>
+        </div>
+        {% endmacro %}
+
+        {{ biz_item('Tax ID / EIN', 'biz-reg_number', biz_info['reg_number'] if biz_info else '') }}
+        {{ biz_item('Business name', 'biz-company_name', biz_info['company_name'] if biz_info else '') }}
+        {{ biz_item('Representative', 'biz-representative_name', biz_info['representative_name'] if biz_info else '') }}
+        {{ biz_item('Business category/Business activity', 'biz-business_type', biz_info['business_type'] if biz_info else '') }}
+        {{ biz_item('Tax documentation email', 'biz-tax_invoice_email', biz_info['tax_invoice_email'] if biz_info else '') }}
+      </div>
+
+      {% if not biz_info %}
+      <div class="muted small mt-3 text-center">
+        Business document Upload<br> Auto .
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 4. Attachments (Moved to Sidebar for easy access) -->
+  <div class="card">
+    <div class="card-header">
+      <span>File</span>
+      <span class="badge bg-light text-dark">{{ client_attachments|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div id="clientAttachDrop" class="p-3 text-center cursor-pointer transition-colors hover:bg-gray-50 bg-light" style="border-bottom:1px solid #eee;" title=" Image Paste">
+        <div style="font-size:13px; color:var(--primary-text);">+ File Add / Paste</div>
+        <input id="clientAttachInput" type="file" multiple style="display:none" />
+      </div>
+      <div id="clientAttachError" class="p-2 text-danger small" style="display:none"></div>
+
+      <ul id="clientAttachList" class="list-unstyled m-0">
+        {% for a in client_attachments %}
+        <li class="d-flex align-items-center p-3 border-bottom" data-id="{{ a['id'] }}">
+          <div class="flex-grow-1 overflow-hidden" style="margin-right:8px;">
+            <a href="{{ url_for('billing_invoices.clients.download_client_attachment', client_id=client['id'], att_id=a['id']) }}" class="text-truncate d-block fw-medium" style="max-width:180px;">{{ a['original_name'] }}</a>
+            <div class="muted small">{{ a['size']|filesizeformat }}</div>
+          </div>
+          <form method="post" action="{{ url_for('billing_invoices.clients.delete_client_attachment', client_id=client['id'], att_id=a['id']) }}" style="margin:0" data-confirm="Delete">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-ghost btn-xs text-danger" type="submit">&times;</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+ </aside>
+
+ <!-- MAIN CONTENT -->
+ <main class="main-section">
+
+   <!-- Stats Overview -->
+   <section>
+     <h3 class="mb-3 fw-bold" style="font-size:18px;">Billing </h3>
+     <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Invoice</div>
+        <div class="stat-value">{{ invoices|length }} <span style="font-size:14px; font-weight:400;">items</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Issued</div>
+        <div class="d-flex flex-column">
+        {% if invoiced_by_currency %}
+         {% for cur, amt in invoiced_by_currency.items() %}
+          <div class="stat-value"><span class="stat-curr">{{ cur }}</span>{{ "{:,.0f}".format(amt) }}</div>
+         {% endfor %}
+        {% else %}<div class="stat-value">-</div>{% endif %}
+        </div>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid #C8A24A;">
+        <div class="stat-label text-warning-dark">Outstanding balance</div>
+        <div class="d-flex flex-column">
+        {% if outstanding_by_currency %}
+         {% for cur, amt in outstanding_by_currency.items() %}
+          <div class="stat-value"><span class="stat-curr">{{ cur }}</span>{{ "{:,.0f}".format(amt) }}</div>
+         {% endfor %}
+        {% else %}<div class="stat-value">-</div>{% endif %}
+        </div>
+      </div>
+      <div class="stat-card" style="border-left: 4px solid #ef4444;">
+        <div class="stat-label text-danger">overdue</div>
+        <div class="d-flex flex-column">
+        {% if overdue_by_currency %}
+         {% for cur, amt in overdue_by_currency.items() %}
+          <div class="stat-value text-danger"><span class="stat-curr">{{ cur }}</span>{{ "{:,.0f}".format(amt) }}</div>
+         {% endfor %}
+        {% else %}<div class="stat-value">-</div>{% endif %}
+        </div>
+      </div>
+     </div>
+   </section>
+
+   <!-- Invoices Section -->
+   <section class="card">
+    <div class="card-header pb-0 border-0 pt-4 px-4 bg-white">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="m-0 fw-bold" style="font-size:18px;">Invoice history</h3>
+        <div class="d-flex gap-2">
+           <button id="toggleMoveBtn" type="button" class="btn btn-outline-secondary btn-sm">Invoice Go</button>
+          <a href="{{ url_for('billing_invoices.invoices.new_invoice') }}?client_id={{ client['id'] }}" class="btn btn-primary btn-sm">+ Invoice</a>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <form id="clientInvFilters" method="get" class="p-3 bg-light rounded mb-3 border">
+        <div class="row g-2 align-items-end">
+          <div class="col-6 col-md-auto">
+            <label class="small muted mb-1">Status</label>
+            <select name="status" class="form-select form-select-sm" style="min-width:100px;">
+              <option value="" {% if not status %}selected{% endif %}>{{ t('all') }}</option>
+              <option value="draft" {% if status=='draft' %}selected{% endif %}>{{ t('status_draft') }}</option>
+              <option value="sent" {% if status=='sent' %}selected{% endif %}>{{ t('status_sent') }}</option>
+              <option value="payment_pending" {% if status=='payment_pending' %}selected{% endif %}>{{ t('status_payment_pending') }}</option>
+              <option value="paid" {% if status=='paid' %}selected{% endif %}>{{ t('status_paid') }}</option>
+              <option value="tax_issued" {% if status=='tax_issued' %}selected{% endif %}>{{ t('status_tax_issued') }}</option>
+              <option value="cash_issued" {% if status=='cash_issued' %}selected{% endif %}>{{ t('status_cash_issued') }}</option>
+              <option value="processed" {% if status=='processed' %}selected{% endif %}>{{ t('status_processed') }}</option>
+              <option value="void" {% if status=='void' %}selected{% endif %}>{{ t('status_void') }}</option>
+            </select>
+          </div>
+          <div class="col-6 col-md-auto">
+             <label class="small muted mb-1">View </label>
+             <div class="btn-group btn-group-sm w-100">
+               <a class="btn btn-outline-secondary {% if view_mode=='all' %}active{% endif %}" href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id'], view_mode='all') }}">All</a>
+               <a class="btn btn-outline-secondary {% if view_mode=='outstanding' %}active{% endif %}" href="{{ url_for('billing_invoices.clients.view_client', client_id=client['id'], current_only=1) }}">outstanding</a>
+             </div>
+          </div>
+          <div class="col-auto ms-auto d-flex align-items-end">
+            <button type="submit" class="btn btn-sm btn-secondary">Apply</button>
+          </div>
+        </div>
+        <!-- Hidden fields to preserve state -->
+        <input type="hidden" name="currency" value="{{ currency }}">
+        <input type="hidden" name="sort" value="{{ sort }}">
+      </form>
+    </div>
+
+    <!-- Reassign Bar (Hidden by default) -->
+    <div id="reassignBar" style="display:none; margin: 0 20px 20px 20px;">
+     <form id="reassignForm" method="post" action="{{ url_for('billing_invoices.clients.reassign_invoices') }}" class="d-flex flex-wrap gap-3 align-items-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="from_client_id" value="{{ client['id'] }}" />
+
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary rounded-pill"><span id="invSelCount">0</span>Select</span>
+      </div>
+
+      <div class="vr bg-secondary opacity-50"></div>
+
+      <div class="d-flex flex-column gap-1">
+        <label class="small text-light opacity-75">Go Client Search</label>
+        <div class="position-relative">
+          <input type="text" id="destSearchInput" class="form-control form-control-sm text-dark" placeholder="Name/Email..." style="width:200px;">
+          <input type="hidden" name="dest_client_id">
+          <input type="hidden" name="dest_mode" value="existing">
+          <div id="destSearchResults" class="bg-white text-dark position-absolute shadow rounded w-100 mt-1" style="z-index:100; max-height:200px; overflow:auto; display:none;"></div>
+        </div>
+        <div id="destSelected" class="small text-warning"></div>
+      </div>
+
+      <button type="submit" class="btn btn-sm btn-primary" onclick="beforeReassignSubmit(event); return false;">Go</button>
+      <button type="button" class="btn btn-sm btn-outline-light" onclick="clearInvSelection();">Cancel</button>
+     </form>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-clean table-hover mb-0">
+        <thead>
+          <tr>
+            <th class="invSelCol ps-4" style="width:40px; display:none;"><input type="checkbox" id="selInvAll" class="form-check-input" /></th>
+            <th class="ps-4">No.</th>
+            <th>Business profile </th>
+            <th>Date</th>
+            <th class="text-end">Amount</th>
+            <th class="text-center">St</th>
+            <th class="pe-4 text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inv in invoices %}
+          <tr>
+            <td class="invSelCol ps-4" style="display:none;">
+              <input type="checkbox" class="selInv form-check-input" data-id="{{ inv['id'] }}" />
+            </td>
+            <td class="ps-4 fw-medium">
+              <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv['id']) }}" class="text-decoration-none text-dark hover-primary">
+                #{{ inv['number'] or inv['id'] }}
+              </a>
+            </td>
+            <td class="small muted">{{ inv['business_name'] }}</td>
+            <td class="small">{{ inv['issue_date'] }}</td>
+            <td class="text-end fw-bold">{{ "{:,.0f}".format(inv['total']) }} <span class="small muted fw-normal">{{ inv['currency'] }}</span></td>
+            <td class="text-center">
+              <span class="badge rounded-pill bg-{{ 'success' if inv['status']=='paid' else 'warning' if inv['status']=='sent' else 'secondary' }} fw-normal status-badge-{{ inv['status'] }}">
+                {{ status_label(inv['status']) }}
+              </span>
+            </td>
+            <td class="pe-4 text-end">
+              <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv['id']) }}" class="btn btn-xs btn-ghost text-muted">&rarr;</a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-5 muted">
+              Invoice history none.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+   </section>
+
+ </main>
+
+</div>
+
+<!-- Client Scripts (Attachment & Reassign Logic) -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // --- Attachment Logic ---
+    const drop = document.getElementById('clientAttachDrop');
+    const input = document.getElementById('clientAttachInput');
+    const list = document.getElementById('clientAttachList');
+    const err = document.getElementById('clientAttachError');
+    const meta = document.getElementById('clientViewMeta');
+    const clientId = meta ? Number(meta.dataset.clientId || '0') : 0;
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+
+    function setErr(msg){ err.textContent = msg; err.style.display = msg ? 'block':'none'; }
+
+    async function upload(files){
+     setErr('');
+     const fd = new FormData();
+     Array.from(files).forEach(f=>fd.append('files[]', f));
+     try{
+      // Simple visual loader
+      drop.style.opacity = '0.5';
+      const resp = await fetch(`${scriptRoot}/clients/${clientId}/attachments/upload`, { method:'POST', headers:{ 'X-CSRFToken': csrf }, body: fd});
+      const data = await resp.json();
+      if(!resp.ok || !data.success){ throw new Error(data.error || 'Upload failed'); }
+      window.location.reload(); // Simple reload to refresh list & biz info
+     }catch(e){ setErr(e.message); drop.style.opacity = '1'; }
+    }
+
+    drop.addEventListener('click', ()=> input.click());
+    input.addEventListener('change', (e)=>{ if(e.target.files.length) upload(e.target.files); });
+    drop.addEventListener('dragover', (e)=>{ e.preventDefault(); drop.style.backgroundColor='#EAF4FF'; });
+    drop.addEventListener('dragleave', ()=>{ drop.style.backgroundColor='#f8f9fa'; });
+    drop.addEventListener('drop', (e)=>{ e.preventDefault(); drop.style.backgroundColor='#f8f9fa'; if(e.dataTransfer.files.length) upload(e.dataTransfer.files); });
+
+    // --- Reassign / Move Logic ---
+    window.moveEnabled = false;
+    const toggleBtn = document.getElementById('toggleMoveBtn');
+    const bar = document.getElementById('reassignBar');
+    const selCols = document.querySelectorAll('.invSelCol');
+    const selAll = document.getElementById('selInvAll');
+    const selInvs = document.querySelectorAll('.selInv');
+
+    function toggleMove(on) {
+      window.moveEnabled = on;
+      toggleBtn.textContent = on ? 'Go Cancel' : 'Invoice Go';
+      toggleBtn.classList.toggle('btn-outline-secondary', !on);
+      toggleBtn.classList.toggle('btn-secondary', on);
+      selCols.forEach(el => el.style.display = on ? '' : 'none');
+      bar.style.display = on ? 'block' : 'none';
+      if(!on) {
+        selInvs.forEach(c => c.checked = false);
+        if(selAll) selAll.checked = false;
+        updateCount();
+      }
+    }
+
+    function updateCount(){
+      const cnt = document.querySelectorAll('.selInv:checked').length;
+      document.getElementById('invSelCount').textContent = cnt;
+    }
+
+    if(toggleBtn) toggleBtn.addEventListener('click', () => toggleMove(!window.moveEnabled));
+
+    if(selAll) selAll.addEventListener('change', () => {
+      selInvs.forEach(c => c.checked = selAll.checked);
+      updateCount();
+    });
+
+    selInvs.forEach(c => c.addEventListener('change', updateCount));
+
+    // Dest Search
+    const searchInput = document.getElementById('destSearchInput');
+    const searchRes = document.getElementById('destSearchResults');
+    const destInput = document.querySelector('input[name="dest_client_id"]');
+    const destDisplay = document.getElementById('destSelected');
+    let timer = null;
+
+    if(searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const q = e.target.value.trim();
+        if(timer) clearTimeout(timer);
+        if(!q) { searchRes.style.display='none'; return; }
+
+        timer = setTimeout(() => {
+          fetch(`{{ url_for('billing_invoices.clients.search_clients_json') }}?q=` + encodeURIComponent(q))
+          .then(r=>r.json())
+          .then(data => {
+            searchRes.innerHTML = '';
+            if(data.results && data.results.length) {
+              searchRes.style.display='block';
+              data.results.forEach(item => {
+                const d = document.createElement('div');
+                d.className = 'p-2 border-bottom hover-bg-light cursor-pointer';
+                d.textContent = `${item.name} (#${item.id})`;
+                d.onclick = () => {
+                  destInput.value = item.id;
+                  destDisplay.textContent = `Select: ${item.name}`;
+                  searchRes.style.display='none';
+                  searchInput.value = '';
+                };
+                searchRes.appendChild(d);
+              });
+            } else {
+              searchRes.style.display='none';
+            }
+          });
+        }, 300);
+      });
+    }
+
+    // Form Submit
+    window.beforeReassignSubmit = async function(e) {
+      if (e && typeof e.preventDefault === "function") e.preventDefault();
+      const form = document.getElementById('reassignForm');
+      const selected = document.querySelectorAll('.selInv:checked');
+      if(selected.length === 0) { try { await window.AppAlert('Go Select an invoice.', { title: "Confirm" }); } catch (e2) {} return false; }
+      if(!destInput.value) { try { await window.AppAlert('Go target Client Select.', { title: "Confirm" }); } catch (e2) {} return false; }
+
+      // Clean old hidden inputs
+      form.querySelectorAll('input[name="invoice_ids[]"]').forEach(i=>i.remove());
+      selected.forEach(cb => {
+        const hi = document.createElement('input');
+        hi.type = 'hidden'; hi.name = 'invoice_ids[]'; hi.value = cb.dataset.id;
+        form.appendChild(hi);
+      });
+
+      if(!await window.AppConfirm(`${selected.length}items Invoice Go ? `)) return false;
+
+      try { form.submit(); } catch (e3) {}
+      return false;
+    }
+
+    window.clearInvSelection = function() {
+      toggleMove(false);
+    }
+  });
+</script>
+{% endblock %}

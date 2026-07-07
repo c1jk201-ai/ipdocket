@@ -1,0 +1,186 @@
+{# Floating Productivity Panel (P1)
+   - Matter view context
+   - Ctrl+K search, document suggestions, tasks, and docket items
+#}
+
+{% if not (hide_productivity_fab|default(false)) %}
+<div class="app-prod-fab">
+  <button type="button" class="btn btn-primary btn-sm shadow-sm" id="ipmProdOpenBtn">
+    Tasks <span class="badge bg-light text-dark ms-1" id="ipmTodoBadge">0</span>
+  </button>
+</div>
+
+<div class="card shadow-sm app-prod-panel d-none" id="ipmProdPanel">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="fw-semibold">Tasks <span class="text-muted small" id="ipmTodoScopeLabel"></span></div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="ipmTodoRefreshBtn" data-todo-refresh>Refresh</button>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="ipmCmdkBtn">Ctrl+K</button>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="ipmDocSuggestBtn">Analyze document</button>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="list-group list-group-flush" id="ipmTodoList">
+      <div class="p-3 text-muted small">Loading…</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# Ctrl+K command palette overlay #}
+<div class="app-cmdk" id="ipmCmdk" aria-hidden="true">
+  <div class="app-cmdk-backdrop" id="ipmCmdkBackdrop"></div>
+  <div class="app-cmdk-dialog card shadow-sm">
+    <div class="card-body">
+      <input class="form-control" id="ipmCmdkInput" placeholder='Search matters, clients, invoices, deadlines, or actions' autocomplete="off">
+    </div>
+    <div class="list-group list-group-flush" id="ipmCmdkResults"></div>
+  </div>
+</div>
+
+{# Document suggest modal (simple custom modal) #}
+<div class="app-cmdk" id="ipmDocSuggest" aria-hidden="true">
+  <div class="app-cmdk-backdrop" id="ipmDocBackdrop"></div>
+  <div class="app-cmdk-dialog card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Document upload to docket items or tasks</div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="ipmDocCloseBtn">Close</button>
+    </div>
+    <div class="card-body">
+      <input type="file" class="form-control" id="ipmDocSuggestFile" accept=".pdf,.txt,.eml">
+      <div class="d-flex justify-content-end gap-2 mt-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" id="ipmDocRunBtn">Analyze</button>
+        <button type="button" class="btn btn-sm btn-primary" id="ipmDocApplyBtn" disabled>Apply</button>
+      </div>
+      <div class="mt-3" id="ipmDocSuggestResults">
+        <div class="text-muted small">Upload a PDF, text, or email file to suggest docket items and tasks.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Quick Add modal (global) #}
+<div class="app-cmdk" id="ipmQuickAdd" aria-hidden="true">
+  <div class="app-cmdk-backdrop" id="ipmQuickAddBackdrop"></div>
+  <div class="app-quickadd-dialog card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Quick Add</div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="ipmQuickAddCloseBtn">Close</button>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label class="form-label small text-muted">Matter</label>
+        <div class="input-group input-group-sm">
+          <input class="form-control" id="ipmQuickAddMatterInput" placeholder="Matter Search (: INV-2025...)" autocomplete="off">
+          <button class="btn btn-outline-secondary" type="button" id="ipmQuickAddMatterClearBtn">Reset</button>
+        </div>
+        <div class="list-group small mt-2 app-quickadd-results" id="ipmQuickAddMatterResults"></div>
+        <div class="small text-muted mt-2" id="ipmQuickAddMatterSelected"></div>
+        <input type="hidden" id="ipmQuickAddMatterId">
+      </div>
+
+      <ul class="nav nav-tabs mb-3" id="ipmQuickAddTabs">
+        <li class="nav-item">
+          <button class="nav-link active" type="button" data-pane="docket">Docket item</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" type="button" data-pane="workflow">Task</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" type="button" data-pane="invoice">Invoice</button>
+        </li>
+      </ul>
+
+      <div class="app-quickadd-pane active" data-pane="docket">
+        <form id="ipmQuickAddDocketForm" class="row g-2">
+          <div class="col-12">
+            <label class="form-label small">Docket item</label>
+            <input class="form-control form-control-sm" name="title" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Due date</label>
+            <input class="form-control form-control-sm" type="date" name="due_date" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Priority</label>
+            <select class="form-select form-select-sm" name="priority">
+              <option value="MEDIUM" selected>MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Assignee ID (optional)</label>
+            <input class="form-control form-control-sm" name="assignee_id" placeholder=": 123">
+          </div>
+          <div class="col-12">
+            <div class="text-danger small d-none" id="ipmQuickAddDocketError"></div>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button class="btn btn-sm btn-primary" type="submit">Create docket item</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="app-quickadd-pane" data-pane="workflow">
+        <form id="ipmQuickAddWorkflowForm" class="row g-2">
+          <div class="col-12">
+            <label class="form-label small">Task</label>
+            <input class="form-control form-control-sm" name="title" required>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Statutory deadline</label>
+            <input class="form-control form-control-sm" type="date" name="legal_due_date">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Template</label>
+            <select class="form-select form-select-sm" name="template_key">
+              <option value="DEFAULT" selected>DEFAULT</option>
+              <option value="OA">OA</option>
+              <option value="FILING">FILING</option>
+              <option value="APPEAL">APPEAL</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Assignee ID (optional)</label>
+            <input class="form-control form-control-sm" name="assignee_id" placeholder=": 123">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Reviewer ID (optional)</label>
+            <input class="form-control form-control-sm" name="manager_assignee_id" placeholder=": 456">
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label small">Priority</label>
+            <select class="form-select form-select-sm" name="priority">
+              <option value="MEDIUM" selected>MEDIUM</option>
+              <option value="HIGH">HIGH</option>
+              <option value="LOW">LOW</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <div class="text-danger small d-none" id="ipmQuickAddWorkflowError"></div>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button class="btn btn-sm btn-primary" type="submit">Create task</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="app-quickadd-pane" data-pane="invoice">
+        <form id="ipmQuickAddInvoiceForm" class="row g-2">
+          <div class="col-12">
+            <div class="small text-muted">Select a matter to create an invoice.</div>
+          </div>
+          <div class="col-12">
+            <div class="text-danger small d-none" id="ipmQuickAddInvoiceError"></div>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button class="btn btn-sm btn-primary" type="submit">Create invoice</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="app-toast-wrap" id="ipmToastWrap"></div>

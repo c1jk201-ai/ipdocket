@@ -1,0 +1,75 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header">
+ <h2 style="margin: 0">Tax documentation profiles</h2>
+ <div class="page-actions">
+  {% if is_admin() %}
+  <a class="btn btn-primary" href="{{ url_for('mgmt_info.new_tax_invoice_profile') }}">+ Add provider</a>
+  {% endif %}
+ </div>
+</div>
+
+<div class="card" style="margin-top: 12px">
+ <div class="table-card">
+  <table class="responsive table-compact">
+   <thead>
+    <tr>
+     <th>Provider name</th>
+     <th>Registration No.</th>
+     <th>Representative</th>
+     <th>Email</th>
+     <th>Phone</th>
+     <th>Default</th>
+     <th></th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for p in profiles %}
+    <tr>
+     <td style="font-weight: 600" data-label="Provider name">{{ p['name'] }}</td>
+     <td class="muted" data-label="Registration No.">{{ p['tax_id'] or '-' }}</td>
+     <td class="muted" data-label="Representative">{{ p['ceo_name'] or '-' }}</td>
+     <td class="muted" data-label="Email">{{ p['email'] or '-' }}</td>
+     <td class="muted" data-label="Phone">{{ p['phone'] or '-' }}</td>
+     <td data-label="Default">
+      {% if p.get('is_default') %}
+       <span class="badge in">Default</span>
+      {% else %}
+       -
+      {% endif %}
+     </td>
+     <td class="right nowrap" data-label="Actions">
+      <a class="btn btn-ghost" href="{{ url_for('mgmt_info.view_tax_invoice_profile', profile_id=p['id']) }}">View</a>
+      {% if is_admin() %}
+      <a class="btn" href="{{ url_for('mgmt_info.edit_tax_invoice_profile', profile_id=p['id']) }}">Edit</a>
+      {% if not p.get('is_default') %}
+      <form
+       method="post"
+       action="{{ url_for('mgmt_info.set_tax_invoice_profile_default', profile_id=p['id']) }}"
+       style="display: inline"
+       data-confirm="Set this provider as default ? "
+     >
+       <button class="btn" type="submit">Default</button>
+      </form>
+      {% endif %}
+      <form
+       method="post"
+       action="{{ url_for('mgmt_info.delete_tax_invoice_profile', profile_id=p['id']) }}"
+       style="display: inline"
+       data-confirm="Delete this provider ? "
+     >
+       <button class="btn btn-danger" type="submit">Delete</button>
+      </form>
+      {% endif %}
+     </td>
+    </tr>
+    {% else %}
+    <tr>
+     <td colspan="7" class="muted">No providers.</td>
+    </tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+{% endblock %}

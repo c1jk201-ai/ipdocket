@@ -1,0 +1,149 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set _comm_type = (comm_type if comm_type is defined else 'M')|upper %}
+{% set _record_label = '' if _comm_type == 'R' else ('(Currency)' if _comm_type == 'T' else '') %}
+<div class="container py-4" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-semibold mb-0">{% if view_mode %}{{ _record_label }} Search{% elif is_edit %}{{ _record_label }} Edit{% else %} Add{% endif %}</h5>
+    {% if popup %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.close()">Close</button>
+    {% endif %}
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" action="{{ form_action or url_for('case_work.history_letter_new', case_id=case_id, popup=popup) }}">
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label">Log Type</label>
+        {% if _comm_type == 'R' %}
+        <input type="hidden" name="comm_type" value="R" />
+        <input class="form-control" type="text" value="" disabled />
+        {% else %}
+        <select id="comm_type" class="form-select" name="comm_type" {% if view_mode %}disabled{% endif %}>
+          <option value="M" {% if _comm_type != 'T' %}selected{% endif %}> (Email )</option>
+          <option value="T" {% if _comm_type == 'T' %}selected{% endif %}> (Currency)</option>
+        </select>
+        {% endif %}
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Upload/Send Type</label>
+        <select id="direction" class="form-select" name="direction" {% if view_mode %}disabled{% endif %}>
+          <option value="" {% if (row.direction if row is defined else '') != 'Send' %}selected{% endif %}>Upload</option>
+          <option value="Send" {% if (row.direction if row is defined else '') == 'Send' %}selected{% endif %}>Send</option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Contact</label>
+        <div class="position-relative">
+          <input
+            id="historyLetterManager"
+            class="form-control"
+            type="text"
+            name="manager"
+            value="{{ selected_staff_value or default_staff_value or '' }}"
+            autocomplete="off"
+            placeholder="Contact Search   Input"
+            {% if not view_mode %}
+            data-staff-search="1"
+            data-staff-menu="historyLetterManagerMenu"
+            data-staff-items='{{ (staff_options or []) | tojson }}'
+            {% endif %}
+            {% if view_mode %}readonly{% endif %}
+          />
+          <div
+            id="historyLetterManagerMenu"
+            class="list-group position-absolute w-100 shadow-sm"
+            style="display:none; z-index:20; top:100%; left:0; right:0; margin-top:4px; max-height:240px; overflow:auto;"
+          ></div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">Title/Content</label>
+        <input class="form-control" type="text" name="subject" placeholder=": OA Notice Upload" value="{{ row.subject if row is defined else '' }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label">target</label>
+        <input class="form-control" type="text" name="to_text" placeholder=": Applicant / Client name / ForeignRepresentative" value="{{ row.to_text if row is defined else '' }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Upload</label>
+        <input id="received_date" class="form-control" type="date" name="received_date" value="{{ (row.received_date if row is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Send</label>
+        <input id="sent_date" class="form-control" type="date" name="sent_date" value="{{ (row.sent_date if row is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Due date</label>
+        <input class="form-control" type="date" name="due_date" value="{{ (row.due_date if row is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Process</label>
+        <input class="form-control" type="date" name="done_date" value="{{ (row.done_date if row is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">File</label>
+        {% if not view_mode %}
+        <input class="form-control" type="file" name="files" multiple />
+        <div class="form-text">Upload  Matter  HISTORY “”from Confirm/Download .</div>
+        {% endif %}
+
+        <!-- Existing files display for view mode or edit mode -->
+        {% if existing_files %}
+        <ul class="list-group mt-2">
+          {% for ef in existing_files %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+             <span>{{ ef.original_name }}</span>
+             {% if not view_mode %}
+             <!-- Only show remove checkbox in edit mode -->
+             <div>
+               <input class="form-check-input me-1" type="checkbox" name="remove_files" value="{{ ef.file_asset_id }}" id="rm_{{ ef.file_asset_id }}">
+               <label class="form-check-label text-danger" for="rm_{{ ef.file_asset_id }}">Delete</label>
+             </div>
+             {% else %}
+               <!-- In view mode, maybe link to downloadNew But for now just list them -->
+               <a href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=ef.file_asset_id) }}" class="btn btn-sm btn-outline-primary">Download</a>
+             {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+
+      {% if not view_mode %}
+      <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Save</button>
+        {% if popup %}
+          <button type="button" class="btn btn-outline-secondary" onclick="window.close()">Cancel</button>
+        {% else %}
+          <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=case_id) }}">Cancel</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </form>
+</div>
+
+<script src="{{ static_asset_url('js/case_form.js') }}"></script>
+<script>
+  const dir = document.getElementById("direction");
+  const recv = document.getElementById("received_date");
+  const sent = document.getElementById("sent_date");
+
+  function syncDir() {
+    const isReceive = dir.value === "";
+    recv.disabled = !isReceive;
+    sent.disabled = isReceive;
+  }
+  dir.addEventListener("change", syncDir);
+  syncDir();
+</script>
+{% endblock %}

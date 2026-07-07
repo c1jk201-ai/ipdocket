@@ -1,0 +1,120 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">Trial Balance</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}">Reports Home</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_income_statement_report', start_date=start_date, end_date=end_date, business_profile_id=business_profile_id, currency=currency) }}">Income Statement</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_balance_sheet_report', as_of_date=end_date, business_profile_id=business_profile_id, currency=currency) }}">Balance Sheet</a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-3">
+    <label>Period start</label>
+    <input type="date" name="start_date" value="{{ start_date }}">
+   </div>
+   <div class="col-12 col-md-3">
+    <label>Period end</label>
+    <input type="date" name="end_date" value="{{ end_date }}">
+   </div>
+   <div class="col-12 col-md-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for bp in business_profiles %}
+      <option value="{{ bp.id }}" {% if business_profile_id and business_profile_id|string == bp.id|string %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-2">
+    <label>Currency</label>
+    <select name="currency">
+     {% for cur in currencies %}
+      <option value="{{ cur }}" {% if currency == cur %}selected{% endif %}>{{ cur }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-1">
+    <label>0 USD</label>
+    <div class="d-flex align-items-center h-100">
+     <input type="checkbox" name="include_zero" value="1" {% if include_zero %}checked{% endif %}>
+    </div>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('business.accounting_trial_balance_report') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-4">times Period</div>
+   <div class="text-lg text-strong">{{ period_label }}</div>
+   <div class="muted text-sm">Currency: {{ currency }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4"> </div>
+   <div class="text-xl text-bold">{{ totals.period_debit|currency(currency) }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4"> </div>
+   <div class="text-xl text-bold">{{ totals.period_credit|currency(currency) }}</div>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <div class="overflow-auto">
+   <table class="table">
+    <thead>
+     <tr>
+      <th></th>
+      <th>Account</th>
+      <th></th>
+      <th class="right"> </th>
+      <th class="right"> </th>
+      <th class="right"> </th>
+      <th class="right"> </th>
+      <th class="right"> </th>
+      <th class="right"> </th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+     <tr>
+      <td>{{ row.code }}</td>
+      <td>{{ row.name }}</td>
+      <td>{{ row.type }}</td>
+      <td class="right">{{ row.opening_debit|currency(currency) }}</td>
+      <td class="right">{{ row.opening_credit|currency(currency) }}</td>
+      <td class="right">{{ row.period_debit|currency(currency) }}</td>
+      <td class="right">{{ row.period_credit|currency(currency) }}</td>
+      <td class="right">{{ row.ending_debit|currency(currency) }}</td>
+      <td class="right">{{ row.ending_credit|currency(currency) }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="9" class="muted"> table none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+     <tr>
+      <th colspan="3">Total</th>
+      <th class="right">{{ totals.opening_debit|currency(currency) }}</th>
+      <th class="right">{{ totals.opening_credit|currency(currency) }}</th>
+      <th class="right">{{ totals.period_debit|currency(currency) }}</th>
+      <th class="right">{{ totals.period_credit|currency(currency) }}</th>
+      <th class="right">{{ totals.ending_debit|currency(currency) }}</th>
+      <th class="right">{{ totals.ending_credit|currency(currency) }}</th>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+ </div>
+{% endblock %}

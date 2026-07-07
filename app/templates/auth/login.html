@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height: calc(100vh - 120px);">
+  <div class="w-100" style="max-width: 420px;">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+          <div>
+            <div class="text-uppercase small text-muted fw-semibold d-flex align-items-center gap-2">
+              {% if branding.logo_path %}
+              <img src="{{ brand_asset_url(branding.logo_path) }}" alt="{{ branding.short_name }}" style="max-width:32px;max-height:24px;object-fit:contain;">
+              {% endif %}
+              <span>{{ branding.app_name }}</span>
+            </div>
+            <h1 class="h4 fw-bold mb-1">Sign in</h1>
+            <div class="text-muted small">Access the US-centered docketing and billing workspace.</div>
+          </div>
+          <div class="d-flex align-items-center justify-content-center rounded-circle"
+               style="width:44px;height:44px;background: rgba(57,72,103,0.08); color: var(--app-indigo);">
+            <i class="bi bi-shield-lock"></i>
+          </div>
+        </div>
+
+        {% if auth_warning %}
+        <div class="alert alert-warning small mb-3">
+          {{ auth_warning }}
+        </div>
+        {% endif %}
+
+        {% if show_password_login %}
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input
+              type="text"
+              class="form-control"
+              id="username"
+              name="username"
+              autocomplete="username"
+              required
+              autofocus
+            />
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Sign in</button>
+        </form>
+        {% else %}
+        <div class="alert alert-danger small mb-0">
+          Password sign-in is disabled. Set
+          <code>ALLOW_PASSWORD_LOGIN=true</code> in the server configuration.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

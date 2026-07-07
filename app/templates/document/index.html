@@ -1,0 +1,381 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-semibold m-0">Document</h3>
+    <div class="btn-group">
+      <a href="{{ url_for('docs.index', view='public') }}" class="btn btn-sm {{ 'btn-primary' if page == 'public' else 'btn-outline-secondary' }}">Document</a>
+      <a href="{{ url_for('docs.index', view='private') }}" class="btn btn-sm {{ 'btn-primary' if page == 'private' else 'btn-outline-secondary' }}">itemsDocument</a>
+      <a href="{{ url_for('docs.index', view='letters') }}" class="btn btn-sm {{ 'btn-primary' if page == 'letters' else 'btn-outline-secondary' }}"></a>
+    </div>
+  </div>
+
+  {% if page in ['public','private'] %}
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-header bg-light py-2">
+            <span class="fw-bold small text-secondary">Folder</span>
+        </div>
+        <div class="card-body p-2">
+            <div class="input-group input-group-sm mb-2">
+                <input id="f-name" class="form-control" placeholder=" Folder" />
+                <button id="f-add" class="btn btn-outline-primary">Add</button>
+            </div>
+            <ul class="list-group list-group-flush small" id="folder-list" style="max-height: 500px; overflow-y: auto;"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-9">
+      <div class="card h-100">
+          <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+              <span class="fw-bold small text-secondary">Document List</span>
+              <div>
+                  <form id="up-form" class="d-flex align-items-center gap-2 m-0">
+                      <input type="file" class="form-control form-control-sm" id="up-file" style="width: 200px;" />
+                      <input id="up-title" class="form-control form-control-sm" placeholder="Title(Select)" style="width: 150px;" />
+                      <button class="btn btn-sm btn-primary" type="submit">Upload</button>
+                  </form>
+              </div>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0" id="doc-table" style="font-size: 0.9rem;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">Title</th>
+                        <th style="width: 100px;"></th>
+                        <th style="width: 80px;" class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+          </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const SCOPE = "{{ 'private' if page=='private' else 'public' }}";
+    let currentFolderId = null;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    async function loadFolders(){
+      try {
+        const r = await fetch(`{{ url_for('docs.api_folders') }}?scope=${SCOPE}`);
+        const rows = await r.json();
+        const ul = document.getElementById('folder-list');
+        ul.innerHTML='';
+
+        rows.forEach(f=>{
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center px-2 py-1';
+            li.style.cursor = 'pointer';
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'folder-name text-truncate';
+            nameSpan.textContent = f.name || '';
+            li.appendChild(nameSpan);
+            li.dataset.id = f.id;
+
+            li.onclick = () => {
+                // Active state
+                ul.querySelectorAll('.list-group-item').forEach(el => el.classList.remove('active'));
+                li.classList.add('active');
+                currentFolderId = f.id;
+                loadDocs();
+            };
+            ul.appendChild(li);
+        });
+
+        // Select first folder by default if available
+        if(rows.length > 0 && !currentFolderId){
+            currentFolderId = rows[0].id;
+            ul.children[0].classList.add('active');
+            loadDocs();
+        }
+      } catch(e) { console.error("Load Folders Error", e); }
+    }
+
+    async function loadDocs(){
+      if(!currentFolderId){ document.querySelector('#doc-table tbody').innerHTML='<tr><td colspan="3" class="text-center text-muted py-3">Folder Select.</td></tr>'; return; }
+
+      try {
+        const r = await fetch(`{{ url_for('docs.api_docs') }}?folder_id=${currentFolderId}`);
+        const rows = await r.json();
+        const tb = document.querySelector('#doc-table tbody');
+        tb.innerHTML='';
+
+        if (rows.length === 0) {
+            tb.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Document none.</td></tr>';
+            return;
+        }
+
+        rows.forEach(d=>{
+            const tr = document.createElement('tr');
+            const v = d.current_version_id || '';
+            const href = v ? `/document/download/${v}` : '';
+
+            const titleTd = document.createElement('td');
+            titleTd.className = 'ps-3 align-middle';
+            titleTd.textContent = d.title || '';
+
+            const sizeTd = document.createElement('td');
+            sizeTd.className = 'align-middle text-muted';
+            sizeTd.textContent = `${(d.size || 0).toLocaleString()} B`;
+
+            const actionTd = document.createElement('td');
+            actionTd.className = 'text-center align-middle';
+            if (v) {
+                const link = document.createElement('a');
+                link.className = 'btn btn-xs btn-outline-secondary py-0';
+                link.href = href;
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-download';
+                link.appendChild(icon);
+                link.appendChild(document.createTextNode(' '));
+                actionTd.appendChild(link);
+            }
+
+            tr.appendChild(titleTd);
+            tr.appendChild(sizeTd);
+            tr.appendChild(actionTd);
+            tb.appendChild(tr);
+        })
+      } catch(e) { console.error("Load Docs Error", e); }
+    }
+
+    document.getElementById('f-add').onclick = async()=>{
+      const name = document.getElementById('f-name').value.trim(); if(!name) return;
+      await fetch(`{{ url_for('docs.api_folders') }}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'X-CSRFToken': csrfToken},
+        body: JSON.stringify({name, scope: SCOPE})
+      });
+      document.getElementById('f-name').value=''; loadFolders();
+    };
+
+    document.getElementById('up-form').onsubmit = async(e)=>{
+      e.preventDefault();
+      if(!currentFolderId) { try { await window.AppAlert("Folder  Select.", { title: "Confirm" }); } catch (e2) {} return; }
+      const fd = new FormData();
+      const file = document.getElementById('up-file').files[0]; if(!file) return;
+      fd.append('file', file);
+      fd.append('folder_id', currentFolderId);
+      fd.append('title', document.getElementById('up-title').value);
+      if (csrfToken) fd.append('csrf_token', csrfToken);
+
+      try {
+        const res = await fetch(`{{ url_for('docs.api_upload') }}`, {method:'POST', body: fd});
+        if (!res.ok) {
+          let msg = `Upload failed (${res.status})`;
+          try {
+            const err = await res.json();
+            if (err && err.error) msg = err.error;
+          } catch (e) {}
+          throw new Error(msg);
+        }
+        document.getElementById('up-file').value = '';
+        document.getElementById('up-title').value = '';
+        loadDocs();
+      } catch(e) { try { await window.AppAlert("Upload failed: " + (e.message || e), { title: "Error" }); } catch (e2) {} }
+    };
+
+    // Initial load
+    loadFolders();
+  </script>
+
+  {% elif page == 'letters' %}
+    <div class="card">
+      <div class="card-header bg-light py-2">
+          <span class="fw-bold small text-secondary"> Log </span>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-4 align-items-end p-3 bg-light rounded border">
+          <div class="col-auto">
+              <label class="small text-muted mb-1">Type</label>
+              <select id="l-dir" class="form-select form-select-sm"><option value="out"></option><option value="in">Receive</option></select>
+          </div>
+          <div class="col-auto">
+              <label class="small text-muted mb-1">Case ID</label>
+              <input id="l-case" type="number" class="form-control form-control-sm" placeholder="ID" style="width: 80px;" />
+          </div>
+          <div class="col-12 col-md-4">
+              <label class="small text-muted mb-1">Title</label>
+              <input id="l-title" class="form-control form-control-sm" placeholder=" Title" />
+          </div>
+          <div class="col-12 col-md-3">
+              <label class="small text-muted mb-1"></label>
+              <input id="l-corr" class="form-control form-control-sm" placeholder="Receive/" />
+          </div>
+          <div class="col-auto">
+              <label class="small text-muted mb-1"></label>
+              <input id="l-date" type="date" class="form-control form-control-sm" />
+          </div>
+          <div class="col-auto">
+              <button id="l-add" class="btn btn-sm btn-primary px-3">Log Add</button>
+          </div>
+        </div>
+
+        <table class="table table-sm table-hover mb-0" id="l-table" style="font-size: 0.9rem;">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 60px;">Type</th>
+                    <th style="width: 120px;">Case Ref</th>
+                    <th>Title</th>
+                    <th style="width: 150px;"></th>
+                    <th style="width: 100px;"></th>
+                    <th style="width: 80px;">Status</th>
+                    <th style="width: 60px;"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <script>
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      const caseDetailBase = {{ url_for('case_work.case_detail', case_id='__CASE__')|tojson }};
+
+      function buildCaseUrl(caseId) {
+        const helper = window.AppLinks;
+        if (helper && typeof helper.buildCaseUrl === 'function') {
+          return helper.buildCaseUrl(caseId);
+        }
+        if (!caseId) return '';
+        return caseDetailBase.replace('__CASE__', encodeURIComponent(String(caseId)));
+      }
+      async function loadLetters(){
+        try {
+            const r = await fetch("{{ url_for('docs.api_letters') }}");
+            if (!r.ok) {
+                throw new Error(` List  Failed (${r.status})`);
+            }
+            const rows = await r.json();
+            const tb = document.querySelector('#l-table tbody');
+            tb.innerHTML='';
+
+            if(rows.length === 0) {
+                tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Log  none.</td></tr>';
+                return;
+            }
+
+            rows.forEach(x=>{
+            const tr = document.createElement('tr');
+
+            const dirTd = document.createElement('td');
+            dirTd.className = 'align-middle text-center';
+            const dirBadge = document.createElement('span');
+            const isOut = x.direction === 'out';
+            dirBadge.className = isOut
+                ? 'badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill'
+                : 'badge bg-success bg-opacity-10 text-success border border-success rounded-pill';
+            dirBadge.style.fontWeight = 'normal';
+            dirBadge.textContent = isOut ? '' : 'Receive';
+            dirTd.appendChild(dirBadge);
+
+            const refTd = document.createElement('td');
+            refTd.className = 'align-middle small fw-bold';
+            const refText = x.case_ref || '-';
+            if (x.matter_id) {
+              const refLink = document.createElement('a');
+              refLink.href = buildCaseUrl(x.matter_id);
+              refLink.target = '_blank';
+              refLink.rel = 'noopener';
+              refLink.className = 'text-decoration-none';
+              refLink.textContent = refText;
+              refTd.appendChild(refLink);
+            } else {
+              refTd.textContent = refText;
+            }
+
+            const titleTd = document.createElement('td');
+            titleTd.className = 'align-middle';
+            titleTd.textContent = x.title || '';
+
+            const corrTd = document.createElement('td');
+            corrTd.className = 'align-middle';
+            corrTd.textContent = x.correspondent || '';
+
+            const dateTd = document.createElement('td');
+            dateTd.className = 'align-middle text-muted small';
+            dateTd.textContent = x.date || '';
+
+            const statusTd = document.createElement('td');
+            statusTd.className = 'align-middle small';
+            statusTd.textContent = x.status || '';
+
+            const actionTd = document.createElement('td');
+            actionTd.className = 'align-middle text-end';
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn btn-xs btn-outline-danger py-0';
+            delBtn.addEventListener('click', () => delLetter(x.id));
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-trash';
+            delBtn.appendChild(icon);
+            actionTd.appendChild(delBtn);
+
+            tr.appendChild(dirTd);
+            tr.appendChild(refTd);
+            tr.appendChild(titleTd);
+            tr.appendChild(corrTd);
+            tr.appendChild(dateTd);
+            tr.appendChild(statusTd);
+            tr.appendChild(actionTd);
+            tb.appendChild(tr);
+            });
+        } catch(e) { console.error("Load Letters Error", e); }
+      }
+
+      async function delLetter(id){
+          const ok = await window.AppConfirm(' Log Delete ? ');
+          if(ok) {
+              try {
+                const res = await fetch(`{{ url_for('docs.api_letters') }}/${id}`, {method:'DELETE', headers:{'X-CSRFToken': csrfToken}});
+                if (!res.ok) {
+                  let msg = `Delete Failed (${res.status})`;
+                  try {
+                    const err = await res.json();
+                    if (err && err.error) msg = err.error;
+                  } catch (e) {}
+                  throw new Error(msg);
+                }
+                loadLetters();
+              } catch (e) {
+                try { await window.AppAlert("Delete Failed: " + (e.message || e), { title: "Error" }); } catch (e2) {}
+              }
+            }
+      }
+
+      document.getElementById('l-add').onclick = async()=>{
+        const dir = document.getElementById('l-dir').value;
+        const cid = document.getElementById('l-case').value;
+        const tit = document.getElementById('l-title').value;
+        const cor = document.getElementById('l-corr').value;
+        const dat = document.getElementById('l-date').value;
+        if(!tit) { try { await window.AppAlert('Title Required.', { title: "Confirm" }); } catch (e2) {} return; }
+
+        try {
+          const res = await fetch("{{ url_for('docs.api_letters') }}", {
+            method:'POST',
+            headers:{'Content-Type':'application/json', 'X-CSRFToken': csrfToken},
+            body:JSON.stringify({direction:dir, case_id:cid, title:tit, correspondent:cor, date:dat})
+          });
+          if (!res.ok) {
+            let msg = `Save failed (${res.status})`;
+            try {
+              const err = await res.json();
+              if (err && err.error) msg = err.error;
+            } catch (e) {}
+            throw new Error(msg);
+          }
+          loadLetters();
+          ['l-case','l-title','l-corr','l-date'].forEach(i=>document.getElementById(i).value='');
+        } catch (e) {
+          try { await window.AppAlert("Save failed: " + (e.message || e), { title: "Error" }); } catch (e2) {}
+        }
+      };
+
+      loadLetters();
+    </script>
+  {% endif %}
+</div>
+{% endblock %}

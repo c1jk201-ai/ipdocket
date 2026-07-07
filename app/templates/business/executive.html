@@ -1,0 +1,173 @@
+{% extends "layouts/base.html" %}
+
+{% macro money_lines(values) -%}
+  {% if values %}
+    {% for cur, amount in values.items() %}
+      <div>{{ amount|currency_minor(cur) }}</div>
+    {% endfor %}
+  {% else %}
+    <div>-</div>
+  {% endif %}
+{%- endmacro %}
+
+{% block content %}
+{% set finance = analytics.finance %}
+{% set workflow = analytics.workflow %}
+{% set crm = analytics.crm %}
+{% set guardrail = analytics.guardrail %}
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h3 class="fw-semibold mb-1">Executive Analytics</h3>
+      <div class="text-muted small">Revenue, , Auto ROI, Deadline , outstanding   to .</div>
+    </div>
+    <form method="get" class="d-flex flex-wrap align-items-end gap-2">
+      <div>
+        <label class="form-label small text-muted mb-1">Start</label>
+        <input class="form-control form-control-sm" type="date" name="start" value="{{ start.isoformat() }}" />
+      </div>
+      <div>
+        <label class="form-label small text-muted mb-1">Closed</label>
+        <input class="form-control form-control-sm" type="date" name="end" value="{{ end.isoformat() }}" />
+      </div>
+      <button class="btn btn-outline-secondary btn-sm" type="submit">Search</button>
+    </form>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <div class="border rounded bg-white p-3 h-100">
+        <div class="text-muted small">Billing Revenue</div>
+        <div class="fs-5 fw-semibold">{{ money_lines(finance.billed_by_currency) }}</div>
+        <div class="text-muted small mt-1">Invoice {{ finance.invoice_count }}items</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="border rounded bg-white p-3 h-100">
+        <div class="text-muted small"></div>
+        <div class="fs-4 fw-semibold">{{ analytics.collection_rate }}%</div>
+        <div class="text-muted small mt-1"> {{ money_lines(finance.paid_by_currency) }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="border rounded bg-white p-3 h-100">
+        <div class="text-muted small">Total </div>
+        <div class="fs-5 fw-semibold">{{ money_lines(finance.gross_margin_by_currency) }}</div>
+        <div class="text-muted small mt-1">Registration Expense  </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="border rounded bg-white p-3 h-100">
+        <div class="text-muted small">outstanding </div>
+        <div class="fs-4 fw-semibold {% if analytics.ar_risk_score >= 60 %}text-danger{% elif analytics.ar_risk_score >= 30 %}text-warning{% endif %}">
+          {{ analytics.ar_risk_score }}/100
+        </div>
+        <div class="text-muted small mt-1">overdue Invoice {{ finance.overdue_invoice_count }}items</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold"> / </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Done Task</span><strong>{{ workflow.completed_count }}items</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted"> </span><strong>{{ workflow.avg_lead_days }}</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">TC </span><strong>{{ workflow.total_hours }}h</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Auto ROI</div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Auto  Done</span><strong>{{ workflow.automation_count }}items</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted"> </span><strong>{{ workflow.automation_saved_hours }}h</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">TC  </span><strong>{{ workflow.automation_roi_rate }}%</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">Deadline </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">Deadline  Done</span><strong>{{ workflow.on_time_rate }}%</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted">column  Task</span><strong class="{% if workflow.overdue_open_count %}text-danger{% endif %}">{{ workflow.overdue_open_count }}items</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">7  Deadline</span><strong>{{ workflow.urgent_open_count }}items</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold">CRM </div>
+        <div class="card-body">
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted"> </span><strong>{{ crm.new_leads }}items</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-bottom">
+            <span class="text-muted"> </span><strong>{{ crm.open_opportunities }}items</strong>
+          </div>
+          <div class="d-flex justify-content-between py-2">
+            <span class="text-muted">In Progress  Revenue</span><strong>{{ "{:,.0f}".format(crm.forecast_amount or 0) }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">Billing Guardrail Top</span>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('billing_invoices.guardrail.index') }}">All</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Matter</th>
+                <th>Item</th>
+                <th class="text-end"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in analytics.top_guardrails %}
+                <tr>
+                  <td>{{ row.our_ref or row.matter_id or '-' }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ row.title }}</div>
+                    <div class="text-muted small">{{ row.finding_type }}</div>
+                  </td>
+                  <td class="text-end">{{ row.gap_amount_minor|currency_minor(row.currency or 'USD') if row.gap_amount_minor is not none else '-' }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="3" class="text-center text-muted py-4">column Guardrail item none.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

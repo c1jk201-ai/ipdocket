@@ -1,0 +1,295 @@
+{% macro render_extra_field(cell, cell_id) %}
+  {% set key = cell[1] %}
+  {% set widget = cell[2] %}
+  {% set value = ((form_data.get(key) if form_data else '') or '') %}
+  {% set meta = ((field_meta or {}).get(key) or {}) %}
+  {% set is_required = meta.get('required', False) %}
+
+  {% if widget == 'blank' or key == '__blank__' %}
+    &nbsp;
+  {% elif widget == 'date' %}
+    <div class="input-group input-group-sm">
+      <input
+        id="{{ cell_id }}"
+        class="form-control form-control-sm"
+        type="date"
+        name="{{ key }}"
+        value="{{ value }}"
+        {% if is_required %}required{% endif %}
+      />
+      <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Set to today">Today</button>
+    </div>
+  {% elif widget == 'textarea' %}
+    <textarea
+      id="{{ cell_id }}"
+      class="form-control form-control-sm"
+      name="{{ key }}"
+      rows="2"
+      {% if is_required %}required{% endif %}
+    >{{ value }}</textarea>
+  {% elif widget == 'number' %}
+    <input
+      id="{{ cell_id }}"
+      class="form-control form-control-sm"
+      type="number"
+      name="{{ key }}"
+      value="{{ value }}"
+      {% if is_required %}required{% endif %}
+    />
+  {% elif widget == 'client_search' %}
+    {% set hidden_name = 'client_id' if key == 'client_name' else key ~ '_id' %}
+    {% set hidden_id = cell_id ~ '-id' %}
+    {% set menu_id = cell_id ~ '-menu' %}
+    <div class="position-relative">
+      <input
+        id="{{ cell_id }}"
+        class="form-control form-control-sm"
+        type="text"
+        name="{{ key }}"
+        value="{{ value }}"
+        autocomplete="off"
+        data-client-search="1"
+        data-client-id="{{ hidden_id }}"
+        data-client-menu="{{ menu_id }}"
+        placeholder="Search contact"
+        {% if is_required %}required{% endif %}
+      />
+      <input
+        id="{{ hidden_id }}"
+        type="hidden"
+        name="{{ hidden_name }}"
+        value="{{ (form_data.get(hidden_name) if form_data else '') or '' }}"
+      />
+      <div
+        id="{{ menu_id }}"
+        class="list-group position-absolute w-100 shadow"
+        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+      ></div>
+      <div class="d-flex gap-2 mt-1">
+        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">Create contact</a>
+        <span class="text-muted small">Search by name, email, or registration number</span>
+      </div>
+    </div>
+  {% elif key == 'image' %}
+    <div class="image-dropzone border rounded p-2 text-center small" data-image-dropzone="1">
+      <input type="hidden" name="image" value="{{ value }}" data-image-value="1" />
+      <input type="file" name="image_file" accept="image/*" class="d-none" data-image-file="1" />
+      <div class="image-preview mb-2" data-image-preview="1">
+        {% if value %}
+          <div class="text-muted small">Current value: {{ value }}</div>
+        {% else %}
+          <div class="text-muted small">Drag and drop here or click</div>
+        {% endif %}
+      </div>
+      <div class="d-flex justify-content-center gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-image-select="1">Select file</button>
+        <button type="button" class="btn btn-sm btn-outline-danger" data-image-clear="1">Delete</button>
+      </div>
+    </div>
+  {% elif widget == 'select_yn' %}
+    {% set vl = value|lower %}
+    <div class="d-flex flex-wrap gap-3">
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="{{ key }}" id="{{ cell_id }}-empty" value="" {% if not value %}checked{% endif %}>
+        <label class="form-check-label" for="{{ cell_id }}-empty">Select</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="{{ key }}" id="{{ cell_id }}-yes" value="Yes" {% if vl in ['yes','y','1','true'] %}checked{% endif %}>
+        <label class="form-check-label" for="{{ cell_id }}-yes">Yes</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="radio" name="{{ key }}" id="{{ cell_id }}-no" value="No" {% if vl in ['no','n','0','false'] %}checked{% endif %}>
+        <label class="form-check-label" for="{{ cell_id }}-no">No</label>
+      </div>
+    </div>
+  {% elif widget == 'select' and meta.get('options') %}
+    <select
+      id="{{ cell_id }}"
+      class="form-select form-select-sm"
+      name="{{ key }}"
+      {% if is_required %}required{% endif %}
+    >
+      <option value="" {% if not value %}selected{% endif %}>Select</option>
+      {% for opt in (meta.get('options') or []) %}
+        {% set opt_value = opt.get('value', '') %}
+        {% set opt_label = opt.get('label', opt_value) %}
+        <option value="{{ opt_value }}" {% if value == opt_value %}selected{% endif %}>{{ opt_label }}</option>
+      {% endfor %}
+    </select>
+  {% elif widget in [
+    'select_filing_type',
+    'select_invention_grade',
+    'select_department',
+    'select_stand_reason',
+    'select_design_filing_type',
+    'select_design_filing_kind',
+    'select_tm_filing_type',
+    'select_tm_right_type',
+    'select_tm_type',
+    'select_tm_registration_payment_term',
+    'select_litigation_right_type',
+    'select_litigation_case',
+    'select_litigation_court',
+    'select_litigation_result',
+    'select_deadline_type'
+  ] %}
+    {% if widget == 'select_filing_type' %}
+      {% set options = filing_type_options %}
+    {% elif widget == 'select_invention_grade' %}
+      {% set options = invention_grade_options %}
+    {% elif widget == 'select_department' %}
+      {% set options = department_options %}
+    {% elif widget == 'select_stand_reason' %}
+      {% set options = stand_reason_options %}
+    {% elif widget == 'select_design_filing_type' %}
+      {% set options = design_filing_type_options %}
+    {% elif widget == 'select_design_filing_kind' %}
+      {% set options = design_filing_kind_options %}
+    {% elif widget == 'select_tm_filing_type' %}
+      {% set options = tm_filing_type_options %}
+    {% elif widget == 'select_tm_right_type' %}
+      {% set options = tm_right_type_options %}
+    {% elif widget == 'select_tm_type' %}
+      {% set options = tm_type_options %}
+    {% elif widget == 'select_tm_registration_payment_term' %}
+      {% set options = tm_registration_payment_term_options %}
+    {% elif widget == 'select_litigation_right_type' %}
+      {% set options = litigation_right_type_options %}
+    {% elif widget == 'select_litigation_case' %}
+      {% set options = litigation_case_name_options %}
+    {% elif widget == 'select_litigation_court' %}
+      {% set options = litigation_court_options %}
+    {% elif widget == 'select_litigation_result' %}
+      {% set options = litigation_decision_options %}
+    {% else %}
+      {% set options = ['INTERNAL', 'LEGAL'] %}
+    {% endif %}
+    <select
+      id="{{ cell_id }}"
+      class="form-select form-select-sm"
+      name="{{ key }}"
+      {% if is_required %}required{% endif %}
+    >
+      <option value="" {% if not value %}selected{% endif %}>Select</option>
+      {% for opt in (options or []) %}
+        <option value="{{ opt }}" {% if value == opt %}selected{% endif %}>{{ opt }}</option>
+      {% endfor %}
+    </select>
+  {% else %}
+    <input
+      id="{{ cell_id }}"
+      class="form-control form-control-sm"
+      type="text"
+      name="{{ key }}"
+      value="{{ value }}"
+      {% if is_required %}required{% endif %}
+    />
+  {% endif %}
+{% endmacro %}
+
+{% macro render_extra_sections(title, sections, slug) %}
+  <hr class="my-4" />
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">{{ title }}</h5>
+    <span class="small text-muted">Registry and management fields</span>
+  </div>
+  {% for section in sections %}
+    {% set pairs = section[1] %}
+    {% if pairs %}
+      <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <div class="fw-bold">{{ section[0] }}</div>
+        <div></div>
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-sm small align-middle mb-0" style="table-layout: fixed; min-width: 980px;">
+          <colgroup>
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+          </colgroup>
+          <tbody>
+            {% for pair in pairs %}
+              {% set left_cell = pair[0] %}
+              {% set right_cell = pair[1] %}
+              {% set left_is_basic = left_cell[1] in basic_hidden_fields %}
+              {% set right_is_basic = right_cell[1] in basic_hidden_fields %}
+              {% if not (left_is_basic and right_is_basic) %}
+                {% if left_is_basic and not right_is_basic %}
+                  {% set left_cell = right_cell %}
+                  {% set left_is_basic = False %}
+                  {% set right_cell = blank_cell %}
+                  {% set right_is_basic = True %}
+                {% elif right_is_basic and not left_is_basic %}
+                  {% set right_cell = blank_cell %}
+                  {% set right_is_basic = True %}
+                {% endif %}
+                <tr>
+                  {% set left_label = left_cell[0] ~ (' *' if ((field_meta or {}).get(left_cell[1]) or {}).get('required', False) else '') %}
+                  <th class="text-center{% if left_is_basic %} d-none{% endif %}">{{ '' if left_is_basic else left_label }}</th>
+                  <td class="{% if left_is_basic %}d-none{% endif %}">
+                    {% if not left_is_basic %}
+                      {{ render_extra_field(left_cell, slug ~ '-' ~ loop.index ~ '-l-' ~ left_cell[1]) }}
+                    {% endif %}
+                  </td>
+                  {% set right_label = right_cell[0] ~ (' *' if ((field_meta or {}).get(right_cell[1]) or {}).get('required', False) else '') %}
+                  <th class="text-center{% if right_is_basic %} d-none{% endif %}">{{ '' if right_is_basic else right_label }}</th>
+                  <td class="{% if right_is_basic %}d-none{% endif %}">
+                    {% if not right_is_basic %}
+                      {{ render_extra_field(right_cell, slug ~ '-' ~ loop.index ~ '-r-' ~ right_cell[1]) }}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  {% endfor %}
+{% endmacro %}
+
+{% if is_dom_pat %}
+  {% set dom_sections = [
+    ('Management', (dom_patent_fields or [])[0:14]),
+    ('Applicant / title', (dom_patent_fields or [])[14:23]),
+    ('Filing / publication', (dom_patent_fields or [])[23:34]),
+    ('Priority / examination', (dom_patent_fields or [])[34:51]),
+    ('Registration / review', (dom_patent_fields or [])[51:78]),
+    ('Close / memo', (dom_patent_fields or [])[78:])
+  ] %}
+  {% set dom_sections = dom_patent_fields|case_field_sections(dom_sections) %}
+  {{ render_extra_sections('Domestic ' ~ patent_label ~ ' Registry', dom_sections, 'dom-patent') }}
+{% elif is_dom_design %}
+  {% set dom_sections = [
+    ('Management', (dom_design_fields or [])[0:14]),
+    ('Image / filing', (dom_design_fields or [])[14:25]),
+    ('Applicant / design', (dom_design_fields or [])[25:38]),
+    ('Priority / registration', (dom_design_fields or [])[38:57]),
+    ('Review / close', (dom_design_fields or [])[57:])
+  ] %}
+  {% set dom_sections = dom_design_fields|case_field_sections(dom_sections) %}
+  {{ render_extra_sections('Domestic Design Registry', dom_sections, 'dom-design') }}
+{% elif is_dom_tm %}
+  {% set dom_sections = [
+    ('Management', (dom_trademark_fields or [])[0:15]),
+    ('Image / filing', (dom_trademark_fields or [])[15:28]),
+    ('Applicant / mark', (dom_trademark_fields or [])[28:39]),
+    ('Priority / registration', (dom_trademark_fields or [])[39:57]),
+    ('Review / close', (dom_trademark_fields or [])[57:])
+  ] %}
+  {% set dom_sections = dom_trademark_fields|case_field_sections(dom_sections) %}
+  {{ render_extra_sections('Domestic Trademark Registry', dom_sections, 'dom-trademark') }}
+{% elif is_litigation %}
+  {% set litigation_sections = [
+    ('Proceedings / litigation', litigation_fields or [])
+  ] %}
+  {% set litigation_sections = litigation_fields|case_field_sections(litigation_sections) %}
+  {{ render_extra_sections('Proceedings / Litigation', litigation_sections, 'litigation') }}
+{% elif is_misc %}
+  {% set misc_sections = [
+    ('Other matter', misc_fields or [])
+  ] %}
+  {% set misc_sections = misc_fields|case_field_sections(misc_sections) %}
+  {{ render_extra_sections('Other Matter', misc_sections, 'misc') }}
+{% endif %}

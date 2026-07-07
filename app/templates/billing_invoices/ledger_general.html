@@ -1,0 +1,148 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">TotalAccountLedger</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_ledger_accounts') }}">Account</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">table</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}"> </a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period start</label>
+    <input type="date" name="start_date" value="{{ start_date }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period end</label>
+    <input type="date" name="end_date" value="{{ end_date }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">(All)</option>
+     {% for bp in business_profiles %}
+     <option value="{{ bp.id }}" {% if business_profile_id==bp.id %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   {% if account %}
+    <input type="hidden" name="account_id" value="{{ account.id }}">
+   {% endif %}
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('business.accounting_general_ledger') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ {% if account %}
+  <div class="card" style="margin-top:12px;">
+   <div class="grid grid-3">
+    <div>
+     <div class="muted">Account</div>
+     <div style="font-weight:600;">{{ account.code }} · {{ account.name }}</div>
+    </div>
+    <div>
+     <div class="muted"></div>
+     <div style="font-weight:600;">{{ account.type }}</div>
+    </div>
+    <div>
+     <div class="muted"> </div>
+     <div style="font-weight:600;">{{ opening_balance|currency(ledger_currency or 'USD') }}</div>
+    </div>
+   </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+   <div style="overflow:auto;">
+    <table class="table">
+     <thead>
+      <tr>
+       <th>days</th>
+       <th>Notes</th>
+       <th class="right"></th>
+       <th class="right"></th>
+       <th class="right"></th>
+       <th>Currency</th>
+      </tr>
+     </thead>
+     <tbody>
+     {% for row in rows %}
+      <tr>
+       <td>
+        {% if row.entry_id %}
+         <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=row.entry_id) }}">{{ row.entry_date }}</a>
+        {% else %}
+         {{ row.entry_date }}
+        {% endif %}
+       </td>
+       <td>
+        {% if row.entry_id %}
+         <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=row.entry_id) }}">{{ row.memo or row.description or '-' }}</a>
+        {% else %}
+         {{ row.memo or row.description or '-' }}
+        {% endif %}
+       </td>
+       <td class="right">{{ row.debit|currency(row.currency or 'USD') }}</td>
+       <td class="right">{{ row.credit|currency(row.currency or 'USD') }}</td>
+       <td class="right">{{ row.balance|currency(row.currency or 'USD') }}</td>
+       <td>{{ row.currency or 'USD' }}</td>
+      </tr>
+     {% else %}
+      <tr>
+       <td colspan="6" class="muted"> none.</td>
+      </tr>
+     {% endfor %}
+     </tbody>
+    </table>
+   </div>
+  </div>
+ {% else %}
+  <div class="card" style="margin-top:12px;">
+   <div style="overflow:auto;">
+    <table class="table">
+     <thead>
+      <tr>
+       <th></th>
+       <th>Account</th>
+       <th></th>
+       <th class="right"></th>
+       <th class="right"></th>
+       <th class="right"></th>
+       <th>Details</th>
+      </tr>
+     </thead>
+     <tbody>
+     {% for row in rows %}
+      <tr>
+       <td>
+        <a class="text-decoration-none" href="{{ url_for('business.accounting_general_ledger', account_id=row.id, start_date=start_date, end_date=end_date, business_profile_id=bp_filter) }}">{{ row.code }}</a>
+       </td>
+       <td>
+        <a class="text-decoration-none" href="{{ url_for('business.accounting_general_ledger', account_id=row.id, start_date=start_date, end_date=end_date, business_profile_id=bp_filter) }}">{{ row.name }}</a>
+       </td>
+       <td>{{ row.type }}</td>
+       <td class="right">{{ row.debit|currency(ledger_currency or 'USD') }}</td>
+       <td class="right">{{ row.credit|currency(ledger_currency or 'USD') }}</td>
+       <td class="right">{{ (row.debit - row.credit)|currency(ledger_currency or 'USD') }}</td>
+       <td>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('business.accounting_general_ledger', account_id=row.id, start_date=start_date, end_date=end_date, business_profile_id=bp_filter) }}">View</a>
+       </td>
+      </tr>
+     {% else %}
+      <tr>
+       <td colspan="7" class="muted">Account none.</td>
+      </tr>
+     {% endfor %}
+     </tbody>
+    </table>
+   </div>
+  </div>
+ {% endif %}
+{% endblock %}

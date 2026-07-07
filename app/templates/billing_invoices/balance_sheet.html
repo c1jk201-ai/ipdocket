@@ -1,0 +1,133 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">Balance Sheet</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}">Reports Home</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_trial_balance_report', end_date=as_of_date, business_profile_id=business_profile_id, currency=currency) }}">Trial Balance</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_income_statement_report', end_date=as_of_date, business_profile_id=business_profile_id, currency=currency) }}">Income Statement</a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-4">
+    <label>reference date</label>
+    <input type="date" name="as_of_date" value="{{ as_of_date }}">
+   </div>
+   <div class="col-12 col-md-4">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for bp in business_profiles %}
+      <option value="{{ bp.id }}" {% if business_profile_id and business_profile_id|string == bp.id|string %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-4">
+    <label>Currency</label>
+    <select name="currency">
+     {% for cur in currencies %}
+      <option value="{{ cur }}" {% if currency == cur %}selected{% endif %}>{{ cur }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('business.accounting_balance_sheet_report') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <div class="muted text-sm mb-4">reference date</div>
+   <div class="text-lg text-strong">{{ as_of_date }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Total assets</div>
+   <div class="text-xl text-bold">{{ report.total_assets|currency(currency) }}</div>
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-4">Total liabilities and equity</div>
+   <div class="text-xl text-bold">{{ report.total_liabilities_and_equity|currency(currency) }}</div>
+  </div>
+ </div>
+
+ <div class="grid grid-3 mt-12">
+  <div class="card">
+   <h3 class="mt-0">Assets</h3>
+   <table class="table">
+    <tbody>
+    {% for row in report.assets %}
+     <tr>
+      <td>{{ row.code }} · {{ row.name }}</td>
+      <td class="right">{{ row.amount|currency(currency) }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="2" class="muted">Assets No accounts.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+     <tr>
+      <th>Total</th>
+      <th class="right">{{ report.total_assets|currency(currency) }}</th>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+
+  <div class="card">
+   <h3 class="mt-0">Liabilities</h3>
+   <table class="table">
+    <tbody>
+    {% for row in report.liabilities %}
+     <tr>
+      <td>{{ row.code }} · {{ row.name }}</td>
+      <td class="right">{{ row.amount|currency(currency) }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="2" class="muted">Liabilities No accounts.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+     <tr>
+      <th>Total</th>
+      <th class="right">{{ report.total_liabilities|currency(currency) }}</th>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+
+  <div class="card">
+   <h3 class="mt-0">Equity</h3>
+   <table class="table">
+    <tbody>
+    {% for row in report.equities %}
+     <tr>
+      <td>{{ row.code }} · {{ row.name }}</td>
+      <td class="right">{{ row.amount|currency(currency) }}</td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="2" class="muted">Equity No accounts.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+    <tfoot>
+     <tr>
+      <th>Total</th>
+      <th class="right">{{ report.total_equity|currency(currency) }}</th>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+ </div>
+{% endblock %}

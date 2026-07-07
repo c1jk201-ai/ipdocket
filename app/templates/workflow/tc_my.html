@@ -1,0 +1,196 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container-fluid mt-3" style="max-width: 1200px;">
+  <div class="d-flex align-items-start justify-content-between mb-3">
+    <div>
+      <h3 class="fw-semibold mb-1">My TC</h3>
+      <div class="text-muted small">Enter or edit TC hours for tasks assigned to you.</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('stats.tc_stats') }}">TC dashboard</a>
+      <a class="btn btn-sm btn-outline-primary" href="{{ export_url }}">CSV download</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+          <label class="form-label small mb-1">Date basis</label>
+          <select class="form-select form-select-sm" name="basis">
+            <option value="completed" {% if (filters.basis or '') == 'completed' %}selected{% endif %}>Completed date</option>
+            <option value="created" {% if (filters.basis or '') == 'created' %}selected{% endif %}>Registration date</option>
+            <option value="due" {% if (filters.basis or '') == 'due' %}selected{% endif %}>Due date</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Start</label>
+          <input type="date" class="form-control form-control-sm" name="start" value="{{ filters.start or '' }}" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">End</label>
+          <input type="date" class="form-control form-control-sm" name="end" value="{{ filters.end or '' }}" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Status</label>
+          <select class="form-select form-select-sm" name="status">
+            <option value="all" {% if (filters.status or '') == 'all' %}selected{% endif %}>All</option>
+            <option value="Pending" {% if (filters.status or '') == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="In Progress" {% if (filters.status or '') == 'In Progress' %}selected{% endif %}>In Progress</option>
+            <option value="Completed" {% if (filters.status or '') == 'Completed' %}selected{% endif %}>Completed</option>
+            <option value="Abandoned" {% if (filters.status or '') == 'Abandoned' %}selected{% endif %}>Abandoned</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">View</label>
+          <select class="form-select form-select-sm" name="show">
+            <option value="missing" {% if (filters.show or '') == 'missing' %}selected{% endif %}>TC Missing</option>
+            <option value="all" {% if (filters.show or '') == 'all' %}selected{% endif %}>All</option>
+            <option value="tc" {% if (filters.show or '') == 'tc' %}selected{% endif %}>TC Input</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">TC target</label>
+          <select class="form-select form-select-sm" name="tc_scope">
+            <option value="candidate" {% if (filters.tc_scope or '') == 'candidate' %}selected{% endif %}>TC candidate</option>
+            <option value="work" {% if (filters.tc_scope or '') == 'work' %}selected{% endif %}>WORK</option>
+            <option value="mgmt" {% if (filters.tc_scope or '') == 'mgmt' %}selected{% endif %}>MGMT</option>
+            <option value="all" {% if (filters.tc_scope or '') == 'all' %}selected{% endif %}>All non-renewal</option>
+          </select>
+        </div>
+        <div class="col">
+          <label class="form-label small mb-1">Matter</label>
+          <input class="form-control form-control-sm" name="case_q" value="{{ filters.case_q or '' }}" placeholder="Our Ref or matter ID" />
+        </div>
+        <div class="col-auto">
+          <label class="form-label small mb-1">Rows</label>
+          <select class="form-select form-select-sm" name="limit">
+            {% for n in (100, 300, 500, 1000) %}
+              <option value="{{ n }}" {% if (filters.limit or '') == (n|string) %}selected{% endif %}>{{ n }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
+        </div>
+      </form>
+      <div class="form-text mt-2">
+        Default view shows completed tasks from the last 30 days that still need TC.
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Display</div>
+        <div class="fw-semibold fs-5">{{ summary.count or 0 }} items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Total TC</div>
+        <div class="fw-semibold fs-5">{{ summary.total_hours or 0 }}h</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2">
+        <div class="text-muted small">TC Input</div>
+        <div class="fw-semibold fs-5">{{ summary.tc_count or 0 }} items</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="border rounded p-2">
+        <div class="text-muted small">Missing(Done)</div>
+        <div class="fw-semibold fs-5">{{ summary.missing_count or 0 }} items</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">List</div>
+      <div class="text-muted small">Bulk save TC hours for the rows shown below.</div>
+    </div>
+    <div class="card-body p-0">
+      <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        {% for k in ('start','end','basis','status','show','tc_scope','case_q','limit') %}
+          <input type="hidden" name="{{ k }}" value="{{ filters[k] or '' }}" />
+        {% endfor %}
+        <div class="table-responsive">
+          <table class="table table-sm table-striped align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width: 220px;">Matter</th>
+                <th>Task</th>
+                <th style="width: 120px;">Status</th>
+                <th style="width: 110px;">Completed</th>
+                <th style="width: 110px;">Due date</th>
+                <th class="text-end" style="width: 110px;">TC(h)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for wf in (workflows or []) %}
+                {% set _missing = ((wf.status or '') == 'Completed') and (wf.work_hours is none or (wf.work_hours or 0) <= 0) %}
+                <tr class="{% if _missing %}table-warning{% endif %}">
+                  <td>
+                    <div class="fw-semibold">
+                      <a class="text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=wf.case_id, workflow_id='wf_' ~ wf.id, _anchor='sec-workflow') }}">
+                        {{ (wf.matter.our_ref if wf.matter else wf.case_id) or wf.case_id }}
+                      </a>
+                    </div>
+                    {% if wf.matter and wf.matter.right_name %}
+                      <div class="text-muted small">{{ wf.matter.right_name }}</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="fw-semibold">
+                      <a class="text-decoration-none" href="{{ url_for('workflow.detail', workflow_id=wf.id) }}">
+                        {{ wf.name|workflow_title }}
+                      </a>
+                      <span class="text-muted">#{{ wf.id }}</span>
+                    </div>
+                    {% if wf.business_code %}
+                      <div class="text-muted small">{{ wf.business_code }}</div>
+                    {% endif %}
+                    <input type="hidden" name="workflow_id" value="{{ wf.id }}" />
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">{{ wf.status or '-' }}</span>
+                    {% if _missing %}
+                      <span class="badge bg-warning text-dark ms-1">Missing</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ (wf.completed_date or '')|us_date or '-' }}</td>
+                  <td>{{ (wf.due_date or '')|us_date or '-' }}</td>
+                  <td class="text-end">
+                    <input
+                      class="form-control form-control-sm text-end {% if _missing %}is-invalid{% endif %}"
+                      style="width: 90px; display:inline-block;"
+                      type="number"
+                      name="work_hours_{{ wf.id }}"
+                      min="0"
+                      step="0.1"
+                      inputmode="decimal"
+                      placeholder="-"
+                      value="{{ wf.work_hours if wf.work_hours is not none and (wf.work_hours or 0) > 0 else '' }}"
+                    />
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">Display item none.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="p-3 d-flex justify-content-end gap-2">
+          <button class="btn btn-primary btn-sm" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

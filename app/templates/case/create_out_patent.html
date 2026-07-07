@@ -1,0 +1,299 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+{% set department_options = (department_options or ['Foreign','Patent1','Patent2']) %}
+<h3 class="mb-4 fw-semibold">Foreign Patent (OUT/PATENT)</h3>
+
+<form method="POST" action="{{ form_action or url_for('case_work.create_matter') }}">
+    {{ form.hidden_tag() }}
+    <!-- Force hidden fields -->
+    <input type="hidden" name="category" value="PATENT">
+    <input type="hidden" name="in_out_type" value="OUT">
+
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="table-layout: fixed; border-collapse: collapse;">
+        <!-- Row 1 -->
+        <tr>
+            <td width="17%" align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Our Ref. <span class="text-danger">*</span>
+            </td>
+            <td width="33%" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {{ form.our_ref(class="form-control", id="our_ref") }}
+                    <button class="btn btn-outline-secondary" type="button" onclick="generateRef()">Auto</button>
+                </div>
+            </td>
+            <td width="17%" align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Country (Country) <span class="text-danger">*</span>
+            </td>
+            <td width="33%" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 {{ form.country(class="form-select form-select-sm", id="country_select") }}
+            </td>
+        </tr>
+
+        <!-- Row 2 -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Filing type
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                  <select name="app_type" class="form-select form-select-sm">
+                    <option value="">:::Select:::</option>
+                    <option value="Filing" {% if case and case.app_type == 'Filing' %}selected{% endif %}>Filing</option>
+                    <option value="Divisional application" {% if case and case.app_type == 'Divisional application' %}selected{% endif %}>Divisional application</option>
+                    <option value="ChangeFiling" {% if case and case.app_type == 'ChangeFiling' %}selected{% endif %}>ChangeFiling</option>
+                    <option value="PriorityFiling" {% if case and case.app_type == 'PriorityFiling' %}selected{% endif %}>PriorityFiling</option>
+                </select>
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Filing
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                  <select name="app_route" class="form-select form-select-sm">
+                    <option value="">:::Select:::</option>
+                    <option value="Paris" {% if case and case.app_route == 'Paris' %}selected{% endif %}>Paris (items)</option>
+                    <option value="PCT-NP" {% if case and case.app_route == 'PCT-NP' %}selected{% endif %}>PCT  (National Phase)</option>
+                    <option value="EP-Validation" {% if case and case.app_route == 'EP-Validation' %}selected{% endif %}>EP Validation</option>
+                </select>
+            </td>
+        </tr>
+
+        <!-- Row 3 -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Engagement date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="custom_field_commission_date" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('commission_date') if case else '' }}">
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                ResponsibleDepartment
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                  <select name="custom_field_department" class="form-select form-select-sm">
+                    <option value="">Select</option>
+                    {% set dept = (case.extended_info or {}).get('department') if case else '' %}
+                    {% for opt in department_options %}
+                      <option value="{{ opt }}" {% if dept == opt %}selected{% endif %}>{{ opt }}</option>
+                    {% endfor %}
+                </select>
+            </td>
+        </tr>
+
+        <!-- Row 4 -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Manager / Handler
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.manager_id(class="form-select form-select-sm") }}
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Responsible attorney
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.attorney_id(class="form-select form-select-sm") }}
+            </td>
+        </tr>
+
+        <!-- Row 5 -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Filing deadline (Deadline)
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                <input type="date" name="custom_field_filing_deadline" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('filing_deadline') if case else '' }}">
+                {% set _legacy_filing_deadline_type = ((case.extended_info or {}).get('filing_deadline_type') if case else '') %}
+                <select name="custom_field_filing_deadline_type" class="form-select form-select-sm" style="max-width: 150px;">
+                    <option value="INTERNAL" {% if (_legacy_filing_deadline_type or '')|upper in ['', 'INTERNAL'] %}selected{% endif %}>Internal deadline</option>
+                    <option value="LEGAL" {% if (_legacy_filing_deadline_type or '')|upper == 'LEGAL' %}selected{% endif %}>Statutory deadline</option>
+                </select>
+              </div>
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                ForeignRepresentative (Foreign Agent)
+            </td>
+             <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {% set f_info = case.foreign_info if case else None %}
+                    <input type="text" id="agentName" class="form-control" readonly placeholder="Search..." value="{{ f_info.foreign_agent.name if f_info and f_info.foreign_agent else '' }}">
+                    <input type="hidden" name="foreign_agent_id" id="agentId" value="{{ f_info.foreign_agent_id if f_info else '' }}">
+                    <button class="btn btn-outline-secondary" type="button" onclick="openClientSearch('agentName', 'agentId')">Search</button>
+                </div>
+            </td>
+        </tr>
+
+        <!-- Spacing -->
+        <tr><td colspan="4" height="10"></td></tr>
+
+        <!-- Row 6: PCT Info (Source) -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                (PCT) Filing date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="pct_app_date" class="form-control form-control-sm" value="{{ case.foreign_info.pct_app_date if case and case.foreign_info and case.foreign_info.pct_app_date else '' }}">
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                (PCT) Application No.
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="text" name="pct_app_no" class="form-control form-control-sm" placeholder="PCT/..." value="{{ case.foreign_info.pct_app_no if case and case.foreign_info and case.foreign_info.pct_app_no else '' }}">
+            </td>
+        </tr>
+
+        <!-- Row 7: Filing -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 Filing date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.filing_date(class="form-control form-control-sm", type="date") }}
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 Application No.
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.filing_no(class="form-control form-control-sm") }}
+            </td>
+        </tr>
+
+        <!-- Row 8: Exam Request -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Examination request 
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="checkbox" name="exam_req_yn" value="Y" id="exam_req_y" {% if case and case.exam_req_yn %}checked{% endif %}> <label for="exam_req_y">Billing</label>
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Examination request date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="exam_req_date" class="form-control form-control-sm" value="{{ case.exam_req_date if case and case.exam_req_date else '' }}">
+            </td>
+        </tr>
+
+        <!-- Row 9: Pub -->
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Publication date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="date" name="pub_date" class="form-control form-control-sm" value="{{ case.pub_date if case and case.pub_date else '' }}">
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Publication No.
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="text" name="pub_no" class="form-control form-control-sm" value="{{ case.pub_no if case and case.pub_no else '' }}">
+            </td>
+        </tr>
+
+        <!-- Row 10: Clients & Inventors -->
+         <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Applicant (Client) <span class="text-danger">*</span>
+            </td>
+             <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <div class="input-group input-group-sm">
+                    {{ form.client_name(class="form-control", readonly=True, id="clientName") }}
+                    {{ form.client_id(type="hidden", id="clientId") }}
+                    <button class="btn btn-outline-secondary" type="button" onclick="openClientSearch('clientName', 'clientId')">Search</button>
+                    <button class="btn btn-outline-success" type="button" onclick="openClientCreateModal('clientName', 'clientId')">ClientRegistration</button>
+                </div>
+            </td>
+        </tr>
+        <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Inventor
+            </td>
+            <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="text" name="custom_field_inventor" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('inventor') if case else '' }}">
+            </td>
+        </tr>
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.title.label }} () <span class="text-danger">*</span>
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.title(class="form-control form-control-sm") }}
+            </td>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                 Title
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="text" name="custom_field_title_eng" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('title_eng') if case else '' }}">
+            </td>
+        </tr>
+
+         <!-- Row 11: Priority (Brief) -->
+        <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Priority 
+            </td>
+             <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="radio" name="priority_claim_yn" value="Y" {% if case and case.priority_claim_yn %}checked{% endif %}> Yes
+                <input type="radio" name="priority_claim_yn" value="N" {% if not case or not case.priority_claim_yn %}checked{% endif %}> No
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="date" name="custom_field_first_priority_date" class="form-control form-control-sm" value="{{ (case.extended_info or {}).get('first_priority_date') if case else '' }}">
+            </td>
+        </tr>
+
+        <!-- Registration -->
+         <tr>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Registration date
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                 <input type="date" name="reg_date" class="form-control form-control-sm" value="{{ case.reg_date if case and case.reg_date else '' }}">
+            </td>
+             <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                Registration No.
+            </td>
+            <td bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                <input type="text" name="reg_no" class="form-control form-control-sm" value="{{ case.reg_no if case and case.reg_no else '' }}">
+            </td>
+        </tr>
+
+         <tr>
+            <td align="center" bgcolor="#D8DEEA" style="border:1px solid #d5d5d5; padding: 6px;">
+                /
+            </td>
+            <td colspan="3" bgcolor="#ffffff" style="border:1px solid #d5d5d5; padding: 6px;">
+                {{ form.summary(class="form-control form-control-sm", rows=2) }}
+            </td>
+        </tr>
+
+    </table>
+
+    <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{{ url_for('case_work.case_list') }}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</form>
+
+<!-- Scripts -->
+{% include "case/_client_search_modal.html" %}
+<script src="{{ static_asset_url('js/case_client_search.js') }}"></script>
+<script>
+  async function generateRef() {
+    const country = document.getElementById("country_select").value;
+    if(!country) { try { await window.AppAlert('Country Select.', { title: "Confirm" }); } catch (e2) {} return; }
+    try {
+      const url = `/api/cases/next_ref?type=PATENT&division=OUT&country=${country}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.next_ref) {
+        document.getElementById("our_ref").value = data.next_ref;
+      } else {
+        try { await window.AppAlert("AutoCreate Failed: " + (data.error || "Unknown"), { title: "Error" }); } catch (e2) {}
+      }
+    } catch (e) { try { await window.AppAlert("Error ", { title: "Error" }); } catch (e2) {} }
+  }
+</script>
+{% endblock %}

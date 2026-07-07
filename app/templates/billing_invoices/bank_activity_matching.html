@@ -1,0 +1,3249 @@
+{% extends 'invoice_base.html' %}
+{% set invoice_wrapper_class = 'is-fluid' %}
+{% block invoice_content %}
+
+<div
+ id="app-page-meta"
+ class="d-none"
+ data-type="bank_activity_matching"
+ data-id="matching"
+ data-title="Deposit Matching"
+ data-url="{{ request.path }}"
+></div>
+
+<style>
+ .match-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 36px;
+ }
+
+ .match-section-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+ }
+
+ .match-section-summary {
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.4;
+ }
+
+ .filter-inline-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+ }
+
+ .selection-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f3f6fb;
+  color: #37506d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+ }
+
+ .filter-tip {
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.5;
+ }
+
+ .mode-toggle {
+  display: inline-flex;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  overflow: hidden;
+ }
+
+ .mode-toggle a {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  background: #f9fafb;
+  padding: 6px 12px;
+  color: #374151;
+  font-size: 13px;
+  text-decoration: none;
+ }
+
+ .mode-toggle a.active {
+  background: #005EA8;
+  color: #fff;
+ }
+
+ .mode-toggle a:not(.active):hover {
+  background: #e5e7eb;
+ }
+
+ .table-placeholder {
+  padding: 20px 12px;
+  text-align: center;
+  color: #6b7280;
+  background: #fafbfc;
+ }
+
+ #matchInvoicesTable tbody tr.recommend,
+ #matchDepositsTable tbody tr.recommend {
+  box-shadow: inset 0 0 0 2px rgba(46, 102, 216, 0.22);
+ }
+
+ #matchInvoicesTable tbody tr.recommend-focus,
+ #matchDepositsTable tbody tr.recommend-focus {
+  box-shadow: inset 0 0 0 2px rgba(25, 81, 198, 0.9);
+ }
+
+ #matchInvoicesTable tbody tr.recommend-filter-hidden,
+ #matchDepositsTable tbody tr.recommend-filter-hidden {
+  display: none;
+ }
+
+ .recommend-score-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #2158a8;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 600;
+ }
+
+ .recommend-filter-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  min-height: 22px;
+  text-align: right;
+ }
+
+ .match-mobile-dock {
+  display: none;
+ }
+
+ .invoice-theme .btn.mobile-row-action {
+  display: none;
+ }
+
+ .mobile-match-compact {
+  display: none;
+ }
+
+ @media (max-width: 768px) {
+  .page-header {
+   align-items: stretch;
+  }
+
+  .page-header h2 {
+   font-size: 1.25rem;
+  }
+
+  .page-actions,
+  .page-actions .btn,
+  #btnMatchingRefresh {
+   width: 100%;
+  }
+
+  .match-filter-table,
+  .match-filter-table tbody,
+  .match-filter-table tr,
+  .match-filter-table th,
+  .match-filter-table td {
+   display: block;
+   width: 100%;
+  }
+
+  .match-filter-table colgroup {
+   display: none;
+  }
+
+  .match-filter-table th {
+   border-bottom: 0;
+   padding-bottom: 4px;
+   text-align: left;
+  }
+
+  .match-filter-table td {
+   padding-top: 0;
+  }
+
+  .match-filter-table .d-flex {
+   align-items: stretch !important;
+  }
+
+  .match-filter-table input[type="date"],
+  .match-filter-table input[data-ipm-date-input="1"],
+  .match-filter-table .date-preset-group,
+  .match-filter-table .date-preset-group .date-preset-btn,
+  #btnApplyFilters,
+  #btnResetFilters {
+   width: 100%;
+  }
+
+  .match-filter-table .date-preset-group {
+   display: grid;
+   grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .invoice-theme .accounts-grid {
+   display: grid;
+   grid-template-columns: 1fr;
+   gap: 6px;
+   max-height: 34dvh;
+   overflow: auto;
+   -webkit-overflow-scrolling: touch;
+   padding-right: 2px;
+  }
+
+  .invoice-theme .accounts-grid .account-item {
+   max-width: none;
+   min-width: 0;
+   width: 100%;
+  }
+
+  .match-mobile-dock {
+   position: sticky;
+   top: calc(var(--app-header-height, 0px) + 6px);
+   z-index: 40;
+   display: block;
+   margin-top: 12px;
+   padding: 8px;
+   border: 1px solid #dbe4ee;
+   border-radius: 10px;
+   background: rgba(255, 255, 255, 0.98);
+   box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+  }
+
+  .match-mobile-dock__slots {
+   display: grid;
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+   gap: 6px;
+  }
+
+  .match-mobile-slot {
+   display: grid;
+   grid-template-columns: minmax(0, 1fr);
+   gap: 1px;
+   align-items: center;
+   width: 100%;
+   border: 1px solid #e5e7eb;
+   border-radius: 10px;
+   background: #f9fafb;
+   padding: 7px 8px;
+   color: #374151;
+   text-align: left;
+  }
+
+  .match-mobile-slot.is-selected {
+   border-color: #B7D4EA;
+   background: #EAF4FF;
+  }
+
+  .match-mobile-slot__label {
+   color: #64748b;
+   font-size: 0.7rem;
+   font-weight: 700;
+  }
+
+  .match-mobile-slot strong,
+  .match-mobile-slot small {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+  }
+
+  .match-mobile-slot strong {
+   color: #0f172a;
+   font-size: 0.82rem;
+  }
+
+  .match-mobile-slot small {
+   display: none;
+  }
+
+  .match-mobile-dock__actions {
+   display: grid;
+   grid-template-columns: 1fr auto;
+   gap: 8px;
+   margin-top: 8px;
+  }
+
+  .match-section-heading {
+   align-items: stretch;
+   flex-direction: column;
+   gap: 8px;
+  }
+
+  .recommend-filter-box {
+   justify-content: flex-start;
+   text-align: left;
+  }
+
+  .match-col {
+   scroll-margin-top: calc(var(--app-header-height, 0px) + 104px);
+  }
+
+  #matchInvoicesTable,
+  #matchDepositsTable,
+  #matchInvoicesTable tbody,
+  #matchDepositsTable tbody {
+   display: block;
+   width: 100%;
+  }
+
+  #matchInvoicesTable colgroup,
+  #matchDepositsTable colgroup,
+  #matchInvoicesTable thead,
+  #matchDepositsTable thead {
+   display: none;
+  }
+
+  #matchInvoicesTable tbody,
+  #matchDepositsTable tbody {
+   display: grid;
+   gap: 6px;
+  }
+
+  #matchInvoicesTable tbody tr,
+  #matchDepositsTable tbody tr {
+   display: grid;
+   grid-template-columns: minmax(0, 1fr) auto;
+   align-items: center;
+   gap: 8px;
+   height: auto !important;
+   border: 1px solid #e5e7eb;
+   border-radius: 10px;
+   background: #fff;
+   overflow: hidden;
+   padding: 8px 9px;
+   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  }
+
+  #matchInvoicesTable tbody tr.mobile-selected,
+  #matchDepositsTable tbody tr.mobile-selected {
+   border-color: #005EA8;
+   box-shadow: 0 0 0 2px rgba(0, 94, 168, 0.16), 0 8px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  #matchInvoicesTable tbody tr.recommend,
+  #matchDepositsTable tbody tr.recommend {
+   border-color: #10b981;
+   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.16), 0 8px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  #matchInvoicesTable tbody tr.mobile-selected,
+  #matchDepositsTable tbody tr.mobile-selected {
+   border-color: #005EA8;
+   box-shadow: 0 0 0 2px rgba(0, 94, 168, 0.18), 0 8px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  #matchInvoicesTable tbody td,
+  #matchDepositsTable tbody td {
+   display: block;
+   width: auto !important;
+   min-width: 0;
+   border-bottom: 0;
+   padding: 0;
+   text-align: left !important;
+   white-space: normal;
+   word-break: keep-all;
+   overflow-wrap: anywhere;
+  }
+
+  #matchInvoicesTable tbody td::before,
+  #matchDepositsTable tbody td::before {
+   content: "";
+   display: none;
+  }
+
+  #matchInvoicesTable tbody td:not([data-label=""]):not([data-label="Total"]),
+  #matchDepositsTable tbody td:not([data-label="days"]):not([data-label=""]) {
+   display: none;
+  }
+
+  #matchInvoicesTable tbody td[data-label="Total"],
+  #matchDepositsTable tbody td[data-label=""] {
+   justify-self: end;
+  }
+
+  .mobile-match-compact {
+   display: block;
+   min-width: 0;
+  }
+
+  .desktop-match-cell {
+   display: none;
+  }
+
+  .mobile-match-top {
+   display: flex;
+   gap: 8px;
+   align-items: baseline;
+   justify-content: space-between;
+   min-width: 0;
+  }
+
+  .mobile-match-title {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   color: #0f172a;
+   font-size: 0.9rem;
+   font-weight: 800;
+   line-height: 1.25;
+  }
+
+  .mobile-match-amount {
+   flex: 0 0 auto;
+   color: #0b4fa6;
+   font-size: 0.9rem;
+   font-weight: 800;
+   line-height: 1.25;
+   white-space: nowrap;
+  }
+
+  .mobile-match-meta,
+  .mobile-match-links {
+   min-width: 0;
+   overflow: hidden;
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   font-size: 0.74rem;
+   line-height: 1.35;
+  }
+
+  .mobile-match-meta {
+   margin-top: 2px;
+   color: #64748b;
+  }
+
+  .mobile-match-links {
+   display: flex;
+   gap: 8px;
+   margin-top: 2px;
+  }
+
+  .mobile-match-links a {
+   flex: 0 0 auto;
+  }
+
+  #matchInvoicesTable .table-placeholder,
+  #matchDepositsTable .table-placeholder {
+   display: block;
+   border-bottom: 0;
+  }
+
+  #matchInvoicesTable .table-placeholder::before,
+  #matchDepositsTable .table-placeholder::before {
+   content: "";
+   display: none;
+  }
+
+  .invoice-theme .btn.mobile-row-action {
+   display: inline-flex;
+   width: auto;
+   min-width: 54px;
+   min-height: 32px;
+   margin-top: 0;
+   padding: 0.25rem 0.55rem;
+   white-space: nowrap;
+  }
+
+  #matchInvoicesTable tbody tr.match-placeholder-row,
+  #matchDepositsTable tbody tr.match-placeholder-row {
+   display: block;
+   padding: 0;
+  }
+
+  .match-section-summary,
+  .filter-tip {
+   font-size: 0.8rem;
+  }
+ }
+</style>
+
+<div class="page-header gap-2">
+ <h2 class="mb-0">Deposit Matching</h2>
+ <div class="mode-toggle" aria-label="Currency ">
+  {% for cur in currency_options %}
+  <a
+   href="{{ url_for('billing_invoices.bank_activity.matching_page', currency=cur) }}"
+   class="{% if cur == selected_currency %}active{% endif %}"
+ >{{ cur }}</a>
+  {% endfor %}
+ </div>
+ <div class="page-actions">
+  <button class="btn" id="btnMatchingRefresh">New</button>
+ </div>
+</div>
+
+<div class="card filter-card mt-3">
+ <table class="table-list match-filter-table">
+  <colgroup>
+   <col class="w-15p" />
+   <col />
+  </colgroup>
+  <tbody>
+   <tr>
+    <th>SearchPeriod</th>
+    <td>
+     <div class="d-flex flex-wrap gap-2 align-items-center">
+      <input
+       type="date"
+       id="startDate"
+       class="w-180 max-w-100"
+       value="{{ default_start or '' }}"
+      />
+      <span class="muted">~</span>
+      <input
+       type="date"
+       id="endDate"
+       class="w-180 max-w-100"
+       value="{{ default_end or '' }}"
+      />
+      <div class="date-preset-group" role="group" aria-label="Quick date-range presets">
+       <button class="btn date-preset-btn" type="button" id="btnToday" data-preset="days:0" data-range-days="0" aria-pressed="false"></button>
+       <button class="btn date-preset-btn" type="button" id="btn7" data-preset="days:7" data-range-days="7" aria-pressed="false">7days</button>
+       <button class="btn date-preset-btn" type="button" id="btn1m" data-preset="months:1" data-range-months="1" aria-pressed="false">1items</button>
+       <button class="btn date-preset-btn" type="button" id="btn3m" data-preset="months:3" data-range-months="3" aria-pressed="false">Last 3 months</button>
+       <button class="btn date-preset-btn" type="button" id="btn6m" data-preset="months:6" data-range-months="6" aria-pressed="false">Last 6 months</button>
+       <button class="btn date-preset-btn" type="button" id="btn12m" data-preset="months:12" data-range-months="12" aria-pressed="false">12items</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" type="button" id="btnApplyFilters">Apply</button>
+      <button class="btn btn-outline-secondary" type="button" id="btnResetFilters">Reset</button>
+     </div>
+     <div class="filter-tip mt-1">
+      Default range is the last 3 months. Use the date fields for a custom range.
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th> Bank account</th>
+    <td>
+     <div class="filter-inline-actions">
+      <span id="activeAccountsSummary" class="selection-summary-chip">Select 0/0</span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAccountsAll">Select all</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnAccountsNone">All </button>
+     </div>
+     <div id="activeAccountsList" class="accounts-grid"></div>
+     <div class="gray2 f11 mt-1">
+      Defaultto  Bank account Select.
+     </div>
+    </td>
+   </tr>
+   <tr>
+    <th>Business profile ({{ selected_currency }})</th>
+    <td>
+     <div class="filter-inline-actions">
+      <span id="bpSelectionSummary" class="selection-summary-chip">Select 0/0</span>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnBpAll">Select all</button>
+      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnBpNone">All </button>
+     </div>
+     <div id="bpList" class="accounts-grid"></div>
+     <div class="gray2 f11 mt-1">
+      Defaultto {{ selected_currency }} Business profile Select.
+     </div>
+    </td>
+   </tr>
+  </tbody>
+ </table>
+</div>
+
+<div id="mobileMatchDock" class="match-mobile-dock" aria-live="polite">
+ <div class="match-mobile-dock__slots">
+  <button type="button" id="mobileDepositSlot" class="match-mobile-slot">
+   <span class="match-mobile-slot__label">Deposit</span>
+   <strong id="mobileDepositSlotTitle">No selection</strong>
+   <small id="mobileDepositSlotMeta">Deposit row  Invoice .</small>
+  </button>
+  <button type="button" id="mobileInvoiceSlot" class="match-mobile-slot">
+   <span class="match-mobile-slot__label">Invoice</span>
+   <strong id="mobileInvoiceSlotTitle">No selection</strong>
+   <small id="mobileInvoiceSlotMeta">Invoice row  Deposit .</small>
+  </button>
+ </div>
+ <div class="match-mobile-dock__actions">
+  <button type="button" id="mobileMatchRunBtn" class="btn btn-primary" disabled>Matching</button>
+  <button type="button" id="mobileMatchClearBtn" class="btn btn-outline-secondary">Reset</button>
+ </div>
+</div>
+
+<div class="card mt-3">
+ <div class="match-grid">
+  <div class="match-col" id="invoiceMatchColumn">
+   <div class="match-section-heading my-2">
+    <div class="match-section-meta">
+     <h4 class="mb-0">{{ selected_currency }} Invoice(Issued)</h4>
+     <div id="invoiceResultSummary" class="match-section-summary">times </div>
+    </div>
+    <div class="spacer"></div>
+    <div id="invoiceRecommendFilterBox" class="recommend-filter-box gray2 f11"></div>
+   </div>
+   <div id="matchInvoicesPagingTop" class="app-pagination mb-1" aria-label="Matching Invoice pagination"></div>
+
+   <table class="table-list table-compact" id="matchInvoicesTable">
+
+    <colgroup>
+     <col class="w-8p" />
+     <col class="w-22p" />
+     <col />
+     <col class="w-16p" />
+     <col class="w-14p" />
+     <col class="w-12p" />
+     <col class="w-18p" />
+    </colgroup>
+    <thead>
+     <tr>
+      <th>#</th>
+      <th></th>
+      <th>Client</th>
+      <th>Business profile</th>
+      <th>Issue date</th>
+      <th>Status</th>
+      <th>Total</th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+   <div id="matchInvoicesPaging" class="app-pagination" aria-label="Matching Invoice pagination"></div>
+   <div class="gray2 f11">
+    daysfrom row Select. from Deposit row
+     Invoice  exists.
+    Deposit row  Invoice Display.
+   </div>
+  </div>
+  <div class="match-col" id="depositMatchColumn">
+   <div class="match-section-heading my-2">
+    <div class="match-section-meta">
+     <h4 class="mb-0">Deposit </h4>
+     <div id="depositResultSummary" class="match-section-summary">times </div>
+    </div>
+    <div class="spacer"></div>
+    <div id="depositRecommendFilterBox" class="recommend-filter-box gray2 f11"></div>
+    <label class="d-flex align-items-center gap-1">
+     <span class="gray2 f11">Display</span>
+     <select id="memoModeSelect" class="form-select form-select-sm">
+      <option value="unmatched">Matching</option>
+      <option value="empty" selected>Notes </option>
+      <option value="all">All</option>
+     </select>
+    </label>
+   </div>
+   <div id="matchDepositsPagingTop" class="app-pagination mb-1" aria-label="Matching Deposit Pagination"></div>
+
+   <table class="table-list table-compact" id="matchDepositsTable">
+
+    <colgroup>
+     <col class="w-28p" />
+     <col class="w-20p" />
+     <col class="w-20p" />
+     <col />
+    </colgroup>
+    <thead>
+     <tr>
+      <th>days</th>
+      <th>Amount</th>
+      <th>Bank account</th>
+      <th></th>
+     </tr>
+    </thead>
+    <tbody></tbody>
+   </table>
+   <div id="matchDepositsPaging" class="app-pagination" aria-label="Matching Deposit Pagination"></div>
+   <div class="gray2 f11">
+    daysfrom Deposit Invoice  top Matching .
+    from to Deposit Display.
+    Invoice row  Deposit Display.
+   </div>
+  </div>
+ </div>
+</div>
+
+<script>
+ const CSRF = document
+  .querySelector('meta[name="csrf-token"]')
+  .getAttribute("content");
+ const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+ const MATCH_CURRENCY = "{{ selected_currency or 'USD' }}";
+ const DEFAULT_MATCHING_START = "{{ default_start or '' }}";
+ const DEFAULT_MATCHING_END = "{{ default_end or '' }}";
+ const DEFAULT_MATCHING_MONTHS = 3;
+ let ALIAS_BY_ACC = {}; // bankCode|accountNumber -> alias
+ let INV_PAGE = 1;
+ let DEP_PAGE = 1;
+ let ACCOUNTS_LOAD_TOKEN = 0;
+ let BP_LOAD_TOKEN = 0;
+ let INV_LOAD_TOKEN = 0;
+ let DEP_LOAD_TOKEN = 0;
+ const PER_PAGE = 15;
+ const REC_SCORE_THRESHOLD = 48;
+ const REC_MIN_AMOUNT_SCORE = 12;
+ let IS_DRAGGING_DEPOSIT = false;
+ let MEMO_MODE = "empty";
+ let ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+ let ACTIVE_DEPOSIT_RECOMMEND_FILTER = null;
+ let PREVIEW_INVOICE_SOURCE = null;
+ let PREVIEW_DEPOSIT_SOURCE = null;
+ let LAST_INVOICE_RECOMMEND_COUNT = 0;
+ let LAST_DEPOSIT_RECOMMEND_COUNT = 0;
+ const MOBILE_MATCH_MQ = window.matchMedia
+  ? window.matchMedia("(max-width: 768px)")
+  : { matches: false };
+ let MOBILE_SELECTED_INVOICE = null;
+ let MOBILE_SELECTED_DEPOSIT = null;
+
+ function isMobileMatchingMode() {
+  return !!(MOBILE_MATCH_MQ && MOBILE_MATCH_MQ.matches);
+ }
+
+ function matchEscape(value) {
+  return String(value == null ? "" : value)
+   .replaceAll("&", "&amp;")
+   .replaceAll("<", "&lt;")
+   .replaceAll(">", "&gt;")
+   .replaceAll('"', "&quot;")
+   .replaceAll("'", "&#39;");
+ }
+
+ function formatMobileDateTime(value) {
+  return formatTrdt(value).replace(/<br\s*\/?>/g, " ").trim();
+ }
+
+ function parseMoney(value) {
+  const n = Number(String(value == null ? "0" : value).replaceAll(",", ""));
+  return Number.isFinite(n) ? n : 0;
+ }
+
+ function moneyScale() {
+  return MATCH_CURRENCY === "USD" ? 0 : 2;
+ }
+
+ function normalizePaymentAmount(value) {
+  const n = parseMoney(value);
+  const scale = moneyScale();
+  if (scale === 0) return Math.round(n);
+  return Number(n.toFixed(scale));
+ }
+
+ function formatMoney(value) {
+  const scale = moneyScale();
+  const n = parseMoney(value);
+  return `${n.toLocaleString(undefined, {
+   minimumFractionDigits: scale === 0 || Number.isInteger(n) ? 0 : scale,
+   maximumFractionDigits: scale,
+  })} ${MATCH_CURRENCY}`;
+ }
+
+ function moneyDeltaMinor(a, b) {
+  const factor = moneyScale() === 0 ? 1 : 100;
+  return Math.round((parseMoney(a) - parseMoney(b)) * factor);
+ }
+
+ function appendInvoiceTagToMemo(memo, invoiceNo) {
+  const tag = invoiceNo ? `INV:${invoiceNo}` : "INV";
+  const parts = String(memo || "")
+   .split("|")
+   .map((part) => part.trim())
+   .filter(Boolean);
+  if (!parts.includes(tag)) parts.push(tag);
+  return parts.join(" | ");
+ }
+
+ function formatAmount(value) {
+  return formatMoney(value);
+ }
+
+ function summarizeMobileInvoice(inv) {
+  if (!inv) return { title: "No selection", meta: "Invoice row  Deposit ." };
+  const amount = parseMoney(inv.remaining || inv.total || 0);
+  const no = inv.invoiceNumber || "-";
+  const client = inv.clientName || "-";
+  return {
+   title: `${no} · ${formatMoney(amount)}`,
+   meta: client,
+  };
+ }
+
+ function summarizeMobileDeposit(dep) {
+  if (!dep) return { title: "No selection", meta: "Deposit row  Invoice ." };
+  const amount = parseMoney(dep.accIn || 0);
+  const when = formatTrdt(dep.trdt || dep.trdate).replace("<br>", " ");
+  return {
+   title: `${formatMoney(amount)} · ${dep.payerName || dep.alias || "-"}`,
+   meta: when,
+  };
+ }
+
+ function syncMobileSelectionRows() {
+  document
+   .querySelectorAll("#matchInvoicesTable tbody tr.mobile-selected")
+   .forEach((tr) => tr.classList.remove("mobile-selected"));
+  document
+   .querySelectorAll("#matchDepositsTable tbody tr.mobile-selected")
+   .forEach((tr) => tr.classList.remove("mobile-selected"));
+  if (MOBILE_SELECTED_INVOICE && MOBILE_SELECTED_INVOICE.invoiceId) {
+   const row = document.querySelector(
+    `#matchInvoicesTable tbody tr[data-invoice-id="${MOBILE_SELECTED_INVOICE.invoiceId}"]`
+   );
+   if (row) row.classList.add("mobile-selected");
+  }
+  if (MOBILE_SELECTED_DEPOSIT && MOBILE_SELECTED_DEPOSIT.tid) {
+   const row = document.querySelector(
+    `#matchDepositsTable tbody tr[data-tid="${MOBILE_SELECTED_DEPOSIT.tid}"]`
+   );
+   if (row) row.classList.add("mobile-selected");
+  }
+ }
+
+ function updateMobileMatchDock() {
+  const depSlot = document.getElementById("mobileDepositSlot");
+  const invSlot = document.getElementById("mobileInvoiceSlot");
+  const depTitle = document.getElementById("mobileDepositSlotTitle");
+  const depMeta = document.getElementById("mobileDepositSlotMeta");
+  const invTitle = document.getElementById("mobileInvoiceSlotTitle");
+  const invMeta = document.getElementById("mobileInvoiceSlotMeta");
+  const runBtn = document.getElementById("mobileMatchRunBtn");
+  const dep = summarizeMobileDeposit(MOBILE_SELECTED_DEPOSIT);
+  const inv = summarizeMobileInvoice(MOBILE_SELECTED_INVOICE);
+  if (depTitle) depTitle.textContent = dep.title;
+  if (depMeta) depMeta.textContent = dep.meta;
+  if (invTitle) invTitle.textContent = inv.title;
+  if (invMeta) invMeta.textContent = inv.meta;
+  if (depSlot) depSlot.classList.toggle("is-selected", !!MOBILE_SELECTED_DEPOSIT);
+  if (invSlot) invSlot.classList.toggle("is-selected", !!MOBILE_SELECTED_INVOICE);
+  if (runBtn) {
+   runBtn.disabled = !(MOBILE_SELECTED_DEPOSIT && MOBILE_SELECTED_INVOICE);
+  }
+  syncMobileSelectionRows();
+ }
+
+ function scrollToMobileMatchColumn(kind) {
+  if (!isMobileMatchingMode()) return;
+  const id = kind === "invoice" ? "invoiceMatchColumn" : "depositMatchColumn";
+  const el = document.getElementById(id);
+  if (!el) return;
+  setTimeout(() => {
+   try {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+   } catch (e) {
+    el.scrollIntoView();
+   }
+  }, 80);
+ }
+
+ function clearMobileMatchSelection() {
+  MOBILE_SELECTED_INVOICE = null;
+  MOBILE_SELECTED_DEPOSIT = null;
+  updateMobileMatchDock();
+ }
+
+ async function resetMobileMatchWorkspace(scrollTarget = null) {
+  ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+  ACTIVE_DEPOSIT_RECOMMEND_FILTER = null;
+  PREVIEW_INVOICE_SOURCE = null;
+  PREVIEW_DEPOSIT_SOURCE = null;
+  INV_PAGE = 1;
+  DEP_PAGE = 1;
+  clearMobileMatchSelection();
+  await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+  if (scrollTarget) scrollToMobileMatchColumn(scrollTarget);
+ }
+
+ async function runMobileSelectedMatch() {
+  if (!MOBILE_SELECTED_DEPOSIT || !MOBILE_SELECTED_INVOICE) {
+   showMessageModal("Select required", "Deposit Invoice Select .");
+   return;
+  }
+  const invoiceId =
+   MOBILE_SELECTED_INVOICE.invoiceId || MOBILE_SELECTED_INVOICE.id || "";
+  if (!invoiceId) {
+   showMessageModal("Select Error", "selected Invoice information Confirm none.");
+   return;
+  }
+  const btn = document.getElementById("mobileMatchRunBtn");
+  const prevText = btn ? btn.textContent : "";
+  if (btn) {
+   btn.disabled = true;
+   btn.textContent = "Matching ...";
+  }
+  try {
+   const row = document.querySelector(
+    `#matchInvoicesTable tbody tr[data-invoice-id="${invoiceId}"]`
+   );
+   await matchDepositToInvoice(invoiceId, MOBILE_SELECTED_DEPOSIT, row);
+  } catch (e) {
+   showMessageModal(
+    "Matching ",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  } finally {
+   if (btn) btn.textContent = prevText || "Matching";
+   updateMobileMatchDock();
+  }
+ }
+
+ async function selectMobileDeposit(dep) {
+  if (!dep) return;
+  MOBILE_SELECTED_DEPOSIT = dep;
+  updateMobileMatchDock();
+  ACTIVE_INVOICE_RECOMMEND_FILTER = dep;
+  PREVIEW_INVOICE_SOURCE = null;
+  INV_PAGE = 1;
+  await loadMatchingInvoices();
+  scrollToMobileMatchColumn("invoice");
+ }
+
+ async function selectMobileInvoice(inv) {
+  if (!inv) return;
+  MOBILE_SELECTED_INVOICE = inv;
+  updateMobileMatchDock();
+  ACTIVE_DEPOSIT_RECOMMEND_FILTER = inv;
+  PREVIEW_DEPOSIT_SOURCE = null;
+  DEP_PAGE = 1;
+  await loadMatchingDeposits();
+  scrollToMobileMatchColumn("deposit");
+ }
+
+ function updateDepositDragMode() {
+  const draggable = !isMobileMatchingMode();
+  document.querySelectorAll("#matchDepositsTable tbody tr[data-tid]").forEach((tr) => {
+   tr.draggable = draggable;
+  });
+ }
+
+ const STATUS_LABELS = {
+  // Billing Status
+  draft: "Draft",
+  sent: "Issued",
+  tax_issued: "Tax recorded",
+  cash_issued: "Tax recorded",
+  processed: "Tax recorded",
+  pre_overdue: "Advanced cost",
+  void: "Void",
+  // Payment Status
+  unpaid: "Unpaid",
+  pending: "Payment pending",
+  paid: "Paid",
+  none: "-",
+  // ? / Fallback
+  open: "",
+  uncollectible: "",
+ };
+
+ // Helper to translate status safely
+ function _t(key) {
+  if (!key) return "";
+  return STATUS_LABELS[key.toLowerCase()] || key;
+ }
+
+ let INV_BY_NO = {}; // invoice number -> invoice items[] (from matching/invoices)
+ const COMPANY_TOKENS = [
+  "Company",
+  "Company",
+  "Company",
+  "peopleCompany",
+  "",
+  "",
+  "Company",
+  "",
+  "",
+  "()",
+  "㈜",
+  "()",
+  "()",
+  "()",
+  "corp",
+  "corporation",
+  "inc",
+  "co",
+  "ltd",
+  "limited",
+  "llc",
+ ];
+
+ function extractInvNoFromMemo(memo) {
+  try {
+   const s = (memo || "").toString().trim();
+   if (!s) return "";
+   const matches = s.match(/INV:([^\s|]+)/g);
+   if (!matches || !matches.length) return "";
+   const last = matches[matches.length - 1];
+   const m = last.match(/INV:([^\s|]+)/);
+   return (m && m[1] ? String(m[1]).trim() : "") || "";
+  } catch (e) {
+   return "";
+  }
+ }
+
+ function invoiceLinksFromNumber(invNo) {
+  const key = (invNo || "").toString().trim();
+  if (!key) return "";
+  const arr = INV_BY_NO[key];
+  if (Array.isArray(arr) && arr.length === 1 && arr[0] && arr[0].id) {
+   const it = arr[0];
+   const invId = it.id;
+   const deepUrl = `${scriptRoot}/bank_activity/matching/invoice/${invId}`;
+   const viewUrl = `${scriptRoot}/invoices/${invId}`;
+   return (
+    `<a href="${deepUrl}" class="blue3 text-decoration-none" title=" Matching">${key}</a>` +
+    ` <span class="muted">·</span> ` +
+    `<a href="${viewUrl}" class="text-decoration-none" title="Invoice View">Invoice</a>`
+   );
+  }
+  if (Array.isArray(arr) && arr.length> 1) {
+   const qUrl = `${scriptRoot}/invoices?q=${encodeURIComponent(key)}`;
+   return `<a href="${qUrl}" class="text-decoration-none" title="Invoice search">${key}</a> <span class="muted">(Duplicate)</span>`;
+  }
+  const qUrl = `${scriptRoot}/invoices?q=${encodeURIComponent(key)}`;
+  return `<a href="${qUrl}" class="text-decoration-none" title="Invoice search">${key}</a>`;
+ }
+
+ function getInvoiceRoot() {
+
+  return document.querySelector('.invoice-theme') || document.body;
+ }
+
+ try {
+  const storedMode = localStorage.getItem("bank_activity_matching_memo_mode");
+  if (storedMode) {
+   MEMO_MODE = storedMode;
+  } else {
+   const legacyRaw = localStorage.getItem("bank_activity_matching_show_memo");
+   if (legacyRaw !== null) {
+    MEMO_MODE = legacyRaw === "1" ? "all" : "empty";
+   } else {
+    MEMO_MODE = "empty";
+   }
+  }
+ } catch (e) {}
+ if (!["unmatched", "empty", "all"].includes(MEMO_MODE)) {
+  MEMO_MODE = "empty";
+ }
+
+ function showMessageModal(title, message) {
+  try {
+   const existing = document.getElementById("matchingMessageOverlay");
+   if (existing) existing.remove();
+
+   const overlay = document.createElement("div");
+   overlay.id = "matchingMessageOverlay";
+   overlay.className = "modal-overlay show";
+
+   const panel = document.createElement("div");
+   panel.className = "modal-card is-wide";
+
+   const safeTitle = (title || "Notice").toString();
+   const safeMsg = (message || "").toString();
+   panel.innerHTML = `
+    <h3 class="modal-title">${safeTitle}</h3>
+    <div class="panel-neutral mb-3">${safeMsg}</div>
+    <div class="confirm-actions">
+     <button type="button" id="matchingMessageOkBtn" class="btn btn-primary">Confirm</button>
+    </div>
+   `;
+
+   overlay.appendChild(panel);
+   getInvoiceRoot().appendChild(overlay);
+
+   const cleanup = function () {
+    try {
+     overlay.remove();
+    } catch (e) {}
+   };
+   const btnOk = document.getElementById("matchingMessageOkBtn");
+   if (btnOk) {
+    btnOk.addEventListener("click", function (ev) {
+     ev.preventDefault();
+     cleanup();
+    });
+   }
+   overlay.addEventListener("click", function (ev) {
+    if (ev.target === overlay) cleanup();
+   });
+  } catch (e) {}
+ }
+
+ async function fetchJSON(url, opts = {}) {
+  const res = await fetch(url, {
+   headers: { "X-CSRFToken": CSRF, "Content-Type": "application/json" },
+   credentials: "same-origin",
+   ...opts,
+  });
+  if (!res.ok) {
+   let msg = "request failed";
+   try {
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) {
+     const j = await res.json();
+     msg = (j && (j.error || j.message)) || JSON.stringify(j);
+    } else {
+     const t = await res.text();
+     msg = t || msg;
+     try {
+      const j2 = JSON.parse(msg);
+      msg = (j2 && (j2.error || j2.message)) || msg;
+     } catch (e) {}
+    }
+   } catch (e) {}
+   const err = new Error(msg);
+   err.status = res.status;
+   throw err;
+  }
+  return res.json();
+ }
+
+ async function postForcePaid(invoiceId) {
+  const res = await fetch(`${scriptRoot}/invoices/${invoiceId}/force_paid`, {
+   method: "POST",
+   headers: { "X-CSRFToken": CSRF, Accept: "application/json" },
+   credentials: "same-origin",
+  });
+  if (!res.ok) {
+   let msg = " Payment Process failed.";
+   try {
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (ct.includes("application/json")) {
+     const j = await res.json();
+     msg = (j && (j.error || j.message)) || msg;
+    } else {
+     msg = (await res.text()) || msg;
+    }
+   } catch (e) {}
+   throw new Error(msg);
+  }
+  try {
+   const ct = (res.headers.get("content-type") || "").toLowerCase();
+   if (ct.includes("application/json")) {
+    return await res.json();
+   }
+  } catch (e) {}
+  return { success: true };
+ }
+
+ function confirmOneToManyMatch(invoiceNo, depAmount, invTotal) {
+  return new Promise(function (resolve) {
+   try {
+    const existing = document.getElementById("matchingConfirmOverlay");
+    if (existing) {
+     existing.remove();
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "matchingConfirmOverlay";
+    overlay.className = "modal-overlay show";
+
+    const panel = document.createElement("div");
+    panel.className = "modal-card is-wide";
+
+    const invNoSafe = invoiceNo || "";
+    const depTxt = formatMoney(depAmount);
+    const invTxt = formatMoney(invTotal);
+    const depositIsShort = moneyDeltaMinor(depAmount, invTotal) < 0;
+    const allowForcePaid = depositIsShort;
+    const okLabel = depositIsShort ? " (1:N Matching)" : " (N:1 )";
+    const helpHtml = depositIsShort
+     ? ` Invoice <strong>1:N ( items Deposit )</strong>to Confirm matching
+      <br/> Select Current Deposit <strong> Matching</strong>to Save, Deposit Add Matching exists.`
+     : ` Deposit <strong>N:1 ( Invoice Deposit)</strong>to Confirm matching
+      <br/> Select Invoice <strong> Amount Apply</strong>, Deposit Amount Invoice Matching exists.`;
+    panel.innerHTML = `
+     <h3 class="modal-title">Amount does not match</h3>
+     <div class="panel-neutral mb-2">
+      <div class="mb-2"><strong>Invoice</strong>: <span class="mono">${invNoSafe}</span></div>
+      <div class="mb-1"><strong> Deposit</strong>: ${depTxt}</div>
+      <div><strong> Amount</strong>: ${invTxt}</div>
+     </div>
+     <p class="modal-help">
+      ${helpHtml}
+      ${
+       allowForcePaid
+        ? "<br/>   <strong> Paid</strong>to Process exists."
+        : ""
+      }
+     </p>
+     <div class="confirm-actions">
+      <button type="button" id="matchingConfirmCancelBtn" class="btn btn-ghost">Cancel</button>
+      <button type="button" id="matchingConfirmOkBtn" class="btn btn-primary">${okLabel}</button>
+      ${
+       allowForcePaid
+        ? '<button type="button" id="matchingConfirmForcePaidBtn" class="btn btn-warning"> Paid</button>'
+        : ""
+      }
+     </div>
+    `;
+
+    overlay.appendChild(panel);
+    getInvoiceRoot().appendChild(overlay);
+
+    const cleanup = function (result) {
+     try {
+      overlay.remove();
+     } catch (e) {}
+     resolve(result);
+    };
+
+    const btnCancel = document.getElementById("matchingConfirmCancelBtn");
+    const btnOk = document.getElementById("matchingConfirmOkBtn");
+    const btnForcePaid = document.getElementById("matchingConfirmForcePaidBtn");
+    if (btnCancel) {
+     btnCancel.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      cleanup("cancel");
+     });
+    }
+    if (btnOk) {
+     btnOk.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      cleanup(depositIsShort ? "one_to_many" : "many_to_one");
+     });
+    }
+    if (btnForcePaid) {
+     btnForcePaid.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      cleanup("force_paid");
+     });
+    }
+    overlay.addEventListener("click", function (ev) {
+     if (ev.target === overlay) {
+      cleanup("cancel");
+     }
+    });
+   } catch (e) {
+    resolve("cancel");
+   }
+  });
+ }
+
+ function pad2(n) {
+  return String(n).padStart(2, "0");
+ }
+
+ function formatYmdKst(d) {
+  try {
+   return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+   }).format(d);
+  } catch (e) {
+   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(
+    d.getDate()
+   )}`;
+  }
+ }
+
+ function normalizeYmdParam(raw) {
+  const v = (raw || "").toString().trim();
+  if (!v) return "";
+  if (/^\d{8}$/.test(v)) {
+   return `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}`;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  return v;
+ }
+
+ function addMonthsUtcClamped(dateUtc, months) {
+  if (!(dateUtc instanceof Date) || isNaN(dateUtc.getTime())) {
+   return todayKstUtcNoon();
+  }
+  const totalMonths =
+   dateUtc.getUTCFullYear() * 12 + dateUtc.getUTCMonth() + (parseInt(months || 0, 10) || 0);
+  const year = Math.floor(totalMonths / 12);
+  const month = ((totalMonths % 12) + 12) % 12;
+  const day = Math.min(
+   dateUtc.getUTCDate(),
+   new Date(Date.UTC(year, month + 1, 0, 12, 0, 0)).getUTCDate()
+  );
+  return new Date(Date.UTC(year, month, day, 12, 0, 0));
+ }
+
+ function datePresetRangeFromButton(btn) {
+  const end = todayKstUtcNoon();
+  if (btn && btn.dataset.rangeDays != null) {
+   return { start: addDaysUtc(end, -parseInt(btn.dataset.rangeDays || "0", 10)), end };
+  }
+  if (btn && btn.dataset.rangeMonths != null) {
+   return {
+    start: addMonthsUtcClamped(end, -parseInt(btn.dataset.rangeMonths || "0", 10)),
+    end,
+   };
+  }
+  return null;
+ }
+
+ function setActiveDatePreset(presetKey) {
+  document.querySelectorAll(".date-preset-btn").forEach((btn) => {
+   const active = !!presetKey && btn.dataset.preset === presetKey;
+   btn.classList.toggle("is-active", active);
+   btn.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+ }
+
+ function syncDatePresetFromInputs() {
+  const startInput = document.getElementById("startDate");
+  const endInput = document.getElementById("endDate");
+  if (!(startInput && endInput)) return;
+  const startValue = normalizeYmdParam(startInput.value);
+  const endValue = normalizeYmdParam(endInput.value);
+  let matchedPreset = "";
+  document.querySelectorAll(".date-preset-btn").forEach((btn) => {
+   if (matchedPreset) return;
+   const range = datePresetRangeFromButton(btn);
+   if (!range) return;
+   if (
+    formatYmdKst(range.start) === startValue &&
+    formatYmdKst(range.end) === endValue
+   ) {
+    matchedPreset = btn.dataset.preset || "";
+   }
+  });
+  setActiveDatePreset(matchedPreset);
+ }
+
+ function setDateInputs(startUtc, endUtc) {
+  document.getElementById("startDate").value = formatYmdKst(startUtc);
+  document.getElementById("endDate").value = formatYmdKst(endUtc);
+  syncDatePresetFromInputs();
+ }
+
+ function setDefaultDateRange() {
+  const endValue = normalizeYmdParam(DEFAULT_MATCHING_END);
+  const startValue = normalizeYmdParam(DEFAULT_MATCHING_START);
+  if (startValue && endValue) {
+   document.getElementById("startDate").value = startValue;
+   document.getElementById("endDate").value = endValue;
+   syncDatePresetFromInputs();
+   return;
+  }
+  const end = todayKstUtcNoon();
+  const start = addMonthsUtcClamped(end, -DEFAULT_MATCHING_MONTHS);
+  setDateInputs(start, end);
+ }
+
+ function getSelectionCounts(name) {
+  const total = document.querySelectorAll(`input[name="${name}"]`).length;
+  const checked = document.querySelectorAll(`input[name="${name}"]:checked`).length;
+  return { checked, total };
+ }
+
+ function updateSelectionSummaries() {
+  const acc = getSelectionCounts("activeAccount");
+  const bp = getSelectionCounts("bpId");
+  const accEl = document.getElementById("activeAccountsSummary");
+  const bpEl = document.getElementById("bpSelectionSummary");
+  if (accEl) {
+   accEl.textContent = `Select ${acc.checked}/${acc.total}`;
+  }
+  if (bpEl) {
+   bpEl.textContent = `Select ${bp.checked}/${bp.total}`;
+  }
+ }
+
+ function setCheckboxGroupChecked(name, checked) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach((el) => {
+   el.checked = !!checked;
+  });
+  updateSelectionSummaries();
+ }
+
+ function renderTablePlaceholder(tbody, colspan, message) {
+  if (!tbody) return;
+  tbody.innerHTML = `<tr class="match-placeholder-row"><td colspan="${colspan}" class="table-placeholder">${message}</td></tr>`;
+ }
+
+ function setResultSummary(kind, summary) {
+  const el = document.getElementById(
+   kind === "invoice" ? "invoiceResultSummary" : "depositResultSummary"
+  );
+  if (!el) return;
+  if (typeof summary === "string") {
+   el.textContent = summary;
+   return;
+  }
+  if (summary && summary.loading) {
+   el.textContent = "times ...";
+   return;
+  }
+  const total = parseInt((summary && summary.total) || 0, 10) || 0;
+  const visible = parseInt((summary && summary.visible) || 0, 10) || 0;
+  const pageNum = Math.max(parseInt((summary && summary.pageNum) || 1, 10) || 1, 1);
+  const pageCount = Math.max(parseInt((summary && summary.pageCount) || 1, 10) || 1, 1);
+  const suffix = summary && summary.note ? ` · ${summary.note}` : "";
+  el.textContent = `Total ${total.toLocaleString()}items · Current ${visible.toLocaleString()}items · ${pageNum}/${pageCount}page${suffix}`;
+ }
+
+ function getKstYmdParts(d) {
+  try {
+   const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+   }).formatToParts(d);
+   const map = {};
+   parts.forEach((p) => {
+    if (p && p.type && p.value) map[p.type] = p.value;
+   });
+   const y = parseInt(map.year || "0", 10) || 0;
+   const m = parseInt(map.month || "0", 10) || 0;
+   const da = parseInt(map.day || "0", 10) || 0;
+   return { y, m, d: da };
+  } catch (e) {
+   return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() };
+  }
+ }
+
+ function makeUtcNoonFromYmd(y, m, d) {
+  return new Date(Date.UTC(y, (m || 1) - 1, d || 1, 12, 0, 0));
+ }
+
+ function addDaysUtc(dateUtc, days) {
+  return new Date(
+   dateUtc.getTime() + (parseInt(days || 0, 10) || 0) * 86400000
+  );
+ }
+
+ function todayKstUtcNoon() {
+  const p = getKstYmdParts(new Date());
+  return makeUtcNoonFromYmd(p.y, p.m, p.d);
+ }
+
+ function signedDaysBetween(a, b) {
+  if (!a || !b) return 99999;
+  const ax = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+  const bx = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((bx - ax) / 86400000);
+ }
+
+ function parseIssueDate(iso) {
+  if (!iso) return null;
+  const s = String(iso).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+   const y = parseInt(s.slice(0, 4), 10);
+   const m = parseInt(s.slice(5, 7), 10) - 1;
+   const d = parseInt(s.slice(8, 10), 10);
+   return new Date(y, m, d, 12, 0, 0);
+  }
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+ }
+
+ function renderInvoiceAmountCell(total, paidSum, remaining, depositCount) {
+  const t = parseMoney(total || 0);
+  const p = parseMoney(paidSum || 0);
+  const r = parseMoney(remaining || 0) || t - p;
+  const c = parseInt(depositCount || 0, 10) || 0;
+  if (p <= 0 && c <= 0) {
+   return formatMoney(t);
+  }
+  const paidTxt = formatMoney(p);
+  const remTxt = formatMoney(r);
+  return `${formatMoney(t)}<br><span class="gray2 f11">Deposit:${paidTxt} / :${remTxt}${
+   c> 0 ? ` (${c}items)` : ""
+  }</span>`;
+ }
+ function parseTrdtToDate(trdt) {
+  if (!trdt) return null;
+  if (/^\d{14}$/.test(trdt)) {
+   const y = parseInt(trdt.slice(0, 4), 10);
+   const m = parseInt(trdt.slice(4, 6), 10) - 1;
+   const d = parseInt(trdt.slice(6, 8), 10);
+   const hh = parseInt(trdt.slice(8, 10), 10);
+   const mm = parseInt(trdt.slice(10, 12), 10);
+   const ss = parseInt(trdt.slice(12, 14), 10);
+   return new Date(y, m, d, hh, mm, ss);
+  }
+  const dt = new Date(trdt);
+  if (!isNaN(dt.getTime())) return dt;
+  return null;
+ }
+ function formatTrdt(trdt) {
+  const dt = parseTrdtToDate(trdt);
+  if (!dt) {
+   const safe = (trdt || "").toString().replace("T", " ").replace("Z", "");
+   if (safe.length>= 10)
+    return `${safe.slice(0, 10)}<br>${safe.slice(11, 19)}`;
+   return safe || "-";
+  }
+  const y = dt.getFullYear();
+  const m = pad2(dt.getMonth() + 1);
+  const d = pad2(dt.getDate());
+  const hh = pad2(dt.getHours());
+  const mm = pad2(dt.getMinutes());
+  const ss = pad2(dt.getSeconds());
+  return `${y}-${m}-${d}<br>${hh}:${mm}:${ss}`;
+ }
+ function aliasColor(alias) {
+  const palette = [
+   "#fffef6",
+   "#f6fffb",
+   "#f6fbff",
+   "#fff6f9",
+   "#f4f9ff",
+   "#f9fff4",
+   "#f9f6ff",
+   "#f6f9ff",
+  ];
+  let h = 0;
+  const s = (alias || "").toString();
+  for (let i = 0; i < s.length; i++) {
+   h = (h * 31 + s.charCodeAt(i))>>> 0;
+  }
+  return palette[h % palette.length];
+ }
+
+ function isInitialSearchChar(ch) {
+  return /^[A-Za-z]$/.test(ch);
+ }
+
+ function toCompact(value) {
+  if (!value) return "";
+  const out = [];
+  const s = String(value);
+  for (let i = 0; i < s.length; i++) {
+   const ch = s[i];
+   if (isInitialSearchChar(ch)) {
+   out.push(ch);
+   } else if (/[0-9]/.test(ch)) {
+   out.push(ch);
+   }
+  }
+  return out.join("");
+ }
+
+ function safeNormalizeName(value) {
+  try {
+   return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u00a0\u3000]/g, " ")
+    .replace(/[|/\\,.;:_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  } catch (e) {
+   return String(value || "")
+    .toLowerCase()
+    .replace(/[|/\\,.;:_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  }
+ }
+
+ function removeCompanyTokens(value) {
+  let out = safeNormalizeName(value);
+  COMPANY_TOKENS.forEach((token) => {
+   out = out.replaceAll(token, " ");
+  });
+  out = out
+   .replace(/\b(?:co|corp|inc|ltd|llc)\b/g, " ")
+   .replace(/\s+/g, " ")
+   .trim();
+  return out;
+ }
+
+ function compactEntityName(value) {
+  return removeCompanyTokens(value)
+   .replace(/[()[\]{}]/g, " ")
+   .replace(/[^0-9a-z-]+/g, "")
+   .trim();
+ }
+
+ function buildNameVariants(value) {
+  const raw = safeNormalizeName(value);
+  if (!raw) return [];
+  const beforeParen = raw.split("(")[0].trim();
+  const noParenChars = raw.replace(/[()[\]{}]/g, " ").replace(/\s+/g, " ").trim();
+  const core = removeCompanyTokens(raw);
+  const coreBeforeParen = removeCompanyTokens(beforeParen);
+  const compact = compactEntityName(raw);
+  const compactBeforeParen = compactEntityName(beforeParen);
+  const set = new Set(
+   [raw, beforeParen, noParenChars, core, coreBeforeParen, compact, compactBeforeParen].filter(
+    Boolean
+   )
+  );
+  return Array.from(set);
+ }
+
+ function buildNameTokenSet(value) {
+  const set = new Set();
+  buildNameVariants(value).forEach((variant) => {
+   const cleaned = removeCompanyTokens(variant);
+   cleaned.split(/\s+/).forEach((part) => {
+    const token = part.replace(/[^0-9a-z-]+/g, "").trim();
+    if (token.length>= 2) {
+     set.add(token);
+    }
+   });
+   const compact = compactEntityName(variant);
+   if (compact.length>= 2) {
+    set.add(compact);
+   }
+  });
+  return set;
+ }
+
+ function bigramSet(value) {
+  const s = compactEntityName(value);
+  if (!s) return new Set();
+  if (s.length < 2) return new Set([s]);
+  const out = new Set();
+  for (let i = 0; i < s.length - 1; i++) {
+   out.add(s.slice(i, i + 2));
+  }
+  return out;
+ }
+
+ function bigramSimilarity(a, b) {
+  const sa = bigramSet(a);
+  const sb = bigramSet(b);
+  if (!sa.size || !sb.size) return 0;
+  let hit = 0;
+  sa.forEach((it) => {
+   if (sb.has(it)) hit += 1;
+  });
+  return hit / Math.max(sa.size, sb.size);
+ }
+
+ function tokenOverlapRatio(a, b) {
+  const sa = buildNameTokenSet(a);
+  const sb = buildNameTokenSet(b);
+  if (!sa.size || !sb.size) return 0;
+  let hit = 0;
+  sa.forEach((it) => {
+   if (sb.has(it)) hit += 1;
+  });
+  return hit / Math.min(sa.size, sb.size);
+ }
+
+ function computeNameMatchScore(clientName, payerName) {
+  const clientCore = compactEntityName(clientName);
+  const payerCore = compactEntityName(payerName);
+  if (!clientCore || !payerCore) {
+   return { score: 0, label: "" };
+  }
+  if (clientCore === payerCore) {
+   return { score: 35, label: "Client name match" };
+  }
+  const shorter = Math.min(clientCore.length, payerCore.length);
+  if (
+   shorter>= 3 &&
+   (clientCore.includes(payerCore) || payerCore.includes(clientCore))
+  ) {
+   return { score: 28, label: "Client name match" };
+  }
+  const overlap = tokenOverlapRatio(clientName, payerName);
+  if (overlap>= 1) {
+   return { score: 24, label: " match" };
+  }
+  if (overlap>= 0.5) {
+   return { score: 18, label: "Client name days match" };
+  }
+  const clientCho = toCompact(clientCore).replace(/\s+/g, "");
+  const payerCho = toCompact(payerCore).replace(/\s+/g, "");
+  if (
+   clientCho &&
+   payerCho &&
+   (clientCho.includes(payerCho) || payerCho.includes(clientCho))
+  ) {
+   return { score: 16, label: " " };
+  }
+  const similarity = bigramSimilarity(clientCore, payerCore);
+  if (similarity>= 0.72) {
+   return { score: 16, label: "Client name fuzzy match" };
+  }
+  if (similarity>= 0.56) {
+   return { score: 10, label: "Client name weak fuzzy match" };
+  }
+  return { score: 0, label: "" };
+ }
+
+ function computeAmountMatchScore(targetAmount, depositAmount) {
+  const target = parseMoney(targetAmount || 0);
+  const deposit = parseMoney(depositAmount || 0);
+  if (!target || !deposit) {
+   return { score: 0, label: "" };
+  }
+  const diff = Math.abs(target - deposit);
+  const pct = target> 0 ? diff / target : 999;
+  if (diff === 0) {
+   return { score: 45, label: "Amount match" };
+  }
+  const nearAbs = MATCH_CURRENCY === "USD" ? 10000 : 1;
+  const similarAbs = MATCH_CURRENCY === "USD" ? 50000 : 10;
+  const toleratedAbs = MATCH_CURRENCY === "USD" ? 100000 : 50;
+  if (pct <= 0.01 || (diff <= nearAbs && pct <= 0.05)) {
+   return { score: 40, label: "Amount near match" };
+  }
+  if (pct <= 0.05 || (diff <= similarAbs && pct <= 0.1)) {
+   return { score: 32, label: "Amount similar match" };
+  }
+  if (pct <= 0.1 || (diff <= toleratedAbs && pct <= 0.2)) {
+   return { score: 22, label: "Amount tolerance match" };
+  }
+  const ratio = target> 0 ? Math.min(target, deposit) / target : 0;
+  if (deposit < target && ratio>= 0.4) {
+   return { score: 16, label: "Partial deposit amount" };
+  }
+  if (deposit> target && pct <= 0.2) {
+   return { score: 12, label: "Deposit amount slightly exceeds invoice" };
+  }
+  return { score: 0, label: "" };
+ }
+
+ function computeDateMatchScore(issueDate, depositDate) {
+  const invDate = parseIssueDate(issueDate);
+  const depDate = parseTrdtToDate(depositDate);
+  if (!invDate || !depDate) {
+   return { score: 0, label: "" };
+  }
+  const diff = signedDaysBetween(invDate, depDate);
+  if (diff>= 0 && diff <= 3) {
+   return { score: 20, label: "Issued within 3 days" };
+  }
+  if (diff>= 4 && diff <= 7) {
+   return { score: 16, label: "Issued within 1 week" };
+  }
+  if (diff>= 8 && diff <= 15) {
+   return { score: 12, label: "Issued within 2 weeks" };
+  }
+  if (diff>= 16 && diff <= 30) {
+   return { score: 8, label: "Issued within 30 days" };
+  }
+  if (diff>= 31 && diff <= 60) {
+   return { score: 4, label: "Issued within 60 days" };
+  }
+  if (diff>= -7 && diff < 0) {
+   return { score: 10, label: "Deposit before invoice issue date" };
+  }
+  if (diff>= -30 && diff < -7) {
+   return { score: 4, label: "Deposit within 30 days before invoice" };
+  }
+  return { score: 0, label: "" };
+ }
+
+ function depositAmountForRecommendation(deposit) {
+  if (!deposit) return 0;
+  const state = String(deposit.matchState || deposit.match_state || "")
+   .trim()
+   .toLowerCase();
+  const matched = parseMoney(deposit.matchedAmount || deposit.matched_amount || 0);
+  if (
+   Object.prototype.hasOwnProperty.call(deposit, "remainingAccIn") &&
+   (state === "partial" || state === "full" || matched> 0)
+  ) {
+   return parseMoney(deposit.remainingAccIn || 0);
+  }
+  return parseMoney(deposit.accIn || 0);
+ }
+
+ function scoreInvoiceForDeposit(invoice, deposit) {
+  const targetAmount =
+   parseMoney(invoice.remaining || 0)> 0
+    ? parseMoney(invoice.remaining || 0)
+    : parseMoney(invoice.total || 0);
+  const amount = computeAmountMatchScore(
+   targetAmount,
+   depositAmountForRecommendation(deposit)
+  );
+  const date = computeDateMatchScore(invoice.issueDate, deposit.trdt || deposit.trdate);
+  const name = computeNameMatchScore(invoice.clientName, deposit.payerName);
+  const total = amount.score + date.score + name.score;
+  const reasons = [amount.label, date.label, name.label].filter(Boolean).slice(0, 3);
+  return {
+   total,
+   recommended: total>= REC_SCORE_THRESHOLD && amount.score>= REC_MIN_AMOUNT_SCORE,
+   reasons,
+  };
+ }
+
+ function scoreDepositForInvoice(deposit, invoice) {
+  return scoreInvoiceForDeposit(invoice, deposit);
+ }
+
+ function getInvoiceRowPayload(tr) {
+  if (!tr) return null;
+  return {
+   invoiceId: tr.dataset.invoiceId || "",
+   invoiceNumber: tr.dataset.invoiceNumber || "",
+   total: parseMoney(tr.dataset.total || "0"),
+   remaining: parseMoney(tr.dataset.remaining || "0"),
+   issueDate: tr.dataset.issueDate || "",
+   clientName: tr.dataset.clientName || "",
+  };
+ }
+
+ function getDepositRowPayload(tr) {
+  if (!tr) return null;
+  return {
+   tid: tr.dataset.tid || "",
+   accIn: parseMoney(tr.dataset.accIn || "0"),
+   trdt: tr.dataset.trdt || "",
+   trdate: tr.dataset.trdate || "",
+   bankCode: tr.dataset.bankCode || "",
+   accountNumber: tr.dataset.accountNumber || "",
+   alias: tr.dataset.alias || "",
+   summary: tr.dataset.summary || "",
+   memo: tr.dataset.memo || "",
+   payerName: tr.dataset.payerName || "",
+   remainingAccIn: parseMoney(tr.dataset.remainingAccIn || tr.dataset.accIn || "0"),
+   matchedAmount: parseMoney(tr.dataset.matchedAmount || "0"),
+   matchState: tr.dataset.matchState || "unmatched",
+  };
+ }
+
+ function setRowRecommendationMeta(tr, recommend) {
+  const el = tr ? tr.querySelector(".js-rec-meta") : null;
+  if (!el) return;
+  if (!recommend || !recommend.recommended) {
+   el.innerHTML = "";
+   return;
+  }
+  const reasonText = recommend.reasons.length
+   ? ` <span class="gray2 f11">${recommend.reasons.join(" · ")}</span>`
+   : "";
+  el.innerHTML = `<div class="mt-1"><span class="recommend-score-chip"> ${recommend.total}</span>${reasonText}</div>`;
+ }
+
+ function clearRecommendationState(tableSelector) {
+  document.querySelectorAll(`${tableSelector} tbody tr`).forEach((tr) => {
+   tr.classList.remove("recommend");
+   tr.classList.remove("recommend-filter-hidden");
+   setRowRecommendationMeta(tr, null);
+  });
+ }
+
+ function getInvoiceDataRows() {
+  return Array.from(document.querySelectorAll("#matchInvoicesTable tbody tr[data-invoice-id]"));
+ }
+
+ function getDepositDataRows() {
+  return Array.from(document.querySelectorAll("#matchDepositsTable tbody tr[data-tid]"));
+ }
+
+ function updateFilterFocusStyles() {
+  document
+   .querySelectorAll("#matchInvoicesTable tbody tr.recommend-focus")
+   .forEach((tr) => tr.classList.remove("recommend-focus"));
+  document
+   .querySelectorAll("#matchDepositsTable tbody tr.recommend-focus")
+   .forEach((tr) => tr.classList.remove("recommend-focus"));
+  if (ACTIVE_DEPOSIT_RECOMMEND_FILTER && ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId) {
+   const row = document.querySelector(
+    `#matchInvoicesTable tbody tr[data-invoice-id="${ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId}"]`
+   );
+   if (row) row.classList.add("recommend-focus");
+  }
+  if (ACTIVE_INVOICE_RECOMMEND_FILTER && ACTIVE_INVOICE_RECOMMEND_FILTER.tid) {
+   const row = document.querySelector(
+    `#matchDepositsTable tbody tr[data-tid="${ACTIVE_INVOICE_RECOMMEND_FILTER.tid}"]`
+   );
+   if (row) row.classList.add("recommend-focus");
+  }
+ }
+
+ function updateRecommendFilterBoxes() {
+  const invoiceBox = document.getElementById("invoiceRecommendFilterBox");
+  const depositBox = document.getElementById("depositRecommendFilterBox");
+  if (invoiceBox) {
+   if (ACTIVE_INVOICE_RECOMMEND_FILTER) {
+    const dep = ACTIVE_INVOICE_RECOMMEND_FILTER;
+    const when = formatTrdt(dep.trdt).replace("<br>", " ");
+    const basisAmount = depositAmountForRecommendation(dep);
+    const basisLabel =
+     String(dep.matchState || dep.match_state || "").toLowerCase() === "partial"
+      ? ` ${formatMoney(basisAmount)}`
+      : formatMoney(basisAmount);
+    invoiceBox.innerHTML = `
+     <span> Filters</span>
+     <span class="mono">${when}</span>
+     <span>${basisLabel}</span>
+     <span>${dep.payerName || dep.alias || "-"}</span>
+     <span>Current page ${LAST_INVOICE_RECOMMEND_COUNT}items</span>
+     <button type="button" class="btn btn-sm btn-outline-secondary" id="clearInvoiceRecommendFilter"></button>
+    `;
+   } else {
+    invoiceBox.innerHTML = "";
+   }
+  }
+  if (depositBox) {
+   if (ACTIVE_DEPOSIT_RECOMMEND_FILTER) {
+    const inv = ACTIVE_DEPOSIT_RECOMMEND_FILTER;
+    const invoiceAmount = parseMoney(inv.remaining || inv.total || 0);
+    depositBox.innerHTML = `
+     <span> Filters</span>
+     <span class="mono">${inv.invoiceNumber || "-"}</span>
+     <span>${inv.clientName || "-"}</span>
+     <span>${formatMoney(invoiceAmount)} </span>
+     <span>Current page ${LAST_DEPOSIT_RECOMMEND_COUNT}items</span>
+     <button type="button" class="btn btn-sm btn-outline-secondary" id="clearDepositRecommendFilter"></button>
+    `;
+   } else {
+    depositBox.innerHTML = "";
+   }
+  }
+ }
+
+ function refreshInvoiceRecommendationUi() {
+  if (ACTIVE_INVOICE_RECOMMEND_FILTER) {
+   LAST_INVOICE_RECOMMEND_COUNT = getInvoiceDataRows().length;
+   getInvoiceDataRows().forEach((tr) => {
+    tr.classList.remove("recommend-filter-hidden");
+    tr.classList.add("recommend");
+   });
+   updateFilterFocusStyles();
+   updateRecommendFilterBoxes();
+   return;
+  }
+  clearRecommendationState("#matchInvoicesTable");
+  LAST_INVOICE_RECOMMEND_COUNT = 0;
+  const source = PREVIEW_INVOICE_SOURCE;
+  if (!source) {
+   updateFilterFocusStyles();
+   updateRecommendFilterBoxes();
+   return;
+  }
+  getInvoiceDataRows().forEach((tr) => {
+   const recommend = scoreInvoiceForDeposit(getInvoiceRowPayload(tr), source);
+   if (recommend.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, recommend);
+    LAST_INVOICE_RECOMMEND_COUNT += 1;
+   }
+  });
+  updateFilterFocusStyles();
+  updateRecommendFilterBoxes();
+ }
+
+ function refreshDepositRecommendationUi() {
+  if (ACTIVE_DEPOSIT_RECOMMEND_FILTER) {
+   LAST_DEPOSIT_RECOMMEND_COUNT = getDepositDataRows().length;
+   getDepositDataRows().forEach((tr) => {
+    tr.classList.remove("recommend-filter-hidden");
+    tr.classList.add("recommend");
+   });
+   updateFilterFocusStyles();
+   updateRecommendFilterBoxes();
+   return;
+  }
+  clearRecommendationState("#matchDepositsTable");
+  LAST_DEPOSIT_RECOMMEND_COUNT = 0;
+  const source = PREVIEW_DEPOSIT_SOURCE;
+  if (!source) {
+   updateFilterFocusStyles();
+   updateRecommendFilterBoxes();
+   return;
+  }
+  getDepositDataRows().forEach((tr) => {
+   const recommend = scoreDepositForInvoice(getDepositRowPayload(tr), source);
+   if (recommend.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, recommend);
+    LAST_DEPOSIT_RECOMMEND_COUNT += 1;
+   }
+  });
+  updateFilterFocusStyles();
+  updateRecommendFilterBoxes();
+ }
+
+ function refreshRecommendationUi() {
+  refreshInvoiceRecommendationUi();
+  refreshDepositRecommendationUi();
+  scheduleSyncRowHeights();
+  updateDepositDragMode();
+  updateMobileMatchDock();
+ }
+
+ function clearRecommendFilters() {
+  ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+  ACTIVE_DEPOSIT_RECOMMEND_FILTER = null;
+  PREVIEW_INVOICE_SOURCE = null;
+  PREVIEW_DEPOSIT_SOURCE = null;
+  MOBILE_SELECTED_INVOICE = null;
+  MOBILE_SELECTED_DEPOSIT = null;
+  refreshRecommendationUi();
+ }
+
+ function setInvoicePreviewSource(dep) {
+  PREVIEW_INVOICE_SOURCE = ACTIVE_INVOICE_RECOMMEND_FILTER ? null : dep;
+  refreshInvoiceRecommendationUi();
+ }
+
+ function clearInvoicePreviewSource() {
+  PREVIEW_INVOICE_SOURCE = null;
+  refreshInvoiceRecommendationUi();
+ }
+
+ function setDepositPreviewSource(inv) {
+  PREVIEW_DEPOSIT_SOURCE = ACTIVE_DEPOSIT_RECOMMEND_FILTER ? null : inv;
+  refreshDepositRecommendationUi();
+ }
+
+ function clearDepositPreviewSource() {
+  PREVIEW_DEPOSIT_SOURCE = null;
+  refreshDepositRecommendationUi();
+ }
+
+ async function toggleInvoiceRecommendFilter(dep) {
+  const nextTid = dep && dep.tid ? String(dep.tid) : "";
+  const currTid =
+   ACTIVE_INVOICE_RECOMMEND_FILTER && ACTIVE_INVOICE_RECOMMEND_FILTER.tid
+    ? String(ACTIVE_INVOICE_RECOMMEND_FILTER.tid)
+    : "";
+  ACTIVE_INVOICE_RECOMMEND_FILTER = currTid && currTid === nextTid ? null : dep;
+  PREVIEW_INVOICE_SOURCE = null;
+  INV_PAGE = 1;
+  try {
+   await loadMatchingInvoices();
+  } catch (e) {
+   showMessageModal(
+    "Error",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  }
+ }
+
+ async function toggleDepositRecommendFilter(inv) {
+  const nextId = inv && inv.invoiceId ? String(inv.invoiceId) : "";
+  const currId =
+   ACTIVE_DEPOSIT_RECOMMEND_FILTER && ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId
+    ? String(ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId)
+    : "";
+  ACTIVE_DEPOSIT_RECOMMEND_FILTER = currId && currId === nextId ? null : inv;
+  PREVIEW_DEPOSIT_SOURCE = null;
+  DEP_PAGE = 1;
+  try {
+   await loadMatchingDeposits();
+  } catch (e) {
+   showMessageModal(
+    "Error",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  }
+ }
+
+ async function loadAccounts() {
+  const token = ++ACCOUNTS_LOAD_TOKEN;
+  const data = await fetchJSON(
+   `${scriptRoot}/bank_activity/accounts?currency=${encodeURIComponent(MATCH_CURRENCY)}`
+  );
+  if (token !== ACCOUNTS_LOAD_TOKEN) return;
+  const wrap = document.getElementById("activeAccountsList");
+  wrap.innerHTML = "";
+  (data.active || []).forEach((a, i) => {
+   const labelText = `${a.accountName || ""} <span class=\"gray2\">(${
+    a.bankCode
+   })</span><br><span class=\"gray2\">${a.accountNumber}</span>`;
+   const div = document.createElement("div");
+   div.className = "account-item";
+   div.innerHTML = `<label><input type=\"checkbox\" name=\"activeAccount\" value=\"${
+    a.bankCode
+   }|${a.accountNumber}\" ${"checked"} /> ${labelText}</label>`;
+   wrap.appendChild(div);
+   ALIAS_BY_ACC[`${a.bankCode}|${a.accountNumber}`] = `${
+    a.accountName || ""
+   } (${(a.accountNumber || "").slice(-4)})`;
+  });
+  updateSelectionSummaries();
+ }
+
+ async function loadBizProfiles() {
+  const token = ++BP_LOAD_TOKEN;
+  const data = await fetchJSON(
+   `${scriptRoot}/bank_activity/matching/biz_profiles?currency=${encodeURIComponent(MATCH_CURRENCY)}`
+  );
+  if (token !== BP_LOAD_TOKEN) return;
+  const wrap = document.getElementById("bpList");
+  wrap.innerHTML = "";
+  (data.items || []).forEach((b) => {
+   const labelText = `${b.name || ""} <span class=\"gray2\">#${(
+    b.tax_id || ""
+   )
+    .toString()
+    .slice(-3)}</span>`;
+   const div = document.createElement("div");
+   div.className = "account-item";
+   div.innerHTML = `<label><input type=\"checkbox\" name=\"bpId\" value=\"${
+    b.id
+   }\" ${"checked"} /> ${labelText}</label>`;
+   wrap.appendChild(div);
+  });
+  updateSelectionSummaries();
+ }
+
+ function getSelectedBpIds() {
+  const ids = [];
+  document
+   .querySelectorAll('input[name="bpId"]:checked')
+   .forEach((chk) => ids.push(chk.value));
+  return ids;
+ }
+
+ async function reloadMatchingLists(options = {}) {
+  const resetPages = options.resetPages !== false;
+  const clearRecommendations = options.clearRecommendations !== false;
+  if (resetPages) {
+   INV_PAGE = 1;
+   DEP_PAGE = 1;
+  }
+  if (clearRecommendations) {
+   clearMobileMatchSelection();
+   clearRecommendFilters();
+  }
+  await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+ }
+
+ async function restoreDefaultFilters() {
+  setDefaultDateRange();
+  setCheckboxGroupChecked("activeAccount", true);
+  setCheckboxGroupChecked("bpId", true);
+  MEMO_MODE = "empty";
+  updateMemoModeUi();
+  try {
+   localStorage.setItem("bank_activity_matching_memo_mode", MEMO_MODE);
+  } catch (e) {}
+  await reloadMatchingLists();
+ }
+
+ async function sliceDays(days) {
+  const end = todayKstUtcNoon();
+  const start = addDaysUtc(end, -days);
+  setDateInputs(start, end);
+  await reloadMatchingLists();
+ }
+
+ async function sliceMonths(months) {
+  const end = todayKstUtcNoon();
+  const start = addMonthsUtcClamped(end, -months);
+  setDateInputs(start, end);
+  await reloadMatchingLists();
+ }
+
+	 function renderMatchPagination(containerId, pageNum, pageCount, ariaLabel, onPageChange) {
+	  const container = document.getElementById(containerId);
+	  if (!container) return;
+	  window.AppPagination.render(container, {
+	   page: pageNum,
+	   totalPages: pageCount,
+	   ariaLabel,
+	   onPageChange,
+	  });
+	 }
+
+	 async function changeInvoicePage(nextPage) {
+	  if (nextPage === INV_PAGE) return;
+	  INV_PAGE = nextPage;
+	  try {
+	   await loadMatchingInvoices();
+	  } catch (e) {
+	   showMessageModal(
+	    "Error",
+	    e && e.message ? e.message : "An error occurred while processing the request."
+	   );
+	  }
+	 }
+
+	 async function changeDepositPage(nextPage) {
+	  if (nextPage === DEP_PAGE) return;
+	  DEP_PAGE = nextPage;
+	  try {
+	   await loadMatchingDeposits();
+	  } catch (e) {
+	   showMessageModal(
+	    "Error",
+	    e && e.message ? e.message : "An error occurred while processing the request."
+	   );
+	  }
+	 }
+
+ // --- Row height sync between the two tables ---
+ let SYNC_TIMER = null;
+ function syncRowHeights() {
+  try {
+   if (isMobileMatchingMode()) {
+    document
+     .querySelectorAll("#matchInvoicesTable tbody tr, #matchDepositsTable tbody tr")
+     .forEach((r) => (r.style.height = "auto"));
+    return;
+   }
+   const invRows = Array.from(
+    document.querySelectorAll("#matchInvoicesTable tbody tr")
+   ).filter((r) => window.getComputedStyle(r).display !== "none");
+   const depRows = Array.from(
+    document.querySelectorAll("#matchDepositsTable tbody tr")
+   ).filter((r) => window.getComputedStyle(r).display !== "none");
+   // reset previous heights
+   document
+    .querySelectorAll("#matchInvoicesTable tbody tr, #matchDepositsTable tbody tr")
+    .forEach((r) => (r.style.height = "auto"));
+   const n = Math.max(invRows.length, depRows.length);
+   for (let i = 0; i < n; i++) {
+    const a = invRows[i];
+    const b = depRows[i];
+    let h = 0;
+    if (a) h = Math.max(h, a.getBoundingClientRect().height);
+    if (b) h = Math.max(h, b.getBoundingClientRect().height);
+    if (a) a.style.height = h + "px";
+    if (b) b.style.height = h + "px";
+   }
+  } catch (e) {
+   /* no-op */
+  }
+ }
+ function scheduleSyncRowHeights() {
+  if (SYNC_TIMER) clearTimeout(SYNC_TIMER);
+  SYNC_TIMER = setTimeout(syncRowHeights, 0);
+ }
+
+ async function loadMatchingInvoices() {
+  const token = ++INV_LOAD_TOKEN;
+  const tbody = document.querySelector("#matchInvoicesTable tbody");
+  renderTablePlaceholder(tbody, 7, "Invoice times ...");
+  setResultSummary("invoice", { loading: true });
+  const sdate = document.getElementById("startDate").value;
+  const edate = document.getElementById("endDate").value;
+  const bpIds = getSelectedBpIds();
+  if (document.querySelectorAll('input[name="bpId"]').length && !bpIds.length) {
+   INV_BY_NO = {};
+   renderTablePlaceholder(tbody, 7, "Display Business profile Select.");
+   document.getElementById("matchInvoicesPaging").innerHTML = "";
+   document.getElementById("matchInvoicesPagingTop").innerHTML = "";
+   setResultSummary("invoice", {
+    total: 0,
+    visible: 0,
+    pageNum: 1,
+    pageCount: 1,
+    note: "Business profile ",
+   });
+   refreshRecommendationUi();
+   return;
+  }
+  const bpParam = bpIds.length
+   ? `&bpIds=${encodeURIComponent(bpIds.join(","))}`
+   : "";
+  const recommendParam =
+   ACTIVE_INVOICE_RECOMMEND_FILTER && ACTIVE_INVOICE_RECOMMEND_FILTER.tid
+    ? `&recommend_tid=${encodeURIComponent(
+      ACTIVE_INVOICE_RECOMMEND_FILTER.tid
+     )}`
+    : "";
+  const res = await fetchJSON(
+   `${scriptRoot}/bank_activity/matching/invoices?date_from=${encodeURIComponent(
+    sdate
+   )}&date_to=${encodeURIComponent(
+    edate
+   )}&currency=${encodeURIComponent(
+    MATCH_CURRENCY
+   )}&page=${INV_PAGE}&perPage=${PER_PAGE}${bpParam}${recommendParam}`
+  );
+  if (token !== INV_LOAD_TOKEN) return;
+  tbody.innerHTML = "";
+  // Keep a number->item map for cross-linking from deposit memos (INV:<no>).
+  INV_BY_NO = {};
+  (res.items || []).forEach((it) => {
+   const no = (it && it.number ? String(it.number) : "").trim();
+   if (!no) return;
+   if (!INV_BY_NO[no]) INV_BY_NO[no] = [];
+   INV_BY_NO[no].push(it);
+  });
+  (res.items || []).forEach((it, idx) => {
+   const tr = document.createElement("tr");
+   tr.dataset.invoiceId = it.id;
+   tr.dataset.invoiceNumber = it.number || "";
+   tr.dataset.total = String(parseMoney(it.total || 0));
+   tr.dataset.paidSum = String(parseMoney(it.paid_sum || 0));
+   tr.dataset.remaining = String(parseMoney(it.remaining || 0));
+   tr.dataset.depositCount = String(parseInt(it.deposit_count || 0) || 0);
+   tr.dataset.matchState = it.match_state || "";
+   tr.dataset.issueDate = it.issue_date || "";
+   tr.dataset.clientName = it.client_name || "";
+   tr.dataset.clientId = it.client_id || "";
+   tr.dataset.ipmCaseId = it.ipm_case_id || "";
+   tr.dataset.ipmCaseRef = it.ipm_case_ref || "";
+   // Show last 3 characters of business profile NAME only
+   const shortBiz = ((it.biz_name || "") + "").slice(-3);
+   const ms = (it.match_state || "").toString();
+   tr.classList.remove("match-partial");
+   tr.classList.remove("match-over");
+   if (ms === "partial") tr.classList.add("match-partial");
+   if (ms === "over") tr.classList.add("match-over");
+   const invNo = it.number || "";
+   const deepUrl = `${scriptRoot}/bank_activity/matching/invoice/${it.id}`;
+   const viewUrl = `${scriptRoot}/invoices/${it.id}`;
+   const clientName = it.client_name || "";
+   const clientId = it.client_id || "";
+   const clientHtml = clientId
+    ? `<a href="${scriptRoot}/clients/${clientId}" class="text-decoration-none" title="Client View">${clientName || clientId}</a>`
+    : (clientName || "");
+   let caseHtml = "";
+   if (it.ipm_case_id) {
+    const label = it.ipm_case_ref || it.ipm_case_id;
+    caseHtml = `<br><a href="/case/${encodeURIComponent(it.ipm_case_id)}" class="gray2 f11 text-decoration-none" title="Matter">${label}</a>`;
+   } else if (it.ipm_case_ref) {
+    caseHtml = `<br><a href="/case/list?q=${encodeURIComponent(it.ipm_case_ref)}" class="gray2 f11 text-decoration-none" title="Matter Search">${it.ipm_case_ref}</a>`;
+   }
+   const mobileInvoiceAmount = parseMoney(it.remaining || it.total || 0);
+   const mobileInvoiceMeta = [clientName || "-", it.issue_date || ""]
+    .filter(Boolean)
+    .join(" · ");
+   const mobileCaseLabel = it.ipm_case_ref || "";
+   const mobileCaseLink = it.ipm_case_id
+    ? `<a href="/case/${encodeURIComponent(it.ipm_case_id)}">Matter</a>`
+    : mobileCaseLabel
+    ? `<a href="/case/list?q=${encodeURIComponent(mobileCaseLabel)}">Matter</a>`
+    : "";
+   tr.innerHTML = `
+   <td class="a_c" data-label="#">${idx + 1}</td>
+   <td class="a_c" data-label="">
+    <div class="mobile-match-compact">
+     <div class="mobile-match-top">
+      <span class="mobile-match-title">${matchEscape(invNo || "-")}</span>
+      <span class="mobile-match-amount">${formatAmount(mobileInvoiceAmount)}</span>
+     </div>
+     <div class="mobile-match-meta">${matchEscape(mobileInvoiceMeta)}</div>
+     <div class="mobile-match-links">
+      <a href="${deepUrl}" class="text-decoration-none"></a>
+      <a href="${viewUrl}" class="text-decoration-none">View</a>
+      ${mobileCaseLink}
+     </div>
+    </div>
+    <div class="desktop-match-cell">
+     <a href="${deepUrl}" class="blue3 text-decoration-none" title=" Matching">${invNo}</a>
+     <br><a href="${viewUrl}" class="gray2 f11 text-decoration-none" title="Invoice View">Invoice</a>
+    </div>
+   </td>
+   <td class="a_c" data-label="Client">${clientHtml}${caseHtml}<div class="js-rec-meta"></div></td>
+   <td class="a_c" data-label="Business profile">${shortBiz}</td>
+   <td class="a_c" data-label="Issue date">${it.issue_date || ""}</td>
+   <td class="a_c" data-label="Status">${_t(it.billing_status || it.status)}<br><span class="gray2 f11">${
+    _t(it.payment_status || "")
+   }</span>${
+    ms === "partial"
+     ? '<br><span class="gray2 f11">Matching</span>'
+     : ms === "over"
+     ? '<br><span class="red3 f11"></span>'
+     : ""
+   }</td>
+   <td class="a_r" data-label="Total"><div class="desktop-match-cell">${renderInvoiceAmountCell(
+    it.total,
+    it.paid_sum,
+    it.remaining,
+    it.deposit_count
+   )}</div><button type="button" class="btn btn-sm btn-primary mobile-row-action js-mobile-select-invoice">Select</button></td>`;
+   if (it.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, {
+     recommended: true,
+     total: parseInt(it.recommend_score || 0, 10) || 0,
+     reasons: Array.isArray(it.recommend_reasons) ? it.recommend_reasons : [],
+    });
+   }
+   tr.style.backgroundColor = it.status === "paid" ? "#ecfdf5" : "";
+   // Hover preview of recommended deposits for this invoice
+   tr.addEventListener("mouseenter", () => {
+    if (ACTIVE_DEPOSIT_RECOMMEND_FILTER || IS_DRAGGING_DEPOSIT) return;
+    setDepositPreviewSource(getInvoiceRowPayload(tr));
+   });
+   tr.addEventListener("mouseleave", () => {
+    if (!ACTIVE_DEPOSIT_RECOMMEND_FILTER && !IS_DRAGGING_DEPOSIT) {
+     clearDepositPreviewSource();
+    }
+   });
+   tr.addEventListener("dblclick", (ev) => {
+    if (ev.target.closest("a")) return;
+    toggleDepositRecommendFilter(getInvoiceRowPayload(tr));
+   });
+   tr.addEventListener("click", (ev) => {
+    if (!isMobileMatchingMode()) return;
+    if (ev.target.closest("a")) return;
+    const payload = getInvoiceRowPayload(tr);
+    selectMobileInvoice(payload).catch((e) => {
+     showMessageModal(
+      "Error",
+      e && e.message ? e.message : "An error occurred while processing the request."
+     );
+    });
+   });
+   const mobileInvoiceBtn = tr.querySelector(".js-mobile-select-invoice");
+   if (mobileInvoiceBtn) {
+    mobileInvoiceBtn.addEventListener("click", (ev) => {
+     ev.preventDefault();
+     ev.stopPropagation();
+     selectMobileInvoice(getInvoiceRowPayload(tr)).catch((e) => {
+      showMessageModal(
+       "Error",
+       e && e.message ? e.message : "An error occurred while processing the request."
+      );
+     });
+    });
+   }
+   tr.addEventListener("dragover", (ev) => {
+    ev.preventDefault();
+    tr.classList.add("drop-ready");
+   });
+   tr.addEventListener("dragleave", () => tr.classList.remove("drop-ready"));
+   tr.addEventListener("drop", async (ev) => {
+    ev.preventDefault();
+    tr.classList.remove("drop-ready");
+    try {
+     const data = ev.dataTransfer.getData("text/plain");
+     if (!data) return;
+     const dep = JSON.parse(data);
+     await matchDepositToInvoice(it.id, dep, tr);
+    } catch (e) {
+     showMessageModal(
+      "Error",
+      e && e.message ? e.message : "An error occurred while processing the request."
+     );
+    }
+   });
+   if (
+    MOBILE_SELECTED_INVOICE &&
+    String(MOBILE_SELECTED_INVOICE.invoiceId || "") === String(it.id || "")
+   ) {
+    tr.classList.add("mobile-selected");
+   }
+   tbody.appendChild(tr);
+  });
+  if (!(res.items || []).length) {
+   renderTablePlaceholder(tbody, 7, "items Invoice none.");
+  }
+  // Render invoices pagination (top and bottom) with safe fallbacks
+  const pageNum = parseInt(res.pageNum || INV_PAGE || 1, 10) || 1;
+  let pageCount = res.pageCount;
+  if (!pageCount || pageCount < 1) {
+   const total = typeof res.total === "number" ? res.total : null;
+   if (total !== null) {
+    pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
+   } else {
+    const hasNext = (res.items || []).length === PER_PAGE;
+    pageCount = hasNext ? pageNum + 1 : Math.max(1, pageNum);
+   }
+  }
+	  renderMatchPagination(
+	   "matchInvoicesPaging",
+	   pageNum,
+	   pageCount,
+	   "Matching Invoice pagination",
+	   changeInvoicePage
+	  );
+	  renderMatchPagination(
+	   "matchInvoicesPagingTop",
+	   pageNum,
+	   pageCount,
+	   "Matching Invoice pagination",
+	   changeInvoicePage
+	  );
+  setResultSummary("invoice", {
+   total: res.total || 0,
+   visible: (res.items || []).length,
+   pageNum,
+   pageCount,
+   note: ACTIVE_INVOICE_RECOMMEND_FILTER ? " Filters Apply" : "",
+  });
+  refreshRecommendationUi();
+ }
+
+ async function loadMatchingDeposits() {
+  const token = ++DEP_LOAD_TOKEN;
+  const tbody = document.querySelector("#matchDepositsTable tbody");
+  renderTablePlaceholder(tbody, 4, "Deposit times ...");
+  setResultSummary("deposit", { loading: true });
+  const sdateStr = document
+   .getElementById("startDate")
+   .value.replaceAll("-", "");
+  const edateStr = document
+   .getElementById("endDate")
+   .value.replaceAll("-", "");
+  const accs = [];
+  document
+   .querySelectorAll('input[name="activeAccount"]:checked')
+   .forEach((chk) => accs.push(chk.value));
+  if (!accs.length) {
+   renderTablePlaceholder(tbody, 4, "Display Bank account Select.");
+   document.getElementById("matchDepositsPaging").innerHTML = "";
+   document.getElementById("matchDepositsPagingTop").innerHTML = "";
+   setResultSummary("deposit", {
+    total: 0,
+    visible: 0,
+    pageNum: 1,
+    pageCount: 1,
+    note: "Bank account No selection",
+   });
+   refreshRecommendationUi();
+   return;
+  }
+  const memoMode = ["unmatched", "empty", "all"].includes(MEMO_MODE)
+   ? MEMO_MODE
+   : "empty";
+  const recommendParam =
+   ACTIVE_DEPOSIT_RECOMMEND_FILTER && ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId
+    ? `&recommend_invoice_id=${encodeURIComponent(
+      ACTIVE_DEPOSIT_RECOMMEND_FILTER.invoiceId
+     )}`
+    : "";
+  const res = await fetchJSON(
+   `${scriptRoot}/bank_activity/matching/deposits?sdate=${encodeURIComponent(
+    sdateStr
+   )}&edate=${encodeURIComponent(edateStr)}&accounts=${encodeURIComponent(
+    accs.join(",")
+   )}&memoMode=${encodeURIComponent(
+    memoMode
+   )}&currency=${encodeURIComponent(
+    MATCH_CURRENCY
+   )}&page=${DEP_PAGE}&perPage=${PER_PAGE}${recommendParam}`
+  );
+  if (token !== DEP_LOAD_TOKEN) return;
+  tbody.innerHTML = "";
+  (res.items || []).forEach((r) => {
+   const tr = document.createElement("tr");
+   tr.dataset.tid = r.tid;
+   tr.dataset.accIn = String(parseMoney(r.accIn || 0));
+   tr.dataset.trdt = r.trdt || r.trdate || "";
+   tr.dataset.trdate = r.trdate || "";
+   const key = `${r.bankCode || ""}|${r.accountNumber || ""}`;
+   const alias =
+    ALIAS_BY_ACC[key] ||
+    `${r.bankCode || ""} ${r.accountNumber || ""}`.trim();
+   const summary = [r.remark1, r.remark2, r.remark3]
+    .filter(Boolean)
+    .join(" | ");
+   const remainingAccIn = parseMoney(
+    r.remainingAccIn == null ? r.accIn || 0 : r.remainingAccIn
+   );
+   const matchedAmount = parseMoney(r.matched_amount || 0);
+   const matchState = r.match_state || "unmatched";
+   const payload = {
+    tid: r.tid,
+    accIn: parseMoney(r.accIn || 0),
+    remainingAccIn,
+    matchedAmount,
+    matchState,
+    trdt: r.trdt || r.trdate,
+    trdate: r.trdate || r.trdt,
+    bankCode: r.bankCode,
+    accountNumber: r.accountNumber,
+    alias,
+    summary,
+    memo: r.memo || "",
+    payerName: r.remark1 || summary || alias || "",
+   };
+   tr.dataset.bankCode = r.bankCode || "";
+   tr.dataset.accountNumber = r.accountNumber || "";
+   tr.dataset.alias = alias;
+   tr.dataset.summary = summary;
+   tr.dataset.memo = r.memo || "";
+   tr.dataset.payerName = r.remark1 || summary || alias || "";
+   tr.dataset.remainingAccIn = String(remainingAccIn);
+   tr.dataset.matchedAmount = String(matchedAmount);
+   tr.dataset.matchState = matchState;
+   const desc1 = r.remark1 || "" || "-";
+   const desc2 =
+    r.remark2 || ""
+     ? `<br><span class="gray2 f11">${r.remark2}</span>`
+     : '<br><span class="gray2 f11">-</span>';
+   const desc3 =
+    r.remark3 || ""
+     ? `<br><span class="gray1">${r.remark3}</span>`
+     : '<br><span class="gray1">-</span>';
+   const invNo = extractInvNoFromMemo(r.memo);
+   const invLinks = invoiceLinksFromNumber(invNo);
+   const tidUrl = r.tid
+    ? `${scriptRoot}/bank_activity/matching/deposit/${encodeURIComponent(r.tid)}`
+    : "";
+   const mobileDepositTime = formatMobileDateTime(r.trdt || r.trdate) || "-";
+   const mobileDepositPayer = r.remark1 || summary || alias || "-";
+   const mobileDepositMeta = [mobileDepositPayer, alias].filter(Boolean).join(" · ");
+   const mobileDepositMemo = invNo
+    ? `INV ${invNo}`
+    : r.memo
+    ? "Notes "
+    : "";
+   const depositAmountHtml =
+    matchState === "partial"
+     ? `${formatMoney(r.accIn || 0)}<br><span class="gray2 f11">:${formatMoney(
+       matchedAmount
+      )} / :${formatMoney(remainingAccIn)}</span>`
+     : formatMoney(r.accIn || 0);
+   tr.draggable = !isMobileMatchingMode();
+   // Hover preview of recommended invoices for this deposit
+   tr.addEventListener("mouseenter", () => {
+    if (ACTIVE_INVOICE_RECOMMEND_FILTER) return;
+    setInvoicePreviewSource(payload);
+   });
+   tr.addEventListener("mouseleave", () => {
+    if (!ACTIVE_INVOICE_RECOMMEND_FILTER && !IS_DRAGGING_DEPOSIT) {
+     clearInvoicePreviewSource();
+    }
+   });
+   tr.addEventListener("dragstart", (ev) => {
+    tr.classList.add("dragging");
+    ev.dataTransfer.setData("text/plain", JSON.stringify(payload));
+    IS_DRAGGING_DEPOSIT = true;
+    setInvoicePreviewSource(payload);
+   });
+   tr.addEventListener("dragend", () => {
+    tr.classList.remove("dragging");
+    IS_DRAGGING_DEPOSIT = false;
+    if (!ACTIVE_INVOICE_RECOMMEND_FILTER) {
+     clearInvoicePreviewSource();
+    } else {
+     refreshInvoiceRecommendationUi();
+    }
+   });
+   tr.addEventListener("dblclick", (ev) => {
+    if (ev.target.closest("a")) return;
+    toggleInvoiceRecommendFilter(payload);
+   });
+   tr.addEventListener("click", (ev) => {
+    if (!isMobileMatchingMode()) return;
+    if (ev.target.closest("a")) return;
+    selectMobileDeposit(payload).catch((e) => {
+     showMessageModal(
+      "Error",
+      e && e.message ? e.message : "An error occurred while processing the request."
+     );
+    });
+   });
+   tr.innerHTML = `
+   <td class="a_c" data-label="days">
+    <div class="mobile-match-compact">
+     <div class="mobile-match-top">
+      <span class="mobile-match-title">${formatAmount(
+       r.match_state === "partial" ? remainingAccIn : r.accIn
+      )}</span>
+      <span class="mobile-match-amount">${matchEscape(mobileDepositTime)}</span>
+     </div>
+     <div class="mobile-match-meta">${matchEscape(mobileDepositMeta)}</div>
+     ${
+      mobileDepositMemo
+       ? `<div class="mobile-match-links"><span>${matchEscape(mobileDepositMemo)}</span></div>`
+       : ""
+     }
+    </div>
+    <div class="desktop-match-cell">${formatTrdt(r.trdt || r.trdate)}</div>
+   </td>
+   <td class="a_r" data-label="Amount"><div class="desktop-match-cell">${depositAmountHtml}</div></td>
+   <td class="a_c" data-label="Bank account"><div class="desktop-match-cell">${alias}</div></td>
+   <td class="a_c" data-label=""><div class="desktop-match-cell">${desc1}${desc2}${desc3}${
+    r.memo ? `<br><span class="gray2 f11">Notes: ${r.memo}</span>` : ""
+   }${
+    invLinks ? `<br><span class="gray2 f11">Invoice: ${invLinks}</span>` : ""
+   }${
+    tidUrl
+     ? `<br><span class="gray2 f11">TID: <a href="${tidUrl}" class="text-decoration-none">${r.tid}</a></span>`
+     : ""
+   }<div class="js-rec-meta"></div></div><button type="button" class="btn btn-sm btn-primary mobile-row-action js-mobile-select-deposit">Select</button></td>`;
+   if (r.recommended) {
+    tr.classList.add("recommend");
+    setRowRecommendationMeta(tr, {
+     recommended: true,
+     total: parseInt(r.recommend_score || 0, 10) || 0,
+     reasons: Array.isArray(r.recommend_reasons) ? r.recommend_reasons : [],
+    });
+   }
+   tr.style.backgroundColor = aliasColor(alias);
+   const mobileDepositBtn = tr.querySelector(".js-mobile-select-deposit");
+   if (mobileDepositBtn) {
+    mobileDepositBtn.addEventListener("click", (ev) => {
+     ev.preventDefault();
+     ev.stopPropagation();
+     selectMobileDeposit(payload).catch((e) => {
+      showMessageModal(
+       "Error",
+       e && e.message ? e.message : "An error occurred while processing the request."
+      );
+     });
+    });
+   }
+   if (
+    MOBILE_SELECTED_DEPOSIT &&
+    String(MOBILE_SELECTED_DEPOSIT.tid || "") === String(r.tid || "")
+   ) {
+    tr.classList.add("mobile-selected");
+   }
+   tbody.appendChild(tr);
+  });
+  if (!(res.items || []).length) {
+   renderTablePlaceholder(tbody, 4, "items Deposit none.");
+  }
+  // Render deposits pagination (top and bottom). Fallback if backend paging fields not available yet.
+  const pageNum = parseInt(res.pageNum || DEP_PAGE || 1, 10) || 1;
+  let pageCount = res.pageCount;
+  if (!pageCount || pageCount < 1) {
+   const total = typeof res.total === "number" ? res.total : null;
+   if (total !== null) {
+    pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
+   } else {
+    const hasNext = (res.items || []).length === PER_PAGE;
+    pageCount = hasNext ? pageNum + 1 : Math.max(1, pageNum);
+   }
+  }
+	  renderMatchPagination(
+	   "matchDepositsPaging",
+	   pageNum,
+	   pageCount,
+	   "Matching Deposit Pagination",
+	   changeDepositPage
+	  );
+	  renderMatchPagination(
+	   "matchDepositsPagingTop",
+	   pageNum,
+	   pageCount,
+	   "Matching Deposit Pagination",
+	   changeDepositPage
+	  );
+  setResultSummary("deposit", {
+   total: res.total || 0,
+   visible: (res.items || []).length,
+   pageNum,
+   pageCount,
+   note: ACTIVE_DEPOSIT_RECOMMEND_FILTER ? " Filters Apply" : "",
+  });
+  refreshRecommendationUi();
+ }
+
+ async function forcePayDepositToInvoice(invoiceId, dep, meta, invNo) {
+  const saved = await fetchJSON(
+   `${scriptRoot}/invoices/${invoiceId}/save_payment_meta`,
+   {
+    method: "POST",
+    body: JSON.stringify({
+     payment_meta: meta,
+     append: true,
+     tid: dep.tid,
+     allow_multi_invoice: true,
+    }),
+   }
+  );
+  await postForcePaid(invoiceId);
+  const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+  try {
+   await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+    method: "POST",
+    body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+   });
+  } catch (e) {
+   console.warn("memo save failed", e);
+  }
+  clearMobileMatchSelection();
+  clearRecommendFilters();
+  await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+  showMessageModal("Done", "Deposit Matching  Paid Process.");
+  return saved;
+ }
+
+ async function matchDepositToInvoice(invoiceId, dep, trEl) {
+  const dt = parseTrdtToDate(dep.trdt);
+  const dateStr = dt
+   ? `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+   : "";
+  const originalDepositAmount = normalizePaymentAmount(dep.accIn || 0);
+  const availableDepositAmount = normalizePaymentAmount(
+   dep.remainingAccIn == null || dep.remainingAccIn === ""
+    ? dep.accIn || 0
+    : dep.remainingAccIn
+  );
+  const meta = {
+   currency: MATCH_CURRENCY,
+   date: dateStr,
+   account_alias:
+    dep.alias || `${dep.bankCode || ""} ${dep.accountNumber || ""}`.trim(),
+   deposit: availableDepositAmount,
+   summary: dep.summary || "",
+  };
+  if (moneyDeltaMinor(originalDepositAmount, availableDepositAmount) !== 0) {
+   meta.source_deposit = originalDepositAmount;
+   meta.source_remaining_before_match = availableDepositAmount;
+  }
+
+  let invRow = document.querySelector(
+   `#matchInvoicesTable tr[data-invoice-id="${invoiceId}"]`
+  );
+  const selectedInv =
+   MOBILE_SELECTED_INVOICE &&
+   String(MOBILE_SELECTED_INVOICE.invoiceId || MOBILE_SELECTED_INVOICE.id || "") ===
+    String(invoiceId || "")
+    ? MOBILE_SELECTED_INVOICE
+    : null;
+  const invNo =
+   invRow && invRow.dataset.invoiceNumber
+    ? invRow.dataset.invoiceNumber
+    : selectedInv
+    ? selectedInv.invoiceNumber || ""
+    : "";
+  const invTotal =
+   invRow && invRow.dataset.total
+    ? parseMoney(invRow.dataset.total || "0")
+    : selectedInv
+    ? parseMoney(selectedInv.total || 0)
+    : 0;
+  const invRemain =
+   invRow && invRow.dataset.remaining
+    ? parseMoney(invRow.dataset.remaining || "0")
+    : selectedInv
+    ? parseMoney(selectedInv.remaining || 0)
+    : 0;
+  const invState =
+   invRow && invRow.dataset.matchState
+    ? String(invRow.dataset.matchState || "")
+    : "";
+  const targetAmount = invRemain> 0 ? invRemain : invTotal;
+
+  const alreadyOneToMany = invState === "partial";
+  let oneToManyConfirmed = alreadyOneToMany;
+
+  const depositAmt = parseMoney(meta.deposit || 0);
+  const amountDiffMinor = targetAmount> 0 ? moneyDeltaMinor(depositAmt, targetAmount) : 0;
+  const depositExceedsTarget = amountDiffMinor> 0;
+  const depositIsShort = amountDiffMinor < 0;
+  const amountMismatch = targetAmount> 0 && amountDiffMinor !== 0;
+  let allowMultiInvoice =
+   dep.matchState === "partial" || parseMoney(dep.matchedAmount || 0)> 0;
+  if ((depositExceedsTarget || (!oneToManyConfirmed && depositIsShort)) && amountMismatch) {
+   const mismatchAction = await confirmOneToManyMatch(
+    invNo,
+    meta.deposit,
+    targetAmount
+   );
+   if (mismatchAction === "force_paid") {
+    try {
+     await forcePayDepositToInvoice(invoiceId, dep, meta, invNo);
+    } catch (e) {
+     showMessageModal(
+      " Payment ",
+      e && e.message ? e.message : "An error occurred while processing the request."
+     );
+    }
+    return;
+   }
+   if (mismatchAction === "many_to_one") {
+    meta.source_deposit = originalDepositAmount;
+    meta.source_remaining_before_match = availableDepositAmount;
+    meta.deposit = normalizePaymentAmount(targetAmount);
+    meta.match_mode = "deposit_split_to_invoices";
+    allowMultiInvoice = true;
+   } else if (mismatchAction === "one_to_many") {
+    oneToManyConfirmed = true;
+   } else {
+    return;
+   }
+  }
+
+  const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+  let saved = null;
+  try {
+   saved = await fetchJSON(
+    `${scriptRoot}/invoices/${invoiceId}/save_payment_meta`,
+    {
+     method: "POST",
+     body: JSON.stringify({
+      payment_meta: meta,
+      append: true,
+      tid: dep.tid,
+      allow_multi_invoice: allowMultiInvoice,
+     }),
+    }
+   );
+  } catch (e) {
+   showMessageModal(
+    "Matching ",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+   return;
+  }
+  const v = await fetchJSON(
+   `${scriptRoot}/invoices/${invoiceId}/verify_payment`,
+   {
+    method: "POST",
+    body: JSON.stringify({
+     payment_meta: (saved && saved.payment_meta) || meta,
+    }),
+   }
+  );
+
+  try {
+   if (invRow && saved && saved.payment_meta) {
+    const pm = saved.payment_meta;
+    const paidSum = parseMoney(pm.deposit || 0);
+    const total = invTotal;
+    const remaining = total - paidSum;
+    let dc = 0;
+    try {
+     if (Array.isArray(pm.deposits)) dc = pm.deposits.length;
+     else if (pm.deposit != null) dc = 1;
+    } catch (e) {}
+
+    invRow.dataset.paidSum = String(paidSum);
+    invRow.dataset.remaining = String(remaining);
+    invRow.dataset.depositCount = String(dc);
+    invRow.dataset.matchState =
+     paidSum <= 0
+      ? "unmatched"
+      : remaining === 0
+      ? "full"
+      : remaining> 0
+      ? "partial"
+      : "over";
+    invRow.classList.remove("match-partial");
+    invRow.classList.remove("match-over");
+    if (invRow.dataset.matchState === "partial")
+     invRow.classList.add("match-partial");
+    if (invRow.dataset.matchState === "over")
+     invRow.classList.add("match-over");
+
+    const tds = invRow.querySelectorAll("td");
+    if (tds && tds.length>= 7) {
+     tds[6].innerHTML = `<div class="desktop-match-cell">${renderInvoiceAmountCell(
+      total,
+      paidSum,
+      remaining,
+      dc
+     )}</div><button type="button" class="btn btn-sm btn-primary mobile-row-action js-mobile-select-invoice">Select</button>`;
+     if (invRow.dataset.matchState === "partial") {
+      tds[5].innerHTML = `${
+       tds[5].textContent || ""
+      }<br><span class="gray2 f11">Matching</span>`;
+     }
+     if (invRow.dataset.matchState === "over") {
+      tds[5].innerHTML = `${
+       tds[5].textContent || ""
+      }<br><span class="red3 f11"></span>`;
+     }
+    }
+   }
+  } catch (e) {}
+
+  if (v && v.ok) {
+   try {
+    // Append invoice number to transaction memo
+    const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+    try {
+     await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+      method: "POST",
+      body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+     });
+    } catch (e) {
+     console.warn("memo save failed", e);
+    }
+    clearMobileMatchSelection();
+    clearRecommendFilters();
+    await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+   } catch (e) {}
+  } else {
+   const reason = (v && v.reason) || " people";
+   // For 1:N matching, allow memo tagging even if not verified yet (payment_pending)
+   if (
+    oneToManyConfirmed &&
+    (reason.includes("Deposit amount Total ") ||
+     reason.includes("Total "))
+   ) {
+    try {
+     const newMemo = appendInvoiceTagToMemo(dep.memo || "", invNo);
+     try {
+      await fetchJSON(`${scriptRoot}/bank_activity/memo`, {
+       method: "POST",
+       body: JSON.stringify({ tid: dep.tid, memo: newMemo }),
+      });
+     } catch (e) {
+      console.warn("memo save failed", e);
+     }
+     clearMobileMatchSelection();
+     clearRecommendFilters();
+     await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+    } catch (e) {}
+   } else {
+    showMessageModal(" ", ` : ${reason}`);
+   }
+  }
+ }
+
+ // Events
+
+ document
+  .getElementById("btnMatchingRefresh")
+  .addEventListener("click", async () => {
+   try {
+    await reloadMatchingLists();
+   } catch (e) {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   }
+  });
+
+ document.getElementById("btnApplyFilters").addEventListener("click", async () => {
+  try {
+   await reloadMatchingLists();
+  } catch (e) {
+   showMessageModal(
+    "Error",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  }
+ });
+
+ document.getElementById("btnResetFilters").addEventListener("click", async () => {
+  try {
+   await restoreDefaultFilters();
+  } catch (e) {
+   showMessageModal(
+    "Error",
+    e && e.message ? e.message : "An error occurred while processing the request."
+   );
+  }
+ });
+
+ document
+  .getElementById("mobileMatchRunBtn")
+  .addEventListener("click", () => {
+   runMobileSelectedMatch().catch((e) => {
+    showMessageModal(
+     "Matching ",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   });
+  });
+
+ document
+  .getElementById("mobileMatchClearBtn")
+  .addEventListener("click", () => {
+   resetMobileMatchWorkspace().catch((e) => {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   });
+  });
+
+ document.getElementById("mobileDepositSlot").addEventListener("click", () => {
+  scrollToMobileMatchColumn(MOBILE_SELECTED_DEPOSIT ? "invoice" : "deposit");
+ });
+
+ document.getElementById("mobileInvoiceSlot").addEventListener("click", () => {
+  scrollToMobileMatchColumn(MOBILE_SELECTED_INVOICE ? "deposit" : "invoice");
+ });
+
+ function updateMemoModeUi() {
+  const select = document.getElementById("memoModeSelect");
+  if (!select) return;
+  if (!["unmatched", "empty", "all"].includes(MEMO_MODE)) {
+   MEMO_MODE = "empty";
+  }
+  select.value = MEMO_MODE;
+ }
+
+ document
+  .getElementById("memoModeSelect")
+  .addEventListener("change", async (ev) => {
+   const next = (ev.target && ev.target.value) || "empty";
+   MEMO_MODE = ["unmatched", "empty", "all"].includes(next)
+    ? next
+    : "empty";
+   try {
+    localStorage.setItem("bank_activity_matching_memo_mode", MEMO_MODE);
+   } catch (e) {}
+   updateMemoModeUi();
+   DEP_PAGE = 1;
+   clearRecommendFilters();
+   try {
+    await loadMatchingDeposits();
+   } catch (e) {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   }
+  });
+
+ document.querySelectorAll(".date-preset-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+   const days = btn.dataset.rangeDays;
+   const months = btn.dataset.rangeMonths;
+   const action =
+    days != null
+     ? sliceDays(parseInt(days || "0", 10))
+     : sliceMonths(parseInt(months || "0", 10));
+   action.catch((e) => {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   });
+  });
+ });
+
+ ["startDate", "endDate"].forEach((id) => {
+  const input = document.getElementById(id);
+  if (input) input.addEventListener("change", syncDatePresetFromInputs);
+ });
+
+ // Init
+ (async function () {
+  const params = new URLSearchParams(window.location.search);
+  const qsStart = normalizeYmdParam(
+   params.get("date_from") || params.get("sdate")
+  );
+  const qsEnd = normalizeYmdParam(
+   params.get("date_to") || params.get("edate")
+  );
+  const startInput = document.getElementById("startDate");
+  const endInput = document.getElementById("endDate");
+  const currentStart = normalizeYmdParam(startInput.value);
+  const currentEnd = normalizeYmdParam(endInput.value);
+  if (!(currentStart && currentEnd)) {
+   setDefaultDateRange();
+  }
+  startInput.value = qsStart || normalizeYmdParam(startInput.value);
+  endInput.value = qsEnd || normalizeYmdParam(endInput.value);
+  syncDatePresetFromInputs();
+  try {
+   await loadAccounts();
+  } catch (e) {
+   console.error(e);
+  }
+  try {
+   await loadBizProfiles();
+  } catch (e) {
+   console.error(e);
+  }
+  updateMemoModeUi();
+  try {
+   await Promise.all([loadMatchingInvoices(), loadMatchingDeposits()]);
+  } catch (e) {
+   console.error(e);
+  }
+  updateSelectionSummaries();
+  refreshRecommendationUi();
+ })();
+
+	 // Reload on checkbox change (accounts and business profiles)
+ document
+  .getElementById("activeAccountsList")
+  .addEventListener("change", async (ev) => {
+   if (
+    ev.target &&
+    ev.target.matches('input[type="checkbox"][name="activeAccount"]')
+   ) {
+    updateSelectionSummaries();
+    try {
+     await reloadMatchingLists();
+    } catch (e) {
+     console.error(e);
+    }
+   }
+  });
+ document.getElementById("bpList").addEventListener("change", async (ev) => {
+  if (ev.target && ev.target.matches('input[type="checkbox"][name="bpId"]')) {
+   updateSelectionSummaries();
+   INV_PAGE = 1;
+   clearRecommendFilters();
+   try {
+    await loadMatchingInvoices();
+   } catch (e) {
+    console.error(e);
+   }
+  }
+ });
+
+ document.getElementById("btnAccountsAll").addEventListener("click", async () => {
+  setCheckboxGroupChecked("activeAccount", true);
+  try {
+   await reloadMatchingLists();
+  } catch (e) {
+   showMessageModal("Error", e && e.message ? e.message : "An error occurred while processing the request.");
+  }
+ });
+
+ document.getElementById("btnAccountsNone").addEventListener("click", async () => {
+  setCheckboxGroupChecked("activeAccount", false);
+  try {
+   await reloadMatchingLists();
+  } catch (e) {
+   showMessageModal("Error", e && e.message ? e.message : "An error occurred while processing the request.");
+  }
+ });
+
+ document.getElementById("btnBpAll").addEventListener("click", async () => {
+  setCheckboxGroupChecked("bpId", true);
+  INV_PAGE = 1;
+  clearRecommendFilters();
+  try {
+   await loadMatchingInvoices();
+  } catch (e) {
+   showMessageModal("Error", e && e.message ? e.message : "An error occurred while processing the request.");
+  }
+ });
+
+ document.getElementById("btnBpNone").addEventListener("click", async () => {
+  setCheckboxGroupChecked("bpId", false);
+  INV_PAGE = 1;
+  clearRecommendFilters();
+  try {
+   await loadMatchingInvoices();
+  } catch (e) {
+   showMessageModal("Error", e && e.message ? e.message : "An error occurred while processing the request.");
+  }
+ });
+
+ // Keep row heights in sync on window resize
+ window.addEventListener("resize", () => {
+  scheduleSyncRowHeights();
+ });
+ const handleMobileMatchModeChange = () => {
+  updateDepositDragMode();
+  updateMobileMatchDock();
+  scheduleSyncRowHeights();
+ };
+ if (MOBILE_MATCH_MQ.addEventListener) {
+  MOBILE_MATCH_MQ.addEventListener("change", handleMobileMatchModeChange);
+ } else if (MOBILE_MATCH_MQ.addListener) {
+  MOBILE_MATCH_MQ.addListener(handleMobileMatchModeChange);
+ }
+
+ document.addEventListener("click", (ev) => {
+  if (ev.target && ev.target.id === "clearInvoiceRecommendFilter") {
+   ACTIVE_INVOICE_RECOMMEND_FILTER = null;
+   PREVIEW_INVOICE_SOURCE = null;
+   MOBILE_SELECTED_DEPOSIT = null;
+   updateMobileMatchDock();
+   INV_PAGE = 1;
+   loadMatchingInvoices().catch((e) => {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   });
+  }
+  if (ev.target && ev.target.id === "clearDepositRecommendFilter") {
+   ACTIVE_DEPOSIT_RECOMMEND_FILTER = null;
+   PREVIEW_DEPOSIT_SOURCE = null;
+   MOBILE_SELECTED_INVOICE = null;
+   updateMobileMatchDock();
+   DEP_PAGE = 1;
+   loadMatchingDeposits().catch((e) => {
+    showMessageModal(
+     "Error",
+     e && e.message ? e.message : "An error occurred while processing the request."
+    );
+   });
+  }
+ });
+</script>
+{% endblock %}

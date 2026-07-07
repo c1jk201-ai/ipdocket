@@ -1,0 +1,26 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container py-5" style="max-width: 760px;">
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded-circle bg-warning-subtle text-warning d-flex align-items-center justify-content-center flex-shrink-0" style="width: 44px; height: 44px;">
+          <i class="bi bi-shield-exclamation fs-4"></i>
+        </div>
+        <div class="flex-grow-1">
+          <h4 class="fw-semibold mb-2"> Permissions required</h4>
+          <p class="mb-3"> user . Administrator .</p>
+          <div class="text-muted small mb-3">
+            Account: {{ current_user.email or current_user.username }}
+            · Role: <span class="badge bg-secondary">{{ current_user.role }}</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-primary" href="{{ url_for('settings.index') }}">  / Settings</a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('help.index') }}">Help</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

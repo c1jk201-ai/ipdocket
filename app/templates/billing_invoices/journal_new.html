@@ -1,0 +1,133 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">table Draft Registration</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">table List</a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <div class="muted mb-8">Save  Ledger . Draft Save   .</div>
+  <form method="post">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="row g-2 align-items-end">
+    <div class="col-12 col-md-4 col-lg-3">
+     <label>table days</label>
+     <input type="date" name="entry_date" value="{{ default_date }}">
+    </div>
+    <div class="col-12 col-md-5 col-lg-4">
+     <label>Business profile</label>
+     <select name="business_profile_id">
+      {% for bp in business_profiles %}
+       <option value="{{ bp.id }}" {% if default_bp and bp.id == default_bp.id %}selected{% endif %}>{{ bp.name }}</option>
+      {% endfor %}
+     </select>
+    </div>
+    <div class="col-12 col-md-3 col-lg-2">
+     <label>Currency</label>
+     <input type="text" name="currency" value="{{ (default_bp and default_bp.currency) or 'USD' }}">
+    </div>
+    <div class="col-12 col-lg-6">
+     <label>Notes</label>
+     <input type="text" name="memo" placeholder="table Notes">
+    </div>
+   </div>
+
+   <div class="mt-16">
+    <h4 class="m-0 mb-8">table </h4>
+    <div class="overflow-auto">
+     <table class="table" id="journalLines">
+      <thead>
+       <tr>
+        <th>Account</th>
+        <th class="right"></th>
+        <th class="right"></th>
+        <th>Description</th>
+        <th class="w-60"></th>
+       </tr>
+      </thead>
+      <tbody>
+       {% for i in range(2) %}
+       <tr>
+        <td>
+         <select name="account_id">
+          <option value="">Select</option>
+          {% for acc in accounts %}
+           <option value="{{ acc.id }}">{{ acc.code }} · {{ acc.name }}</option>
+          {% endfor %}
+         </select>
+        </td>
+        <td class="right"><input type="number" step="0.01" name="debit" value="0"></td>
+        <td class="right"><input type="number" step="0.01" name="credit" value="0"></td>
+        <td><input type="text" name="line_description" placeholder="Description"></td>
+        <td class="right">
+         <button type="button" class="btn btn-ghost btn-sm remove-line">Delete</button>
+        </td>
+       </tr>
+       {% endfor %}
+      </tbody>
+     </table>
+    </div>
+    <div class="row gap-8 mt-8">
+     <button type="button" class="btn btn-ghost" id="addLineBtn">+ Add</button>
+    </div>
+   </div>
+
+   <div class="actionbar row mt-16">
+    <button class="btn btn-primary" type="submit">Draft Save</button>
+    <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">Cancel</a>
+   </div>
+  </form>
+ </div>
+
+ <script>
+  (function() {
+   const tbody = document.querySelector("#journalLines tbody");
+   const addBtn = document.getElementById("addLineBtn");
+   if (!tbody || !addBtn) return;
+
+   const accountIds = {{ accounts | map(attribute="id") | list | tojson }};
+   const accountCodes = {{ accounts | map(attribute="code") | list | tojson }};
+   const accountNames = {{ accounts | map(attribute="name") | list | tojson }};
+
+   const buildRow = () => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+     <td><select name="account_id"></select></td>
+     <td class="right"><input type="number" step="0.01" name="debit" value="0"></td>
+     <td class="right"><input type="number" step="0.01" name="credit" value="0"></td>
+     <td><input type="text" name="line_description" placeholder="Description"></td>
+     <td class="right"><button type="button" class="btn btn-ghost btn-sm remove-line">Delete</button></td>
+    `;
+
+    const select = tr.querySelector('select[name="account_id"]');
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = "Select";
+    select.appendChild(defaultOption);
+
+    accountIds.forEach((id, idx) => {
+     const option = document.createElement("option");
+     option.value = String(id);
+     option.textContent = `${accountCodes[idx]} · ${accountNames[idx]}`;
+     select.appendChild(option);
+    });
+
+    return tr;
+   };
+
+   addBtn.addEventListener("click", () => {
+    tbody.appendChild(buildRow());
+   });
+
+   tbody.addEventListener("click", (ev) => {
+    if (!ev.target.classList.contains("remove-line")) return;
+    const row = ev.target.closest("tr");
+    if (row && tbody.children.length> 2) {
+     row.remove();
+    }
+   });
+  })();
+ </script>
+{% endblock %}

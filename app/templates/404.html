@@ -1,0 +1,11 @@
+{% extends "layouts/base.html" %} {% block content %}
+<div class="text-center mt-5">
+  <h1 class="display-5">404 - Not Found</h1>
+  <p class="lead">The page you are looking for does not exist.</p>
+  {% if current_user.is_authenticated %}
+  <a class="btn btn-primary" href="{{ url_for('main.index') }}">Go to Dashboard</a>
+  {% else %}
+  <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Login</a>
+  {% endif %}
+</div>
+{% endblock %}

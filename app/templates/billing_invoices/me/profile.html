@@ -1,0 +1,63 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header" style="margin-bottom:16px;">
+ <h2 style="margin:0;">👤 </h2>
+ <div class="page-actions">
+  <a class="btn btn-primary" href="{{ url_for('billing_invoices.core.change_my_password') }}">🔑 Change</a>
+ </div>
+</div>
+
+<div class="card">
+ <h3 style="margin-top:0;">Account </h3>
+ <div class="grid grid-2">
+  <div>
+   <label></label>
+   <input value="{{ user['username'] }}" disabled>
+  </div>
+  <div>
+   <label></label>
+   <input value="{{ user['role'] }}" disabled>
+  </div>
+  <div>
+   <label>Account Status</label>
+   <input value="{{ 'active' if user['is_active'] else 'active' }}" disabled>
+  </div>
+  <div>
+   <label>Registration date</label>
+   <input value="{{ user['created_at']|local_dt }}" disabled>
+  </div>
+ </div>
+</div>
+
+<div class="card">
+ <h3 style="margin-top:0;"> </h3>
+ <div class="grid grid-2">
+  <div>
+   <label> </label>
+   <input value="{{ user['last_login_at'] or '-' }}" disabled>
+  </div>
+  <div>
+   <label> Changedays</label>
+   <input value="{{ user['password_changed_at'] or '-' }}" disabled>
+  </div>
+ </div>
+</div>
+
+<div class="card">
+ <h3 style="margin-top:0;"></h3>
+ <div style="padding:12px; background:#EAF4FF; border:1px solid #005EA8; border-radius:6px; margin-bottom:12px;">
+  <strong>ℹ️ :</strong>
+  <ul style="margin:8px 0; padding-left:20px;">
+   <li> 6 </li>
+   <li>Recent 3items  none</li>
+  </ul>
+ </div>
+ <div style="padding:12px; background:#FAF4E4; border:1px solid #C8A24A; border-radius:6px;">
+  <strong>⚠️ Account :</strong>
+  <ul style="margin:8px 0; padding-left:20px;">
+   <li>5times  30 Account </li>
+   <li>  2, 12</li>
+  </ul>
+ </div>
+</div>
+{% endblock %}

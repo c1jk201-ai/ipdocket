@@ -1,0 +1,164 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block content %}
+<div class="container-fluid mt-4 fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold text-dark mb-1"> </h3>
+      <p class="text-muted small mb-0">  .</p>
+    </div>
+    <div>
+      <a class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 shadow-sm"
+         href="{{ url_for('customers.opportunity_create') }}">
+        <i class="bi bi-plus-lg"></i>  Registration
+      </a>
+    </div>
+  </div>
+
+  <!-- Stage Summary Cards -->
+  <div class="row g-3 mb-4">
+    {% for stage_value, stage_label in stage_choices %}
+    <div class="col">
+      <a href="{{ url_for('customers.opportunity_list', stage=stage_value) }}"
+         class="card border-0 shadow-sm text-decoration-none h-100 {% if current_stage == stage_value %}border-primary border-2{% endif %}">
+        <div class="card-body text-center py-3">
+          <div class="fs-3 fw-bold
+            {% if stage_value == 'prospecting' %}text-secondary
+            {% elif stage_value == 'proposal' %}text-info
+            {% elif stage_value == 'negotiation' %}text-warning
+            {% elif stage_value == 'closed_won' %}text-success
+            {% else %}text-danger{% endif %}">
+            {{ stage_counts.get(stage_value, 0) }}
+          </div>
+          <div class="small text-muted">{{ stage_label }}</div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-4">
+      <!-- Stage Filter Pills -->
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <a href="{{ url_for('customers.opportunity_list') }}"
+           class="badge rounded-pill py-2 px-3 text-decoration-none {% if not current_stage %}bg-dark{% else %}bg-light text-dark border{% endif %}">
+          All ({{ total }})
+        </a>
+        {% for stage_value, stage_label in stage_choices %}
+        <a href="{{ url_for('customers.opportunity_list', stage=stage_value) }}"
+           class="badge rounded-pill py-2 px-3 text-decoration-none
+           {% if current_stage == stage_value %}
+             {% if stage_value == 'prospecting' %}bg-secondary
+             {% elif stage_value == 'proposal' %}bg-info
+             {% elif stage_value == 'negotiation' %}bg-warning text-dark
+             {% elif stage_value == 'closed_won' %}bg-success
+             {% else %}bg-danger{% endif %}
+           {% else %}bg-light text-dark border{% endif %}">
+          {{ stage_label }} ({{ stage_counts.get(stage_value, 0) }})
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Opportunities Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="min-width: 900px">
+          <thead class="bg-light">
+            <tr>
+              <th class="py-3 ps-3" style="width: 25%"></th>
+              <th class="py-3" style="width: 18%">Client</th>
+              <th class="py-3" style="width: 12%"></th>
+              <th class="py-3 text-end" style="width: 15%">EstimatedAmount</th>
+              <th class="py-3 text-center" style="width: 8%"></th>
+              <th class="py-3" style="width: 12%">EstimatedDeadline</th>
+              <th class="py-3 text-end pe-3" style="width: 10%"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for opp in opportunities %}
+            <tr>
+              <td class="ps-3 py-3">
+                <a href="{{ url_for('customers.opportunity_view', opportunity_id=opp.id) }}"
+                   class="fw-bold text-dark text-decoration-none">{{ opp.name }}</a>
+                <div class="small text-muted">
+                  {{ opp.created_at|local_date if opp.created_at else '' }}
+                </div>
+              </td>
+              <td>
+                <a href="{{ url_for('customers.client_view', client_id=opp.client.id) }}"
+                   class="text-decoration-none">{{ opp.client.name }}</a>
+              </td>
+              <td>
+                <span class="badge
+                  {% if opp.stage == 'prospecting' %}bg-secondary
+                  {% elif opp.stage == 'proposal' %}bg-info
+                  {% elif opp.stage == 'negotiation' %}bg-warning text-dark
+                  {% elif opp.stage == 'closed_won' %}bg-success
+                  {% else %}bg-danger{% endif %}">
+                  {{ dict(stage_choices).get(opp.stage, opp.stage) }}
+                </span>
+              </td>
+              <td class="text-end">
+                {% if opp.amount %}
+                <span class="fw-medium">${{ "{:,.0f}".format(opp.amount) }}</span>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td class="text-center">
+                <span class="badge bg-light text-dark border">{{ opp.probability or 0 }}%</span>
+              </td>
+              <td>
+                {% if opp.expected_close_date %}
+                {{ opp.expected_close_date|local_date }}
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-3">
+                <a class="btn btn-sm btn-outline-primary"
+                   href="{{ url_for('customers.opportunity_edit', opportunity_id=opp.id) }}">Edit</a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-briefcase fs-1 d-block mb-3 opacity-50"></i>
+                Registration  none.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted small">
+          Total {{ total }}items
+          {% if pages %}({{ page }} / {{ pages }} page){% endif %}
+        </div>
+
+        {% set opportunity_pagination_args = request.args.to_dict(flat=True) %}
+        {% set _ = opportunity_pagination_args.update({'stage': current_stage or '', 'per_page': per_page}) %}
+        {{ ui.pagination('customers.opportunity_list', page, pages or 1, opportunity_pagination_args, ' Pagination') }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .table-hover tbody tr:hover td {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+  }
+</style>
+{% endblock %}

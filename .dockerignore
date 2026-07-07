@@ -1,0 +1,75 @@
+# secrets / env
+.env*
+!.env.example
+client_secret.json
+
+# runtime data
+data/
+uploads/
+logs/
+*.sqlite
+*.sqlite3
+*.db
+
+# VCS
+.git
+.gitignore
+
+# python cache/build
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# misc
+output.txt
+my_changes.txt
+test_log.txt
+.coverage
+.coverage.*
+error_dump*.txt
+migrate.log
+
+# MS Access / MDB artifacts
+*.mdb
+*.accdb
+
+# DB dumps / backups (keep out of image/build context)
+*_backup_*.sql
+backup-*.sql
+*.dump
+*.bak
+
+# migration bundles / local backups (can be huge; keep out of build context)
+ipm_transfer_bundle*
+ipm-transfer-*.tar.gz
+transfer/
+backups/
+legacy_data/
+
+# test / dev artifacts
+.env\ test
+tests/
+.benchmarks/
+.vscode/
+.github/
+*.csv
+.pre-commit-config.yaml
+.editorconfig
+.gitattributes
+AGENTS.md
+Makefile
+pyproject.toml
+debug_*.py
+inspect_*.py
+reproduce_*.py
+migration_guide.md
+README.md

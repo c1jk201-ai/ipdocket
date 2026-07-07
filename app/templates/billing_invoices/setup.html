@@ -1,0 +1,37 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="card" style="max-width:480px; margin:60px auto;">
+ <h2 style="margin-top:0; text-align:center;">⚙️ Administrator Account </h2>
+ <div style="padding:12px; background:#EAF4FF; border:1px solid #005EA8; border-radius:6px; color:#12395F; margin-bottom:20px; font-size:0.9rem;">
+  <strong>ℹ️ Guidance:</strong> First  Administrator Account .
+  <br> Account  page disabled.
+ </div>
+ {% if error %}
+ <div style="padding:12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#dc2626; margin-bottom:16px;">
+  <strong>⚠️ {{ error }}</strong>
+ </div>
+ {% endif %}
+ <form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div style="margin-bottom:16px;">
+   <label style="display:block; margin-bottom:6px; font-weight:600;">Administrator <span style="color:#dc2626;">*</span></label>
+   <input name="username" autofocus required minlength="3" placeholder="3 " style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:1rem;">
+   <div style="font-size:0.85rem; color:#6b7280; margin-top:4px;">, ,  (6 )</div>
+  </div>
+  <div style="margin-bottom:16px;">
+   <label style="display:block; margin-bottom:6px; font-weight:600;"> <span style="color:#dc2626;">*</span></label>
+   <input name="password" type="password" required minlength="6" placeholder="6 " style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:1rem;">
+   <div style="font-size:0.85rem; color:#6b7280; margin-top:4px;">  (6 )</div>
+  </div>
+  <div style="margin-bottom:24px;">
+   <label style="display:block; margin-bottom:6px; font-weight:600;"> Confirm <span style="color:#dc2626;">*</span></label>
+   <input name="password_confirm" type="password" required minlength="6" placeholder=" Input" style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:1rem;">
+  </div>
+  <button class="btn btn-primary btn-ui-prominent w-100" type="submit">Administrator Account </button>
+ </form>
+ <div style="margin-top:24px; padding-top:16px; border-top:1px solid #e5e7eb; text-align:center; color:#6b7280; font-size:0.85rem;">
+  <p>  page Go.</p>
+  <p> ADMIN_USER, ADMIN_PASSWORD .</p>
+ </div>
+</div>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "admin/base.html" %}
+{% block title %}Renewal Operations{% endblock %}
+{% block admin_description %}Inspect matter renewal generation, annuity rows, workflow sync, and queue status.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.scheduler_home') }}">Scheduler Status</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.queue_home', status='failed') }}">Failed Actions</a>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <form
+      method="get"
+      action="{{ url_for('ops_admin.annuity_home') }}"
+      class="row g-2 align-items-end"
+      data-show-loading="true"
+      data-loading-text="Searching renewal data..."
+      data-loading-detail="Checking matter, renewal, and queue status."
+    >
+      <div class="col-lg-7">
+        <label class="form-label">Matter Search</label>
+        <input class="form-control" name="q" value="{{ q or '' }}" placeholder="matter_id or our_ref">
+      </div>
+      <div class="col-lg-3">
+        <label class="form-label d-block">Options</label>
+        <label class="small text-muted d-flex gap-2 align-items-center">
+          <input type="checkbox" name="refresh" value="1" {% if refresh %}checked{% endif %}/>
+          Refresh diagnostics
+        </label>
+      </div>
+      <div class="col-lg-2 d-grid">
+        <button class="btn btn-primary" type="submit">Search</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if matches and not selected %}
+  <div class="alert alert-light border small">
+    <div class="fw-semibold mb-2">Search Results ({{ matches|length }} items)</div>
+    <ul class="mb-0">
+      {% for m in matches %}
+        <li>
+          <a href="{{ url_for('ops_admin.annuity_home', q=m.matter_id, refresh='1') }}">{{ m.our_ref }}</a>
+          <span class="text-muted small">({{ m.matter_id }})</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+{% if diag and diag.get('ok') %}
+  {% set skip = diag.get('skip_reason') %}
+  <div class="p-3 border rounded mb-3" style="background:#fafafa;">
+    <div class="fw-semibold mb-1">Matter</div>
+    <div class="small text-muted">
+      {{ diag['matter']['our_ref'] }} &middot; {{ diag['matter']['matter_id'] }} &middot; right_group={{ diag['matter']['right_group'] or '-' }} &middot; matter_type={{ diag['matter']['matter_type'] or '-' }}
+    </div>
+    <div class="mt-2">
+      <span class="badge bg-{{ 'danger' if skip else 'success' }}">{{ skip or 'ready' }}</span>
+      {% if skip %}
+        <span class="small text-muted ms-2">Auto-create skip reason</span>
+      {% endif %}
+    </div>
+    <div class="mt-2 small">
+      <b>Inferred</b>: right_type={{ diag['inferred']['right_type'] or '-' }} &middot; base_date={{ diag['dates']['annuity_base_date'] or '-' }} ({{ diag['dates']['annuity_base_source'] or '-' }})
+    </div>
+    <div class="mt-2 d-flex flex-wrap gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ops_admin.scheduler_home') }}">Scheduler Status</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('annuities.fees') }}">Renewal Fee Table</a>
+      <form
+        method="post"
+        action="{{ url_for('ops_admin.annuity_ensure', matter_id=diag['matter']['matter_id']) }}"
+        style="display:inline;"
+        data-confirm="Create renewal rows for this matter?"
+        data-show-loading="true"
+        data-loading-text="Creating renewal rows..."
+        data-loading-detail="Creating annuity items from matter data."
+      >
+        <button class="btn btn-sm btn-primary" type="submit">Create Renewal Rows</button>
+      </form>
+      <form
+        method="post"
+        action="{{ url_for('ops_admin.annuity_workflow_sync', matter_id=diag['matter']['matter_id']) }}"
+        style="display:inline;"
+        data-confirm="Sync renewal tasks for this matter?"
+        data-show-loading="true"
+        data-loading-text="Syncing renewal tasks..."
+        data-loading-detail="Creating or updating renewal workflow tasks."
+      >
+        <button class="btn btn-sm btn-outline-primary" type="submit">Sync Renewal Tasks</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="p-3 border rounded h-100">
+        <div class="fw-semibold mb-2">Config</div>
+        <table class="table table-sm mb-0">
+          <tbody>
+            {% for k, v in diag.get('config', {}).items() %}
+              <tr><td class="text-muted small">{{ k }}</td><td class="small">{{ v }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="p-3 border rounded h-100">
+        <div class="fw-semibold mb-2">Facts / Dates</div>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td class="text-muted small">facts.registration_date</td><td class="small">{{ diag['facts']['registration_date'] or '-' }}</td></tr>
+            <tr><td class="text-muted small">facts.registration_date_source</td><td class="small">{{ diag['facts']['registration_date_source'] or '-' }}</td></tr>
+            <tr><td class="text-muted small">computed.registration_date</td><td class="small">{{ diag['dates']['registration_date'] or '-' }}</td></tr>
+            <tr><td class="text-muted small">reg_fee_paid_date</td><td class="small">{{ diag['dates']['reg_fee_paid_date'] or '-' }}</td></tr>
+            <tr><td class="text-muted small">facts.updated_at</td><td class="small">{{ diag['facts']['updated_at']|local_dt if diag['facts']['updated_at'] else '-' }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-3 border rounded mt-3">
+    <div class="fw-semibold mb-2">Range (if generated)</div>
+    {% if diag.get('range') %}
+      <div class="small">
+        start_year={{ diag['range']['start_year'] }} &middot; end_year={{ diag['range']['end_year'] }} &middot; current_year={{ diag['range']['current_year'] }} &middot; term_years={{ diag['range']['term_years'] }}
+      </div>
+    {% else %}
+      <div class="small text-muted">-</div>
+    {% endif %}
+  </div>
+
+  <div class="p-3 border rounded mt-3">
+    <div class="fw-semibold mb-2">Existing Annuities</div>
+    <div class="small">total={{ diag['annuity_stats']['total'] }}</div>
+    <div class="small text-muted">by_status={{ diag['annuity_stats']['by_status'] }}</div>
+  </div>
+
+  <div class="p-3 border rounded mt-3">
+    <div class="fw-semibold mb-2">Recent Events (Registration/REG)</div>
+    {% if diag.get('recent_event_rows') %}
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th class="small">event_key</th><th class="small">event_at</th></tr></thead>
+          <tbody>
+            {% for r in diag['recent_event_rows'] %}
+              <tr><td class="small">{{ r['event_key'] }}</td><td class="small">{{ r['event_at'] }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="small text-muted">-</div>
+    {% endif %}
+  </div>
+{% elif q %}
+  <div class="alert alert-warning small border">No matter found for the search value.</div>
+{% endif %}
+{% endblock %}

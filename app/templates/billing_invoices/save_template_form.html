@@ -1,0 +1,407 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="card">
+ <h2 class="mt-0">📋 Invoice Templateto Save</h2>
+ <p class="muted mb-20">
+   Invoice Item Templateto Save Invoice   exists.
+ </p>
+
+ <div class="panel-neutral p-16 mb-20">
+  <div class="grid grid-2 text-sm">
+   <div>
+    <span class="muted">Original Invoice:</span>
+    <div class="text-strong mt-4">{{ invoice['number'] }}</div>
+   </div>
+   <div>
+    <span class="muted">Save Items:</span>
+    <div class="text-strong mt-4">{{ item_count }}items</div>
+   </div>
+  </div>
+ </div>
+
+ <form method="post" id="templateForm">
+  <div class="mb-20">
+   <label class="req text-strong mb-8">Template name</label>
+   <input
+    type="text"
+    name="template_name"
+    required
+    placeholder=": Patent Filing Default Service"
+    value="{{ submitted_name if submitted_name else '' }}"
+    class="input-lg"
+    autofocus
+   />
+   <p class="muted text-sm mt-8">
+    💡    Name .
+   </p>
+  </div>
+
+  <div class="panel-warning p-16 mb-20 text-sm">
+   <strong>ℹ️ Save :</strong>
+   <ul class="list-info">
+    <li>Item Description (Description)</li>
+    <li>Qty (Qty)</li>
+    <li>Unit price (Unit Price)</li>
+    <li>Discount rate (Discount)</li>
+    <li>Item (Service/Admin Fee)</li>
+   </ul>
+  </div>
+
+  <div class="panel-info p-16 mb-20 text-sm">
+   <strong>📝 Save :</strong>
+   <ul class="list-info">
+    <li>Client information</li>
+    <li>Invoice number</li>
+    <li>Issue date/Due date</li>
+    <li>Status </li>
+   </ul>
+  </div>
+</div>
+
+<div class="card mt-16">
+ <h3 class="mt-0">Preview: Save Item ( )</h3>
+ <p class="muted text-sm mb-12">
+  💡 Original Invoice Change . Edit Content Template .
+ </p>
+
+ <div class="overflow-x-auto">
+  <table id="itemsTable" class="table-compact">
+   <thead>
+    <tr>
+     <th>Description</th>
+     <th class="a_c w-120">Type</th>
+     <th class="a_r w-100">Qty</th>
+     <th class="a_r w-120">Unit price</th>
+     <th class="a_r w-100">Discount (%)</th>
+     <th class="a_r w-120">Amount</th>
+     <th class="a_c w-80"></th>
+    </tr>
+   </thead>
+   <tbody id="itemsBody">
+    {% for item in items %}
+    <tr class="item-row">
+     <td>
+      <input type="text" class="item-desc input-inline-sm" value="{{ item['description'] }}" />
+
+      {# Phase #}
+      <div class="save-tpl-phase-controls phase-controls is-hidden">
+       <div class="row align-center gap-6">
+       <span class="text-xs text-soft"></span>
+       {% set _ph = (item['phase'] if 'phase' in item.keys() else 'app') %}
+       <select class="item-phase-select phase-select input-inline-sm">
+        <option value="app" {% if _ph=='app' %}selected{% endif %}>Filing</option>
+        <option value="oa" {% if _ph=='oa' %}selected{% endif %}>OA/Examination</option>
+        <option value="reg" {% if _ph=='reg' %}selected{% endif %}>Registration</option>
+       </select>
+       <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+        {% set _is_est = (item['is_estimated'] if 'is_estimated' in item.keys() else 0) %}
+        <input type="checkbox" class="item-estimated-cb" {% if _is_est %}checked{% endif %} onchange="updateSaveTplEstimated(this)">
+        Estimated cost
+       </label>
+       </div>
+      </div>
+
+      {# Foreign expense #}
+      <div class="save-tpl-fx-controls fx-controls is-hidden">
+       <div class="fx-row text-sm">
+        {% set _cur = (item['fx_currency'] if 'fx_currency' in item.keys() else 'USD')|upper %}
+        <select class="item-fx-currency fx-currency input-inline-sm">
+         <option value="USD" {% if _cur=='USD' %}selected{% endif %}>USD</option>
+         <option value="JPY" {% if _cur=='JPY' %}selected{% endif %}>JPY</option>
+         <option value="EUR" {% if _cur=='EUR' %}selected{% endif %}>EUR</option>
+         <option value="CNY" {% if _cur=='CNY' %}selected{% endif %}>CNY</option>
+        </select>
+        <input type="number" class="item-fx-fee fx-fee input-inline-sm" step="0.01" placeholder="Fee" value="{{ item['fx_fee'] if 'fx_fee' in item.keys() else '' }}" />
+        <input type="number" class="item-fx-gov fx-gov input-inline-sm" step="0.01" placeholder="Official fee" value="{{ item['fx_gov'] if 'fx_gov' in item.keys() else '' }}" />
+        <input type="number" class="item-fx-markup fx-markup input-inline-sm" step="0.1" placeholder="(%)" value="{{ item['fx_markup'] if 'fx_markup' in item.keys() else '3' }}" />
+        <input type="hidden" class="item-fx-rate-used" value="{{ item['fx_rate_used'] if 'fx_rate_used' in item.keys() else '' }}" />
+       </div>
+      </div>
+
+      <input type="hidden" class="item-phase" value="{{ item['phase'] if 'phase' in item.keys() else 'app' }}" />
+      <input type="hidden" class="item-estimated" value="{{ item['is_estimated'] if 'is_estimated' in item.keys() else 0 }}" />
+     </td>
+     <td class="a_c">
+      <select class="item-type input-inline-sm w-110">
+       <option value="service" {% if item['item_type'] == 'service' %}selected{% endif %}>Service fee</option>
+       <option value="admin" {% if item['item_type'] == 'admin' %}selected{% endif %}>Official fee</option>
+       <option value="foreign" {% if item['item_type'] == 'foreign' %}selected{% endif %}>Foreign expense</option>
+      </select>
+     </td>
+     <td class="a_r">
+      <input type="number" class="item-qty input-inline-sm w-90 a_r" value="{{ item['qty'] }}" step="0.01" min="0" />
+     </td>
+     <td class="a_r">
+      <input type="number" class="item-price input-inline-sm w-110 a_r" value="{{ item['unit_price'] }}" step="0.01" min="0" />
+     </td>
+     <td class="a_r">
+      <input type="number" class="item-discount input-inline-sm w-90 a_r" value="{{ item['discount'] }}" step="0.1" min="0" max="100" />
+     </td>
+     <td class="item-amount a_r text-strong text-nowrap">
+      {{ "{:,.0f}".format(item['qty'] * item['unit_price'] * (1 - item['discount'] / 100.0)) }}
+     </td>
+     <td class="a_c">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">Delete</button>
+     </td>
+    </tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+
+ <div class="mt-12">
+  <button type="button" class="btn btn-ghost" onclick="addItem()">+ Item Add</button>
+ </div>
+
+ <div class="row gap-8 mt-20">
+  <button class="btn btn-primary" type="submit">💾 Save template</button>
+  <a class="btn btn-ghost" href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice['id']) }}">Cancel</a>
+ </div>
+ </form>
+</div>
+
+<script>
+function setHidden(el, hidden) {
+ if (!el) return;
+ el.classList.toggle('is-hidden', hidden);
+}
+
+// Amount  
+function updateAmount(row) {
+ const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+ const price = parseFloat(row.querySelector('.item-price').value) || 0;
+ const discount = parseFloat(row.querySelector('.item-discount').value) || 0;
+ const amount = qty * price * (1 - discount / 100);
+ row.querySelector('.item-amount').textContent = amount.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+}
+
+// Input  Add
+document.querySelectorAll('.item-qty, .item-price, .item-discount').forEach(input => {
+ input.addEventListener('input', function() {
+  updateAmount(this.closest('tr'));
+ });
+});
+
+// Item Add
+function addItem() {
+ const tbody = document.getElementById('itemsBody');
+ const newRow = document.createElement('tr');
+ newRow.className = 'item-row';
+ newRow.innerHTML = `
+  <td>
+   <input type="text" class="item-desc input-inline-sm" placeholder="Item Description" />
+
+   <div class="save-tpl-phase-controls phase-controls is-hidden">
+    <div class="row align-center gap-6">
+    <span class="text-xs text-soft"></span>
+    <select class="item-phase-select phase-select input-inline-sm">
+     <option value="app" selected>Filing</option>
+     <option value="oa">OA/Examination</option>
+     <option value="reg">Registration</option>
+    </select>
+    <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+     <input type="checkbox" class="item-estimated-cb" onchange="updateSaveTplEstimated(this)">
+     Estimated cost
+    </label>
+    </div>
+   </div>
+
+   <div class="save-tpl-fx-controls fx-controls is-hidden">
+    <div class="fx-row text-sm">
+     <select class="item-fx-currency fx-currency input-inline-sm">
+      <option value="USD" selected>USD</option>
+      <option value="JPY">JPY</option>
+      <option value="EUR">EUR</option>
+      <option value="CNY">CNY</option>
+     </select>
+     <input type="number" class="item-fx-fee fx-fee input-inline-sm" step="0.01" placeholder="Fee" />
+     <input type="number" class="item-fx-gov fx-gov input-inline-sm" step="0.01" placeholder="Official fee" />
+     <input type="number" class="item-fx-markup fx-markup input-inline-sm" step="0.1" placeholder="(%)" value="3" />
+     <input type="hidden" class="item-fx-rate-used" value="" />
+    </div>
+   </div>
+
+   <input type="hidden" class="item-phase" value="app" />
+   <input type="hidden" class="item-estimated" value="0" />
+  </td>
+  <td class="a_c">
+   <select class="item-type input-inline-sm w-110" onchange="updateSaveTplItemType(this)">
+    <option value="service">Service fee</option>
+    <option value="admin">Official fee</option>
+    <option value="foreign">Foreign expense</option>
+   </select>
+  </td>
+  <td class="a_r">
+   <input type="number" class="item-qty input-inline-sm w-90 a_r" value="1" step="0.01" min="0" />
+  </td>
+  <td class="a_r">
+   <input type="number" class="item-price input-inline-sm w-110 a_r" value="0" step="0.01" min="0" />
+  </td>
+  <td class="a_r">
+   <input type="number" class="item-discount input-inline-sm w-90 a_r" value="0" step="0.1" min="0" max="100" />
+  </td>
+  <td class="item-amount a_r text-strong text-nowrap">0</td>
+  <td class="a_c">
+   <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(this)">Delete</button>
+  </td>
+ `;
+ tbody.appendChild(newRow);
+
+ // row Input  Add
+ newRow.querySelectorAll('.item-qty, .item-price, .item-discount').forEach(input => {
+  input.addEventListener('input', function() {
+   updateAmount(this.closest('tr'));
+  });
+ });
+
+ // Description Input 
+ newRow.querySelector('.item-desc').focus();
+
+ // Foreign currency mode active  Display
+ updateSaveTplControlsVisibility(newRow);
+}
+
+// Item Delete
+function removeItem(btn) {
+ const row = btn.closest('tr');
+ const tbody = document.getElementById('itemsBody');
+ if (tbody.children.length <= 1) {
+  try { if (window.AppAlert) window.AppAlert('At least one item is required.', { title: "Confirm" }); } catch (e2) {}
+  return;
+ }
+ row.remove();
+}
+
+// Foreign currency mode 
+window.saveTplOutgoingEnabled = false;
+function toggleSaveTplOutgoing() {
+ window.saveTplOutgoingEnabled = !window.saveTplOutgoingEnabled;
+ const btn = document.getElementById('saveTplOutgoingBtn');
+
+ if (window.saveTplOutgoingEnabled) {
+  btn.classList.add('btn-primary');
+ } else {
+  btn.classList.remove('btn-primary');
+ }
+
+ // Item  Display/Hidden
+ document.querySelectorAll('.item-row').forEach(updateSaveTplControlsVisibility);
+}
+
+// Show or hide foreign-currency item controls.
+function updateSaveTplControlsVisibility(row) {
+ const itemType = row.querySelector('.item-type').value;
+ const phaseControls = row.querySelector('.save-tpl-phase-controls');
+ const fxControls = row.querySelector('.save-tpl-fx-controls');
+
+ if (phaseControls) {
+  setHidden(phaseControls, !window.saveTplOutgoingEnabled);
+ }
+
+ if (fxControls) {
+  setHidden(fxControls, !(window.saveTplOutgoingEnabled && itemType === 'foreign'));
+ }
+}
+
+// Item Change 
+function updateSaveTplItemType(select) {
+ const row = select.closest('tr');
+ updateSaveTplControlsVisibility(row);
+}
+
+// Estimated cost Change hidden 
+function updateSaveTplEstimated(cb) {
+ const row = cb.closest('tr');
+ const hidden = row.querySelector('.item-estimated');
+ if (hidden) {
+  hidden.value = cb.checked ? '1' : '0';
+ }
+}
+
+// page  Reset
+document.addEventListener('DOMContentLoaded', function() {
+ // item-type  Add
+ document.querySelectorAll('.item-type').forEach(select => {
+  select.addEventListener('change', function() {
+   updateSaveTplItemType(this);
+  });
+ });
+
+ // Detect whether foreign-currency fields should be enabled.
+ let hasOutgoingData = false;
+ document.querySelectorAll('.item-row').forEach(row => {
+  const phase = row.querySelector('.item-phase')?.value;
+  const fxCurrency = row.querySelector('.item-fx-currency')?.value;
+  const itemType = row.querySelector('.item-type')?.value;
+
+  if ((phase && phase !== 'app') || fxCurrency || itemType === 'foreign') {
+   hasOutgoingData = true;
+  }
+ });
+
+ // Enable foreign-currency controls automatically when data is present.
+ if (hasOutgoingData) {
+  toggleSaveTplOutgoing();
+ }
+});
+
+//  Item hidden inputto Add
+document.getElementById('templateForm').addEventListener('submit', function(e) {
+ // Existing hidden input 
+ this.querySelectorAll('input[name^="items"]').forEach(el => el.remove());
+
+ // Current Item 
+ const rows = document.querySelectorAll('.item-row');
+
+ if (rows.length === 0) {
+  e.preventDefault();
+  try { if (window.AppAlert) window.AppAlert('At least one item is required.', { title: "Confirm" }); } catch (e2) {}
+  return;
+ }
+
+ let hasValidItem = false;
+ rows.forEach((row, index) => {
+  const desc = row.querySelector('.item-desc').value.trim();
+  const type = row.querySelector('.item-type').value;
+  const qty = row.querySelector('.item-qty').value;
+  const price = row.querySelector('.item-price').value;
+  const discount = row.querySelector('.item-discount').value;
+
+  if (desc) {
+   hasValidItem = true;
+   // Preserve the selected UI value.
+   const phaseSelect = row.querySelector('.item-phase-select');
+   const estimatedCb = row.querySelector('.item-estimated-cb');
+   const phase = phaseSelect ? phaseSelect.value : (row.querySelector('.item-phase')?.value || 'app');
+   const estimated = estimatedCb ? (estimatedCb.checked ? '1' : '0') : (row.querySelector('.item-estimated')?.value || '0');
+   const fxCurrency = row.querySelector('.item-fx-currency')?.value || '';
+   const fxFee = row.querySelector('.item-fx-fee')?.value || '';
+   const fxGov = row.querySelector('.item-fx-gov')?.value || '';
+   const fxMarkup = row.querySelector('.item-fx-markup')?.value || '3';
+   const fxRateUsed = row.querySelector('.item-fx-rate-used')?.value || '';
+
+   this.insertAdjacentHTML('beforeend', `
+    <input type="hidden" name="items[${index}][description]" value="${desc.replace(/"/g, '&quot;')}" />
+    <input type="hidden" name="items[${index}][item_type]" value="${type}" />
+    <input type="hidden" name="items[${index}][qty]" value="${qty}" />
+    <input type="hidden" name="items[${index}][unit_price]" value="${price}" />
+    <input type="hidden" name="items[${index}][discount]" value="${discount}" />
+    <input type="hidden" name="items[${index}][phase]" value="${phase}" />
+    <input type="hidden" name="items[${index}][is_estimated]" value="${estimated}" />
+    <input type="hidden" name="items[${index}][fx_currency]" value="${fxCurrency}" />
+    <input type="hidden" name="items[${index}][fx_fee]" value="${fxFee}" />
+    <input type="hidden" name="items[${index}][fx_gov]" value="${fxGov}" />
+    <input type="hidden" name="items[${index}][fx_markup]" value="${fxMarkup}" />
+    <input type="hidden" name="items[${index}][fx_rate_used]" value="${fxRateUsed}" />
+   `);
+  }
+ });
+
+ if (!hasValidItem) {
+  e.preventDefault();
+  try { if (window.AppAlert) window.AppAlert('At least one item is required. Enter an item description.', { title: "Confirm" }); } catch (e2) {}
+  return;
+ }
+});
+</script>
+{% endblock %}

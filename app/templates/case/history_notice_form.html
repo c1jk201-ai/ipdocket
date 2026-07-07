@@ -1,0 +1,93 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+{% set _is_edit = is_edit if is_edit is defined else (edit_mode if edit_mode is defined else false) %}
+<div class="container py-4" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-semibold mb-0">{% if view_mode %}Office Action View{% elif _is_edit %}Edit Office Action{% else %}Add Office Action{% endif %}</h5>
+    {% if popup %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.close()">Close</button>
+    {% endif %}
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" action="{{ form_action or url_for('case_work.history_notice_new', case_id=case_id, popup=popup) }}">
+    <div class="row g-3">
+      <div class="col-12">
+        <label class="form-label">Document name</label>
+        <input class="form-control" type="text" name="doc_name" placeholder="Ex. Office action / Notice of allowance / Payment notice" value="{{ oa.doc_name if oa is defined else '' }}" {% if not view_mode %}required{% else %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Uploaded</label>
+        <input class="form-control" type="date" name="received_date" value="{{ (oa.received_date if oa is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Mailed</label>
+        <input class="form-control" type="date" name="notified_date" value="{{ (oa.notified_date if oa is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Due date</label>
+        <input class="form-control" type="date" name="due_date" value="{{ (oa.due_date if oa is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Extended due date</label>
+        <input class="form-control" type="date" name="extended_due_date" value="{{ (oa.extended_due_date if oa is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">Done date</label>
+        <input class="form-control" type="date" name="done_date" value="{{ (oa.done_date if oa is defined else '')|date_only }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+      <div class="col-md-9">
+        <label class="form-label">Examiner / notes</label>
+        <input class="form-control" type="text" name="examiner" placeholder="" value="{{ oa.examiner if oa is defined else '' }}" {% if view_mode %}readonly{% endif %} />
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Files</label>
+        {% if not view_mode %}
+        <input class="form-control" type="file" name="files" multiple />
+        <div class="form-text">
+          Uploaded files are available from the matter history linked-files column.
+          {% if notice_block_response_uploads %}
+          Response package files are excluded from office-action attachments.
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Existing files display for view mode or edit mode -->
+        {% if existing_files %}
+        <ul class="list-group mt-2">
+          {% for ef in existing_files %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+             <span>{{ ef.original_name }}</span>
+             {% if not view_mode %}
+             <!-- Only show remove checkbox in edit mode -->
+             <div>
+               {% set _file_id = ef.file_asset_id or ef.file_id %}
+               <input class="form-check-input me-1" type="checkbox" name="remove_files" value="{{ _file_id }}" id="rm_{{ _file_id }}">
+               <label class="form-check-label text-danger" for="rm_{{ _file_id }}">Delete</label>
+             </div>
+             {% else %}
+               {% set _file_id = ef.file_asset_id or ef.file_id %}
+               <a href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=_file_id) }}" class="btn btn-sm btn-outline-primary">Download</a>
+             {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+
+      {% if not view_mode %}
+      <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Save</button>
+        {% if popup %}
+          <button type="button" class="btn btn-outline-secondary" onclick="window.close()">Cancel</button>
+        {% else %}
+          <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=case_id) }}">Cancel</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,256 @@
+    {% set _annuity_count = annuity_items|length %}
+    {% set _default_visible_count = (annuity_default_visible_cycle_nos|length) if annuity_default_visible_cycle_nos else (1 if annuity_items else 0) %}
+    {% set _hidden_annuity_count = _annuity_count - _default_visible_count %}
+    {% set _annuity_hint = annuity_autogen_hint or {} %}
+    <div id="sec-annuity">
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title">
+          Renewal 
+          <span class="badge bg-light text-secondary">Total {{ _annuity_count }}items</span>
+          {% if _hidden_annuity_count > 0 %}
+            <span class="badge bg-info-subtle text-info-emphasis">Default {{ _default_visible_count }}items Display</span>
+          {% endif %}
+          {% if annuity_management_disabled %}
+            <span class="badge bg-warning text-dark">Renewal  </span>
+          {% endif %}
+        </div>
+        <div class="case-section-actions">
+          {% if can_edit_case and not annuity_management_disabled %}
+            <form id="annuityEnsureForm" method="POST" action="{{ url_for('case_work.annuity_ensure', case_id=matter.matter_id) }}" class="d-inline"
+                  data-editmode-skip="1" data-confirm="Create or update renewal rows for this matter?" data-prevent-double-submit="true"
+                  data-show-loading="true"
+                  data-loading-text="Creating or updating renewal rows..."
+                  data-loading-detail="Renewal Item  Save Open.">
+              <button type="submit" class="btnBlue"><i class="bi bi-arrow-clockwise"></i><span>Update renewal</span></button>
+            </form>
+            <form method="POST" action="{{ url_for('case_work.annuity_workflow_sync', case_id=matter.matter_id) }}" class="d-inline"
+                  data-editmode-skip="1" data-confirm=" Matter Renewal Task ?" data-prevent-double-submit="true"
+                  data-show-loading="true"
+                  data-loading-text="Renewal Task  In progress..."
+                  data-loading-detail="Task Notice Status .">
+              <button type="submit" class="btnConv"><i class="bi bi-kanban"></i><span>Task</span></button>
+            </form>
+            <button type="button" class="btnGreen" onclick="openAnnuityAdd()"><i class="bi bi-plus-lg"></i><span>RenewalAdd</span></button>
+          {% endif %}
+          {% if not annuity_management_disabled %}
+            <a class="btnConv text-decoration-none" href="{{ url_for('annuities.fees') }}"><i class="bi bi-table"></i><span>RenewalRegistrationtable</span></a>
+          {% endif %}
+          {% if can_edit_case and not annuity_management_disabled %}
+            <button type="button" class="btnRed" onclick="submitAnnuityDelete()" {% if _annuity_count == 0 %}disabled{% endif %}><i class="bi bi-trash"></i><span>RenewalDelete</span></button>
+          {% endif %}
+          {% if not annuity_management_disabled and _hidden_annuity_count > 0 %}
+            <button type="button" class="btnConv" data-annuity-toggle-all="1" onclick="toggleAnnuityAll()"><i class="bi bi-eye"></i><span>Show all</span></button>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if annuity_management_disabled %}
+      <div class="alert alert-warning py-2 px-3 small mb-3">
+        Renewal tracking for this matter is managed through the linked client settings.
+      </div>
+      {% endif %}
+
+      {% if can_edit_case and not annuity_management_disabled %}
+      <div id="annuityAdd" class="p-3 bg-light rounded mb-3 border" style="display:none;">
+        <h6 class="fw-bold mb-3"><i class="bi bi-hourglass-split text-primary me-2"></i> Renewal Add</h6>
+        <form method="POST" action="{{ url_for('case_work.annuity_add', case_id=matter.matter_id) }}" class="row g-3">
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted"></label>
+            <input class="form-control form-control-sm bg-white" name="cycle_no" placeholder=": 4" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1 fw-bold text-muted">Due date</label>
+            <input class="form-control form-control-sm bg-white" type="date" name="due_date" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1 fw-bold text-muted">Due date</label>
+            <input class="form-control form-control-sm bg-white" type="date" name="extended_due_date" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-1 fw-bold text-muted">TaskDue date</label>
+            <input class="form-control form-control-sm bg-white" type="date" name="internal_due_date" />
+          </div>
+
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted">CurrentStatus</label>
+            <select class="form-select form-select-sm bg-white" name="annuity_status">
+              <option value="">(Auto)</option>
+              <option value="pending">In Progress</option>
+              <option value="paid">Paid</option>
+              <option value="giveup">Abandoned</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted">Registration</label>
+            <input class="form-control form-control-sm bg-white text-end" name="official_fee" placeholder="0" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted">Payment</label>
+            <input class="form-control form-control-sm bg-white text-end" name="paid_amount" placeholder="0" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted">Payment</label>
+            <input class="form-control form-control-sm bg-white" type="date" name="paid_date" />
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-1 fw-bold text-muted">(%)</label>
+            <input class="form-control form-control-sm bg-white text-end" name="discount_rate" placeholder="0" />
+          </div>
+          <div class="col-md-10">
+            <label class="form-label small mb-1 fw-bold text-muted">Notes</label>
+            <input class="form-control form-control-sm bg-white" name="memo" placeholder="Renewal Notes Input" />
+          </div>
+
+          <div class="col-12 d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <div class="form-check ps-4">
+              <input class="form-check-input" type="checkbox" name="overwrite_blanks" value="1" id="annuityOverwriteBlanks" />
+              <label class="form-check-label small fw-medium" for="annuityOverwriteBlanks">valueto Existingvalue </label>
+            </div>
+            <div class="d-flex justify-content-end gap-2 text-end">
+              <button class="btnGreen px-3" type="submit">Save</button>
+              <button class="btnConv px-3" type="button" onclick="toggleBlock('annuityAdd')">Close</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      {% endif %}
+
+      {% if can_edit_case and not annuity_management_disabled %}
+        <form id="annuityDel" method="POST" action="{{ url_for('case_work.annuity_delete', case_id=matter.matter_id) }}"></form>
+      {% endif %}
+      <div class="legacy-grid-wrap">
+      <table class="legacy-grid small" id="annuityTable">
+        <thead>
+          <tr>
+            <th style="width: 40px;">
+              {% if can_edit_case and not annuity_management_disabled %}
+                <input type="checkbox" onclick="toggleAll('annuityTable', this.checked)"/>
+              {% endif %}
+            </th>
+            <th style="width: 80px;"></th>
+            <th style="width: 120px;">Due date</th>
+            <th style="width: 120px;">Due date</th>
+            <th style="width: 120px;">TaskDue date</th>
+            <th style="width: 120px;">Payment</th>
+            <th style="width: 120px;">Payment</th>
+            <th style="width: 120px;">CurrentStatus</th>
+            <th style="width: 120px;">Registration</th>
+            <th style="width: 110px;">(%)</th>
+            <th>Notes</th>
+            {% if can_edit_case and not annuity_management_disabled %}
+              <th style="width: 70px;">Edit</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if annuity_management_disabled %}
+          <tr>
+            <td colspan="{{ 12 if can_edit_case and not annuity_management_disabled else 11 }}" class="text-center py-4">
+              <div class="app-empty-state"><i class="bi bi-slash-circle"></i><span>No renewal items are available for display.</span></div>
+            </td>
+          </tr>
+          {% else %}
+          {% set _annuity_visible_cycles = (annuity_default_visible_cycle_nos or []) %}
+          {% for a in annuity_items %}
+          {% set _cycle_key = (a.cycle_no|string) if a.cycle_no else '' %}
+          {% set _is_default_visible = ((_annuity_visible_cycles and _cycle_key and (_cycle_key in _annuity_visible_cycles)) or ((not _annuity_visible_cycles) and (loop.index == 1))) %}
+          <tr class="legacy-row-hover {% if not _is_default_visible %}annuity-extra{% endif %}" {% if not _is_default_visible %}style="display:none;"{% endif %}>
+            <td align="center">
+              {% if can_edit_case and not annuity_management_disabled %}
+                <input type="checkbox" name="annuity_ids" value="{{ a.annuity_id }}" form="annuityDel" />
+              {% endif %}
+            </td>
+            <td align="center">
+              {% if a.cycle_no %}
+                {{ a.cycle_no }}
+              {% else %}
+                <span class="text-muted"> Renewal</span>
+              {% endif %}
+            </td>
+            <td align="center">{{ a.due_date or '' }}</td>
+            <td align="center">{{ a.extended_due_date or '' }}</td>
+            <td align="center">{{ a.internal_due_date or '' }}</td>
+            <td align="center">{{ a.paid_date or '' }}</td>
+            <td align="right">{{ a.paid_amount or 0 }}</td>
+            <td align="center">
+              {% if a._computed_status_label %}
+                {% set _st = a._computed_status or '' %}
+                {% set _badge = a._computed_badge_class or ('bg-danger' if _st == 'overdue' else 'bg-success' if _st == 'paid' else 'bg-secondary' if _st == 'giveup' else 'bg-primary') %}
+                <span class="badge {{ _badge }}">{{ a._computed_status_label }}</span>
+                {% if a._effective_due_date %}
+                  <div class="text-muted small"> {{ a._effective_due_date }}</div>
+                {% endif %}
+              {% else %}
+                {{ a.annuity_status or '' }}
+              {% endif %}
+            </td>
+            <td align="right">{{ a.official_fee or 0 }}</td>
+            <td align="right">{{ a.discount_rate or 0 }}</td>
+            <td style="text-align:left;">{{ a.memo or '' }}</td>
+            {% if can_edit_case and not annuity_management_disabled %}
+              <td align="center">
+                <button type="button"
+                        class="btnConv"
+                        onclick="openAnnuityEdit(this)"
+                        data-cycle-no="{{ a.cycle_no or '' }}"
+                        data-due-date="{{ a.due_date or '' }}"
+                        data-extended-due-date="{{ a.extended_due_date or '' }}"
+                        data-internal-due-date="{{ a.internal_due_date or '' }}"
+                        data-paid-date="{{ a.paid_date or '' }}"
+                        data-paid-amount="{{ a.paid_amount if a.paid_amount is not none else '' }}"
+                        data-annuity-status="{{ a.annuity_status or '' }}"
+                        data-official-fee="{{ a.official_fee if a.official_fee is not none else '' }}"
+                        data-discount-rate="{{ a.discount_rate if a.discount_rate is not none else '' }}"
+                        data-memo="{{ (a.memo or '')|replace('\r','')|replace('\n','\\n')|e }}">Edit</button>
+              </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="{{ 12 if can_edit_case and not annuity_management_disabled else 11 }}" class="text-center py-4">
+              <div class="app-empty-state annuity-empty-state {% if _annuity_hint.get('kind') in ['ready_reg_fee_fallback', 'ready_registration_date', 'ready_term_expiry'] %}annuity-empty-actionable{% endif %}">
+                {% if _annuity_hint.get('kind') in ['ready_reg_fee_fallback', 'ready_registration_date', 'ready_term_expiry'] %}
+                  <i class="bi bi-calendar2-plus"></i>
+                  <strong>Create  Renewal exists.</strong>
+                  <span>
+                    {{ _annuity_hint.get('base_label') or 'reference date' }} {{ _annuity_hint.get('base_date') or '-' }} to
+                    {% if _annuity_hint.get('expected_cycle_label') %}{{ _annuity_hint.get('expected_cycle_label') }} {% endif %}Renewal Create  exists.
+                  </span>
+                  {% if _annuity_hint.get('expected_due_date') %}
+                    <div class="annuity-empty-facts">
+                      <span>Estimated Deadline {{ _annuity_hint.get('expected_due_date') }}</span>
+                      {% if _annuity_hint.get('expected_extended_due_date') %}
+                        <span> {{ _annuity_hint.get('expected_extended_due_date') }}</span>
+                      {% endif %}
+                      {% if _annuity_hint.get('needs_review') %}
+                        <span>Registration date Confirm Required</span>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                  {% if can_edit_case %}
+                    <button type="submit" form="annuityEnsureForm" class="btnBlue app-empty-cta">
+                      <i class="bi bi-arrow-clockwise"></i><span> Create</span>
+                    </button>
+                  {% endif %}
+                {% elif _annuity_hint.get('kind') == 'missing_registration_date' %}
+                  <i class="bi bi-calendar2-x"></i>
+                  <strong>Renewal reference date  none.</strong>
+                  <span>Enter a registration date or registration payment date, then update renewals to auto-create the schedule.</span>
+                {% elif _annuity_hint.get('kind') == 'right_type_unknown' %}
+                  <i class="bi bi-question-circle"></i>
+                  <strong>Type Confirm .</strong>
+                  <span>Patent, Utility model, Design, Trademark In Progress  category Renewal   exists.</span>
+                {% else %}
+                  <i class="bi bi-calendar2-check"></i>
+                  <strong>Registration Renewal  none.</strong>
+                  <span>Create or update renewal rows when needed.</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+      </div>
+    </div>

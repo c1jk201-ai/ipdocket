@@ -1,0 +1,112 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+{% set is_edit = template is not none %}
+{% set schedule = schedule or {} %}
+<div class="container-fluid py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="fw-semibold mb-1">{% if is_edit %}Edit playbook{% else %}New playbook{% endif %}</h3>
+      <div class="text-muted small">Define the reusable checklist, date offsets, and text that can be applied from a workflow detail page.</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('workflow.playbooks') }}">Back to list</a>
+  </div>
+
+  <form method="post" class="card shadow-sm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Name</label>
+          <input class="form-control" name="name" required value="{{ template.name if template else '' }}" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Document Type</label>
+          <input class="form-control" name="doc_type" value="{{ template.doc_type if template else '' }}" placeholder="OA, Filing" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Task category</label>
+          <select class="form-select" name="category">
+            {% set category = (template.category if template else '') or '' %}
+            <option value="" {% if not category %}selected{% endif %}></option>
+            <option value="WORK" {% if category == 'WORK' %}selected{% endif %}>WORK</option>
+            <option value="MGMT" {% if category == 'MGMT' %}selected{% endif %}>MGMT</option>
+            <option value="FILING" {% if category == 'FILING' %}selected{% endif %}>FILING</option>
+            <option value="EXAM" {% if category == 'EXAM' %}selected{% endif %}>EXAM</option>
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label">Matter Type</label>
+          <input class="form-control" name="matter_type" value="{{ template.matter_type if template else '' }}" placeholder="PATENT" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Right group</label>
+          <input class="form-control" name="right_group" value="{{ template.right_group if template else '' }}" placeholder="DOM/INC/OUT" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Event key</label>
+          <input class="form-control" name="event_key" value="{{ template.event_key if template else '' }}" placeholder="office_action" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Sort order</label>
+          <input class="form-control" name="sort_order" value="{{ template.sort_order if template else 0 }}" inputmode="numeric" />
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="is_active" id="isActive" value="1" {% if template is none or template.is_active %}checked{% endif %}>
+            <label class="form-check-label" for="isActive">Active</label>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <input class="form-control" name="description" value="{{ template.description if template else '' }}" />
+        </div>
+
+        <div class="col-lg-6">
+          <label class="form-label">Checklist items</label>
+          <textarea class="form-control" name="checklist_text" rows="12">{{ checklist_text }}</textarea>
+        </div>
+        <div class="col-lg-6">
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Request date offset</label>
+              <input class="form-control" name="request_offset_days" value="{{ schedule.get('request_offset_days', '') }}" inputmode="numeric" />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Final due offset</label>
+              <input class="form-control" name="legal_due_offset_days" value="{{ schedule.get('legal_due_offset_days', '') }}" inputmode="numeric" />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Internal due offset</label>
+              <input class="form-control" name="internal_due_offset_days" value="{{ schedule.get('internal_due_offset_days', '') }}" inputmode="numeric" />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Draft due offset</label>
+              <input class="form-control" name="draft_due_offset_days" value="{{ schedule.get('draft_due_offset_days', '') }}" inputmode="numeric" />
+            </div>
+            <div class="col-6">
+              <label class="form-label">Submit due offset</label>
+              <input class="form-control" name="submit_due_offset_days" value="{{ schedule.get('submit_due_offset_days', '') }}" inputmode="numeric" />
+            </div>
+            <div class="col-12">
+              <label class="form-label">Request/details template</label>
+              <textarea class="form-control" name="request_template" rows="4">{{ template.request_template if template else '' }}</textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes template</label>
+              <textarea class="form-control" name="memo_template" rows="4">{{ template.memo_template if template else '' }}</textarea>
+              <div class="form-text">Available placeholders: {our_ref}, {right_name}, {workflow_name}, {doc_type}.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer bg-white d-flex justify-content-end gap-2">
+      <a class="btn btn-outline-secondary" href="{{ url_for('workflow.playbooks') }}">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

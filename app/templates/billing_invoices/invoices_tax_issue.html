@@ -1,0 +1,1207 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="tax-issue-page">
+<div class="page-header tax-page-header">
+ <div class="tax-page-title">
+  <h2>Tax documentation queue</h2>
+  <p>Payment Confirm  / Process  Invoice</p>
+ </div>
+ <div class="page-actions">
+  <a class="btn btn-outline-secondary" href="{{ url_for('billing_invoices.invoices.list_invoices', status='paid_no_tax') }}">Listto</a>
+ </div>
+</div>
+
+<link rel="stylesheet" href="{{ static_asset_url('vendor/flatpickr/flatpickr.min.css') }}">
+
+<style>
+ .flatpickr-calendar {
+  z-index: 9999;
+ }
+
+ .tax-issue-page {
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.78rem;
+  --fs-md: 0.82rem;
+  --fs-lg: 0.90rem;
+  --tax-line: #e5e7eb;
+  --tax-soft: #f8fafc;
+  --tax-soft-2: #f1f5f9;
+  --tax-text: #111827;
+  --tax-muted: #64748b;
+ }
+
+ .tax-page-header {
+  align-items: flex-start;
+  margin-bottom: 10px;
+ }
+ .tax-page-title h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: 0;
+ }
+ .tax-page-title p {
+  margin: 4px 0 0;
+  color: var(--tax-muted);
+  font-size: 0.88rem;
+ }
+
+ .tax-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 8px;
+ }
+ .tax-summary-item {
+  border: 1px solid var(--tax-line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+ }
+ .tax-summary-item> span {
+  display: block;
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.2;
+ }
+ .tax-summary-item> strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--tax-text);
+  font-size: 1rem;
+  line-height: 1.2;
+ }
+
+ .tax-filter-card {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--tax-line);
+  background: var(--surface, #ffffff);
+ }
+ .tax-filter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 10px;
+ }
+ .tax-filter-card h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--tax-text);
+ }
+ .tax-filter-meta {
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+ }
+ .tax-filter-card label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--tax-muted);
+ }
+ .tax-filter-card input,
+ .tax-filter-card select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: var(--fs-md);
+  border-radius: 6px;
+  border: 1px solid var(--tax-line);
+  background-color: var(--tax-soft);
+  transition: all 0.15s ease;
+ }
+ .tax-filter-card input:focus,
+ .tax-filter-card select:focus {
+  outline: none;
+  border-color: #005EA8;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0,94,168,0.08);
+ }
+
+ .quick-range-wrap {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+ }
+ .quick-range-label {
+  font-size: var(--fs-xs);
+  color: var(--tax-muted);
+ }
+ .quick-chip {
+  padding: 4px 8px;
+  font-size: var(--fs-xs);
+  border-radius: 999px;
+  border: 1px solid var(--tax-line);
+  background: var(--tax-soft);
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s ease;
+ }
+ .quick-chip:hover {
+  background: #EAF4FF;
+  border-color: #B7D4EA;
+  color: #005EA8;
+ }
+
+ .tax-action-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--tax-line);
+  border-radius: 8px;
+  background: #ffffff;
+ }
+ .tax-action-copy {
+  min-width: 0;
+ }
+ .tax-action-copy strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--tax-text);
+ }
+ .tax-action-copy span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--tax-muted);
+ }
+ .tax-action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+ }
+ .tax-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--tax-muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+ }
+
+ .tax-list-card {
+  margin-top: 10px;
+  overflow: visible;
+  background: #ffffff;
+  border: 1px solid var(--tax-line);
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(15,23,42,0.04);
+ }
+ .tax-list-head,
+ .invoice-main-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1.35fr) minmax(0, 1.75fr) minmax(0, 0.8fr) minmax(0, 0.75fr) minmax(0, 1.1fr);
+  gap: 10px;
+ }
+ .tax-list-head {
+  position: sticky;
+  top: var(--app-header-height, 0px);
+  z-index: 5;
+  padding: 8px 12px;
+  background: var(--tax-soft);
+  border-bottom: 1px solid var(--tax-line);
+  color: var(--tax-muted);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+ }
+ .tax-list-head> div {
+  min-width: 0;
+ }
+ .tax-invoice-list {
+  display: flex;
+  flex-direction: column;
+ }
+ .tax-empty {
+  padding: 18px 12px;
+  text-align: center;
+ }
+ .invoice-main-row {
+  padding: 12px;
+  border-bottom: 1px solid var(--tax-line);
+  border-left: 3px solid #cbd5e1;
+  background: #ffffff;
+  align-items: start;
+  font-size: var(--fs-md);
+ }
+ .invoice-main-row:nth-child(odd) {
+  background: #fcfcff;
+ }
+ .invoice-main-row:hover {
+  background: #EAF4FF;
+ }
+ .invoice-main-row.preview-tax-issued {
+  background: #fffbeb !important;
+  border-color: #f97316 !important;
+ }
+ .select-cell {
+  text-align: center;
+ }
+ .tax-card-cell,
+ .invoice-cell {
+  min-width: 0;
+  overflow-wrap: anywhere;
+ }
+ .invoice-cell .invoice-number {
+  font-weight: 700;
+ }
+ .cell-meta,
+ .cell-subline {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+ }
+ .meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--tax-soft-2);
+  color: #475569;
+ }
+ .meta-pill.is-warning {
+  border: 1px solid #C8A24A;
+  background: #fffbeb;
+  color: #0B1F3A;
+ }
+ .client-name {
+  font-weight: 600;
+ }
+ .copy-stack {
+  display: grid;
+  gap: 4px;
+ }
+ .copy-line {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) 22px;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  line-height: 1.25;
+ }
+ .copy-line.is-heading {
+  align-items: center;
+ }
+ .copy-line.no-label {
+  grid-template-columns: minmax(0, 1fr) 22px;
+ }
+ .copy-label {
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+ }
+ .copy-value {
+  min-width: 0;
+  color: #334155;
+  overflow-wrap: anywhere;
+  user-select: text;
+ }
+ .copy-line.is-heading .copy-value {
+  color: #0f172a;
+ }
+ .right .copy-line.no-label {
+  justify-items: end;
+ }
+ .right .copy-line.no-label .copy-value {
+  text-align: right;
+ }
+ .copy-field-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1;
+  opacity: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+ }
+ .copy-line:hover .copy-field-btn,
+ .copy-field-btn:focus-visible,
+ .copy-field-btn.is-copied {
+  opacity: 1;
+ }
+ .copy-field-btn:hover,
+ .copy-field-btn:focus-visible {
+  background: #e0f2fe;
+  color: #0369a1;
+  outline: none;
+ }
+ .copy-field-btn.is-copied {
+  background: #dcfce7;
+  color: #15803d;
+ }
+ .email-stack {
+  display: grid;
+  gap: 3px;
+  margin-top: 5px;
+  font-size: var(--fs-xs);
+ }
+ .email-line {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+ }
+ .email-line span:first-child {
+  color: var(--tax-muted);
+ }
+ .email-value {
+  color: #334155;
+  overflow-wrap: anywhere;
+ }
+ .date-stack {
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-sm);
+  line-height: 1.25;
+ }
+ .date-stack span {
+  display: block;
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+ }
+ .deposit-value,
+ .amount-value {
+  font-weight: 700;
+  color: var(--tax-text);
+ }
+ .amount-breakdown {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+ }
+ .amount-chip {
+  border: 1px solid var(--tax-line);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: var(--tax-soft);
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.2;
+ }
+
+ .invoice-detail-row {
+  grid-column: 2 / -1;
+  min-width: 0;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #EAF4FF;
+  border-left: 4px solid #005EA8;
+  border-radius: 8px;
+  background: #f8fbff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+ }
+ .invoice-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+ }
+ .invoice-detail-title {
+  min-width: 0;
+ }
+ .invoice-detail-title strong {
+  display: block;
+  color: #0f172a;
+  font-size: var(--fs-sm);
+  line-height: 1.25;
+ }
+ .invoice-detail-title span {
+  display: block;
+  margin-top: 2px;
+  color: var(--tax-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.25;
+ }
+ .invoice-detail-total {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 180px;
+ }
+ .item-table-head,
+ .invoice-detail-row .item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.28fr) minmax(110px, 0.28fr);
+  gap: 12px;
+ }
+ .item-table-head {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #eaf2ff;
+  color: #475569;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+ }
+ .invoice-detail-row .item-row {
+  align-items: start;
+  padding: 8px;
+  font-size: var(--fs-sm);
+  border-top: 1px solid #e5edf8;
+ }
+ .invoice-detail-row .item-row:first-child {
+  border-top: 1px solid #e5edf8;
+ }
+ .invoice-detail-row .item-row:last-child {
+  border-bottom: none;
+ }
+ .invoice-detail-row .item-desc {
+  color: #4b5563;
+  min-width: 0;
+  overflow-wrap: anywhere;
+ }
+ .invoice-detail-row .item-amount,
+ .invoice-detail-row .item-amount-total {
+  text-align: right;
+  color: #111827;
+  font-weight: 700;
+  white-space: nowrap;
+ }
+ .invoice-detail-row .item-amount-total {
+  color: #12395F;
+ }
+ .invoice-detail-row .item-empty {
+  grid-column: 1 / -1;
+  color: #9ca3af;
+ }
+
+ .invoice-main-row.preview-tax-issued .tag-temp {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid #f97316;
+  background: #fffbeb;
+  color: #0B1F3A;
+ }
+
+ .muted {
+  color: #9ca3af;
+ }
+ .muted-sm {
+  color: #9ca3af;
+  font-size: var(--fs-xs);
+ }
+ .right {
+  text-align: right;
+ }
+ .link {
+  color: #005EA8;
+  text-decoration: none;
+  font-size: inherit;
+ }
+ .link:hover {
+  text-decoration: underline;
+ }
+
+ @media screen and (max-width: 991.98px) {
+  .tax-summary-grid {
+   grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tax-filter-meta {
+   display: none;
+  }
+  .tax-action-panel {
+   align-items: flex-start;
+   flex-direction: column;
+  }
+  .tax-action-buttons {
+   width: 100%;
+   justify-content: flex-start;
+  }
+  .tax-list-head,
+  .invoice-main-row {
+   grid-template-columns: 28px minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 1fr);
+  }
+  .tax-list-head .deposit-head,
+  .invoice-main-row .deposit-cell {
+   display: none;
+  }
+  .invoice-detail-row {
+   grid-column: 2 / -1;
+  }
+  .invoice-detail-header {
+   flex-direction: column;
+  }
+  .invoice-detail-total {
+   justify-content: flex-start;
+   min-width: 0;
+  }
+ }
+
+ @media screen and (max-width: 760px) {
+  .tax-summary-grid {
+   grid-template-columns: 1fr;
+  }
+  .tax-list-head {
+   display: none;
+  }
+  .invoice-main-row {
+   display: block;
+   position: relative;
+   padding: 10px 12px 8px 44px;
+   border-top: 1px solid var(--tax-line);
+   background: #ffffff;
+  }
+  .tax-card-cell,
+  .invoice-cell {
+   padding: 5px 0;
+   border: 0;
+   background: transparent !important;
+  }
+  .tax-card-cell[data-label]::before,
+  .invoice-cell[data-label]::before {
+   content: attr(data-label);
+   display: block;
+   margin-bottom: 2px;
+   color: var(--tax-muted);
+   font-size: var(--fs-xs);
+   font-weight: 600;
+  }
+  .select-cell {
+   position: absolute;
+   left: 12px;
+   top: 12px;
+   width: 20px;
+   padding: 0;
+  }
+  .select-cell::before {
+   content: none;
+  }
+  .invoice-detail-row {
+   grid-column: auto;
+   margin-top: 8px;
+   padding: 10px;
+   background: #f8fbff !important;
+  }
+  .item-table-head {
+   display: none;
+  }
+  .invoice-detail-row .item-row {
+   display: grid;
+   grid-template-columns: 1fr;
+   gap: 5px;
+   padding: 8px 0;
+  }
+  .invoice-detail-row .item-amount,
+  .invoice-detail-row .item-amount-total {
+   white-space: normal;
+   text-align: left;
+  }
+  .invoice-detail-row .item-amount::before {
+   content: 'Taxable amount ';
+   color: var(--tax-muted);
+   font-weight: 500;
+  }
+  .invoice-detail-row .item-amount-total::before {
+   content: 'including sales tax ';
+   color: var(--tax-muted);
+   font-weight: 500;
+  }
+  .amount-breakdown {
+   justify-content: flex-start;
+  }
+  .copy-field-btn {
+   opacity: 1;
+  }
+ }
+</style>
+
+<div class="tax-summary-grid" aria-live="polite">
+ <div class="tax-summary-item">
+  <span> target</span>
+  <strong>{{ invoices|length }}items</strong>
+ </div>
+ <div class="tax-summary-item">
+  <span> </span>
+  <strong>{{ ready_count|default(0) }}items</strong>
+ </div>
+ <div class="tax-summary-item">
+  <span>Confirm required</span>
+  <strong>{{ blocked_count|default(0) }}items</strong>
+ </div>
+ <div class="tax-summary-item">
+  <span>Select</span>
+  <strong><span id="selectedCount">0</span>items</strong>
+ </div>
+ <div class="tax-summary-item">
+  <span>ConfirmDisplay</span>
+  <strong><span id="previewCount">0</span> item(s)</strong>
+ </div>
+</div>
+
+<div class="card tax-filter-card">
+ <div class="tax-filter-head">
+  <h3>Search Filters</h3>
+  <div class="tax-filter-meta">Default: USD business profile</div>
+ </div>
+ <form id="filtersForm" class="row g-2 align-items-end" method="get">
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>{{ t('business') }}</label>
+   <select name="business_profile_id">
+    <option value="">{{ t('all') }}</option>
+    {% if currencies %}
+    <optgroup label="Currency">
+     {% for cur in currencies %}
+     <option value="C:{{ cur }}" {% if selected_business_profile_id == ('C:' ~ cur) %}selected{% endif %}>
+      {{ cur }} Business profile
+     </option>
+     {% endfor %}
+    </optgroup>
+    {% endif %}
+    <optgroup label="Business profiles">
+     {% for profile in all_profiles %}
+     <option value="{{ profile['id'] }}" {% if selected_business_profile_id == profile['id']|string %}selected{% endif %}>
+      {{ profile['name'] }}
+     </option>
+     {% endfor %}
+    </optgroup>
+   </select>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>{{ t('keyword_search') }}</label>
+   <input name="q" value="{{ request.args.get('q','') }}" placeholder="{{ t('keyword_placeholder') }}" />
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>{{ t('sort_by') }}</label>
+   {% set current_sort = request.args.get('sort','issue_date') %}
+   <select name="sort">
+    <option value="issue_date" {% if current_sort in ['', 'issue_date', 'issue_date_desc'] %}selected{% endif %}>{{ t('sort_newest') }}</option>
+    <option value="due_date" {% if current_sort == 'due_date' %}selected{% endif %}>Due date</option>
+    <option value="total" {% if current_sort in ['total', 'amount_desc'] %}selected{% endif %}>{{ t('sort_amount_high') }}</option>
+   </select>
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>Issue date start</label>
+   <input type="date" id="date_from" name="date_from" value="{{ request.args.get('date_from','') }}" />
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>Issue date end</label>
+   <input type="date" id="date_to" name="date_to" value="{{ request.args.get('date_to','') }}" />
+  </div>
+
+  <div class="quick-range-wrap col-12">
+   <span class="quick-range-label">Date presets</span>
+   <button type="button" class="quick-chip" onclick="applyRange('Q1')">Q1</button>
+   <button type="button" class="quick-chip" onclick="applyRange('Q2')">Q2</button>
+   <button type="button" class="quick-chip" onclick="applyRange('Q3')">Q3</button>
+   <button type="button" class="quick-chip" onclick="applyRange('Q4')">Q4</button>
+   <button type="button" class="quick-chip" onclick="applyRange('H1')">H1</button>
+   <button type="button" class="quick-chip" onclick="applyRange('H2')">H2</button>
+   <button type="button" class="quick-chip" onclick="applyRange('M0')">This month</button>
+   <button type="button" class="quick-chip" onclick="applyRange('M-1')">Last month</button>
+   <button type="button" class="quick-chip" onclick="applyRange('Y')">This year</button>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>{{ t('min_amount') }}</label>
+   <input type="number" name="min_amount" value="{{ request.args.get('min_amount','') }}" placeholder="0" />
+  </div>
+  <div class="col-12 col-md-6 col-lg-3">
+   <label>{{ t('max_amount') }}</label>
+   <input type="number" name="max_amount" value="{{ request.args.get('max_amount','') }}"
+       placeholder="{{ t('all') if get_locale() == 'en' else '' }}" />
+  </div>
+  <div class="col-12">
+   <div class="d-flex gap-2 justify-content-end flex-wrap">
+    <button class="btn btn-ghost" type="button"
+        onclick="document.getElementById('filtersForm').reset(); window.location='{{ url_for('billing_invoices.invoices.tax_issue') }}';">
+     {{ t('reset') }}
+    </button>
+    <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
+   </div>
+  </div>
+ </form>
+</div>
+
+<form id="taxIssueBatchForm"
+   method="post"
+   action="{{ url_for('billing_invoices.invoices.confirm_tax_issue') }}"
+   data-confirm="Mark the selected invoices as tax documented?">
+ <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+ <div class="tax-action-panel">
+  <div class="tax-action-copy">
+   <strong>{{ ready_count|default(0) }} ready / {{ blocked_count|default(0) }} requiring review</strong>
+   <span>Select ready rows to record tax documentation.</span>
+  </div>
+  <div class="tax-action-buttons">
+   <label class="tax-select-all"><input type="checkbox" id="checkAll"> Select all</label>
+   <button class="btn btn-outline-primary" type="button" id="previewTaxIssueBtn">Preview selected items</button>
+   <button class="btn btn-primary" id="finalSaveBtn" type="submit" disabled">Confirm selected</button>
+  </div>
+ </div>
+
+ <div class="tax-list-card">
+  <div class="tax-list-head" aria-hidden="true">
+   <div></div>
+   <div>Invoice</div>
+   <div>Client / Tax profile</div>
+   <div>Dates</div>
+   <div class="right deposit-head">Deposit</div>
+   <div class="right">Invoice Total</div>
+  </div>
+  <div class="tax-invoice-list">
+     {% for inv in invoices %}
+     {% set cur = (inv.currency or 'USD')|upper %}
+     {% set client_biz_reg_no = inv.client_biz_reg_number or '' %}
+     {% set client_personal_id_no = inv.client_personal_registration_number or '' %}
+     {% set client_tax_address = inv.client_tax_address or '' %}
+     {% set tax = inv.tax_email or '' %}
+     {% set cml = inv.client_email or '' %}
+     {% set tax_issue_ready = inv.tax_issue_ready|default(true) %}
+     {% set tax_issue_blocker_text = inv.tax_issue_blocker_text|default('') %}
+     {% if inv.deposit_amount and inv.deposit_amount> 0 %}
+      {% set deposit_display = "{:,.0f}".format(inv.deposit_amount) if cur in ['USD','JPY'] else "{:,.2f}".format(inv.deposit_amount) %}
+     {% else %}
+      {% set deposit_display = '' %}
+     {% endif %}
+     {% set invoice_total_display = currency(inv.total, inv.currency) %}
+     <article class="invoice-main-row">
+      <div class="select-cell">
+       <input type="checkbox" name="invoice_ids[]" value="{{ inv.id }}" class="row-check"
+           {% if not tax_issue_ready %}disabled aria-disabled="true" title="Review required: {{ tax_issue_blocker_text }}"{% endif %}>
+      </div>
+      <div class="invoice-cell" data-label="Invoice">
+       <div class="copy-stack">
+        <div class="copy-line is-heading">
+         <span class="copy-label"></span>
+         <a href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv.id) }}" class="link invoice-number copy-value">{{ inv.number }}</a>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.number }}" aria-label="Invoice number " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        <div class="copy-line">
+         <span class="copy-label">Business profile</span>
+         <span class="copy-value">{{ inv.business_name or '-' }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.business_name or '-' }}" aria-label="Business profile name " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        <div class="copy-line">
+         <span class="copy-label">OurRef</span>
+         <span class="copy-value">{{ inv.internal_reference or '-' }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.internal_reference or '-' }}" aria-label="OurRef " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+       </div>
+       {% if not tax_issue_ready %}
+       <div class="cell-meta">
+        <span class="meta-pill is-warning">Review required: {{ tax_issue_blocker_text or 'missing information' }}</span>
+       </div>
+       {% endif %}
+      </div>
+      <div class="tax-card-cell" data-label="Client / Tax profile">
+       <div class="copy-stack">
+        <div class="copy-line is-heading">
+         <span class="copy-label">Business name</span>
+         {% if inv.client_id %}
+          <a href="{{ url_for('billing_invoices.clients.view_client', client_id=inv.client_id) }}" class="link client-name copy-value">
+           {{ inv.client_name or '-' }}
+          </a>
+         {% else %}
+          <span class="client-name copy-value">{{ inv.client_name or '-' }}</span>
+         {% endif %}
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.client_name or '-' }}" aria-label="Client name " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% if client_biz_reg_no %}
+        <div class="copy-line">
+         <span class="copy-label">Tax ID / EIN</span>
+         <span class="copy-value">{{ client_biz_reg_no }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ client_biz_reg_no }}" aria-label="Tax ID / EIN" title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% endif %}
+        {% if client_personal_id_no %}
+        <div class="copy-line">
+         <span class="copy-label">Personal / registration number</span>
+         <span class="copy-value">{{ client_personal_id_no }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ client_personal_id_no }}" aria-label="Personal or registration number" title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% endif %}
+        {% if client_tax_address %}
+        <div class="copy-line">
+         <span class="copy-label">Tax profile address</span>
+         <span class="copy-value">{{ client_tax_address }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ client_tax_address }}" aria-label="Tax profile address" title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% endif %}
+        {% if tax %}
+        <div class="copy-line">
+         <span class="copy-label">Billing tax email</span>
+         <span class="copy-value">{{ tax }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ tax }}" aria-label="Billing tax email" title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% endif %}
+        {% if cml %}
+        <div class="copy-line">
+         <span class="copy-label">Client</span>
+         <span class="copy-value">{{ cml }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ cml }}" aria-label="Client Email " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        {% endif %}
+       </div>
+       {% if not (tax or cml or client_biz_reg_no or client_personal_id_no or client_tax_address) %}
+        <span class="muted">-</span>
+       {% endif %}
+      </div>
+      <div class="tax-card-cell" data-label="days">
+       <div class="copy-stack">
+        <div class="copy-line">
+         <span class="copy-label">Issue date</span>
+         <span class="copy-value">{{ inv.issue_date or '-' }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.issue_date or '-' }}" aria-label="Issue date " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+        <div class="copy-line">
+         <span class="copy-label">Deposit date</span>
+         <span class="copy-value">{{ inv.deposit_date or '-' }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ inv.deposit_date or '-' }}" aria-label="Deposit date" title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+       </div>
+      </div>
+      <div class="tax-card-cell deposit-cell right" data-label="Deposit">
+       {% if deposit_display %}
+        <div class="copy-line no-label">
+         <span class="copy-value deposit-value">{{ deposit_display }}</span>
+         <button class="copy-field-btn" type="button" data-copy-value="{{ deposit_display }}" aria-label="Deposit amount " title="">
+          <i class="bi bi-copy" aria-hidden="true"></i>
+         </button>
+        </div>
+       {% else %}
+        <span class="muted">-</span>
+       {% endif %}
+      </div>
+      <div class="tax-card-cell right" data-label="Invoice Total">
+       <div class="copy-line no-label">
+        <span class="copy-value amount-value amount-{{ (inv.currency or 'USD')|lower }}">{{ invoice_total_display }}</span>
+        <button class="copy-field-btn" type="button" data-copy-value="{{ invoice_total_display }}" aria-label="Invoice Total " title="">
+         <i class="bi bi-copy" aria-hidden="true"></i>
+        </button>
+       </div>
+       {% if cur in ['USD', 'JPY'] %}
+        <div class="amount-breakdown">
+         <span class="amount-chip">+Sales tax {{ "{:,.0f}".format((inv.service_total or 0) + (inv.taxable_vat or 0)) }}</span>
+         <span class="amount-chip">Advanced cost {{ "{:,.0f}".format(inv.admin_total or 0) }}</span>
+         <span class="amount-chip">Foreign {{ "{:,.0f}".format(inv.foreign_total or 0) }}</span>
+        </div>
+       {% else %}
+        <div class="amount-breakdown">
+         <span class="amount-chip">+Sales tax {{ "{:,.2f}".format((inv.service_total or 0) + (inv.taxable_vat or 0)) }}</span>
+         <span class="amount-chip">Advanced cost {{ "{:,.2f}".format(inv.admin_total or 0) }}</span>
+         <span class="amount-chip">Foreign {{ "{:,.2f}".format(inv.foreign_total or 0) }}</span>
+        </div>
+       {% endif %}
+      </div>
+
+      <div class="invoice-detail-row">
+       {% set vr = inv.vat_rate or 0 %}
+       {% if vr> 1 %}
+        {% set vm = vr / 100.0 %}
+       {% else %}
+        {% set vm = vr %}
+       {% endif %}
+
+       <div class="invoice-detail-header">
+        <div class="invoice-detail-title">
+         <strong>Line items</strong>
+         <span>Tax documentation queue </span>
+        </div>
+        <div class="invoice-detail-total">
+         {% if cur in ['USD', 'JPY'] %}
+          <span class="amount-chip">Taxable amount {{ "{:,.0f}".format(inv.taxable_subtotal or 0) }}</span>
+          <span class="amount-chip">Sales tax {{ "{:,.0f}".format(inv.taxable_vat or 0) }}</span>
+         {% else %}
+          <span class="amount-chip">Taxable amount {{ "{:,.2f}".format(inv.taxable_subtotal or 0) }}</span>
+          <span class="amount-chip">Sales tax {{ "{:,.2f}".format(inv.taxable_vat or 0) }}</span>
+         {% endif %}
+        </div>
+       </div>
+
+       {% if inv['items'] %}
+       <div class="item-table-head" aria-hidden="true">
+        <span></span>
+        <span class="right">Taxable amount</span>
+        <span class="right">including sales tax</span>
+       </div>
+       {% for it in inv['items'] %}
+       <div class="item-row">
+        <span class="item-desc">{{ it.description }}</span>
+        <span class="item-amount">
+         {{ "{:,.0f}".format(it.amount) if cur in ['USD','JPY']
+           else "{:,.2f}".format(it.amount) }}
+        </span>
+        <span class="item-amount-total">
+         {{ "{:,.0f}".format(it.amount * (1 + vm)) if cur in ['USD','JPY']
+           else "{:,.2f}".format(it.amount * (1 + vm)) }}
+        </span>
+       </div>
+       {% endfor %}
+       {% else %}
+       <div class="item-row">
+        <span class="item-empty"> Item </span>
+       </div>
+       {% endif %}
+      </div>
+     </article>
+     {% else %}
+     <div class="tax-empty muted">target Invoice none.</div>
+     {% endfor %}
+    </div>
+  </div>
+</form>
+
+<script src="{{ static_asset_url('vendor/flatpickr/flatpickr.min.js') }}"></script>
+<script>
+ (function(){
+  try {
+   const issueEnabled = true;
+   // Select all
+   const all = document.getElementById('checkAll');
+   const rows = document.querySelectorAll('.row-check:not(:disabled)');
+   const selectedCountEl = document.getElementById('selectedCount');
+   const previewCountEl = document.getElementById('previewCount');
+
+   function fallbackCopyText(value) {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    ta.style.top = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+   }
+
+   async function copyText(value) {
+    const text = String(value || '').trim();
+    if (!text || text === '-') return false;
+    if (navigator.clipboard && window.isSecureContext) {
+     await navigator.clipboard.writeText(text);
+    } else {
+     fallbackCopyText(text);
+    }
+    return true;
+   }
+
+   document.querySelectorAll('.copy-field-btn').forEach((btn) => {
+    btn.addEventListener('click', async (ev) => {
+     ev.preventDefault();
+     ev.stopPropagation();
+     try {
+      const copied = await copyText(btn.getAttribute('data-copy-value') || '');
+      if (!copied) return;
+      const icon = btn.querySelector('i');
+      const prevClass = icon ? icon.className : '';
+      btn.classList.add('is-copied');
+      if (icon) icon.className = 'bi bi-check2';
+      window.setTimeout(() => {
+       btn.classList.remove('is-copied');
+       if (icon) icon.className = prevClass || 'bi bi-copy';
+      }, 900);
+     } catch (err) {}
+    });
+   });
+
+   function syncSelectionState(){
+    const checkedCount = document.querySelectorAll('.row-check:checked').length;
+    if (selectedCountEl) selectedCountEl.textContent = String(checkedCount);
+    if (all) {
+     all.disabled = rows.length === 0;
+     all.checked = rows.length> 0 && checkedCount === rows.length;
+     all.indeterminate = checkedCount> 0 && checkedCount < rows.length;
+    }
+   }
+
+   function updateFinalSaveState(){
+    const previewRows = document.querySelectorAll('.invoice-main-row.preview-tax-issued');
+    const readyRows = Array.from(previewRows).filter(row => row.querySelector('.row-check:checked'));
+    const btn = document.getElementById('finalSaveBtn');
+    if (btn) btn.disabled = (!issueEnabled) || readyRows.length === 0;
+    if (previewCountEl) previewCountEl.textContent = String(previewRows.length);
+    syncSelectionState();
+   }
+
+   if (all) {
+    all.addEventListener('change', () => {
+     rows.forEach(cb => { cb.checked = all.checked; });
+     updateFinalSaveState();
+    });
+   }
+   rows.forEach(cb => cb.addEventListener('change', updateFinalSaveState));
+
+   // flatpickr
+   if (window.flatpickr) {
+    flatpickr("#date_from", { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", locale: "en", allowInput: true });
+    flatpickr("#date_to",  { dateFormat: "Y-m-d", altInput: true, altFormat: "m/d/Y", locale: "en", allowInput: true });
+   }
+
+   function lastDayOfMonth(y, m) { return new Date(y, m, 0).getDate(); }
+
+   // 
+   window.applyRange = function(kind){
+    const now = new Date();
+    let y = now.getFullYear();
+    let fromM = 1, toM = 12;
+
+    if (kind === 'Q1') { fromM=1; toM=3; }
+    if (kind === 'Q2') { fromM=4; toM=6; }
+    if (kind === 'Q3') { fromM=7; toM=9; }
+    if (kind === 'Q4') { fromM=10; toM=12; }
+    if (kind === 'H1') { fromM=1; toM=6; }
+    if (kind === 'H2') { fromM=7; toM=12; }
+    if (kind === 'Y') { fromM=1; toM=12; }
+    if (kind === 'M0') {
+     fromM = now.getMonth() + 1;
+     toM = fromM;
+    }
+    if (kind === 'M-1') {
+     const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+     y = prev.getFullYear();
+     fromM = prev.getMonth() + 1;
+     toM = fromM;
+    }
+
+    const fromD = 1;
+    const toD = lastDayOfMonth(y, toM);
+    const pad = n => String(n).padStart(2,'0');
+
+    const df = document.getElementById('date_from');
+    const dt = document.getElementById('date_to');
+    if (df) df.value = `${y}-${pad(fromM)}-${pad(fromD)}`;
+    if (dt) dt.value = `${y}-${pad(toM)}-${pad(toD)}`;
+
+    const ff = document.getElementById('filtersForm');
+    if (ff) {
+     if (ff.requestSubmit) ff.requestSubmit();
+     else ff.submit();
+    }
+   };
+
+   // Change Auto 
+   const ff = document.getElementById('filtersForm');
+   ['#date_from', '#date_to'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if (el) {
+     el.addEventListener('change', function(){
+      if (ff) {
+       if (ff.requestSubmit) ff.requestSubmit();
+       else ff.submit();
+      }
+     });
+    }
+   });
+
+   // Confirm Process()
+   const previewBtn = document.getElementById('previewTaxIssueBtn');
+   if (previewBtn) {
+    previewBtn.addEventListener('click', function(){
+     document.querySelectorAll('.row-check:checked').forEach(cb => {
+      const mainTr = cb.closest('.invoice-main-row');
+      if (!mainTr) return;
+
+      const active = mainTr.classList.toggle('preview-tax-issued');
+      const numTd = mainTr.children[1];
+      if (!numTd) return;
+
+      let existing = numTd.querySelector('.tag-temp');
+      if (active) {
+       if (!existing) {
+        const tag = document.createElement('span');
+        tag.className = 'tag-temp';
+        tag.textContent = 'Confirm';
+        numTd.appendChild(tag);
+       }
+      } else if (existing) {
+       existing.remove();
+      }
+     });
+     updateFinalSaveState();
+    });
+   }
+
+   // Save: Confirm Display 
+   const bulkForm = document.getElementById('taxIssueBatchForm');
+   if (bulkForm) {
+    bulkForm.addEventListener('submit', function(ev){
+     if (!issueEnabled) {
+      ev.preventDefault();
+      return;
+     }
+     const checked = Array.from(bulkForm.querySelectorAll('.row-check:checked'));
+     const keep = checked.filter(cb => {
+      const tr = cb.closest('.invoice-main-row');
+      return tr && tr.classList.contains('preview-tax-issued');
+     });
+
+     if (keep.length === 0) {
+      ev.preventDefault();
+      try { if (window.AppAlert) window.AppAlert('ConfirmDisplay item none. "Select Item ConfirmDisplay" Apply Save.', { title: "Confirm" }); } catch (e2) {}
+      return;
+     }
+
+     checked.forEach(cb => {
+      const tr = cb.closest('.invoice-main-row');
+      if (!(tr && tr.classList.contains('preview-tax-issued'))) {
+       cb.checked = false;
+       cb.disabled = true;
+      }
+     });
+    });
+   }
+
+   updateFinalSaveState();
+  } catch (e) {}
+ })();
+</script>
+</div>
+{% endblock %}

@@ -1,0 +1,956 @@
+ {% import 'billing_invoices/partials/invoice_view/_item_macros.html' as item_macros with context %}
+ {% set billed_items = [] %}
+ {% set estimated_items = [] %}
+ {% for it in items %}
+  {% if (it['is_estimated'] if 'is_estimated' in it.keys() else 0) %}
+   {% set _ = estimated_items.append(it) %}
+  {% else %}
+   {% set _ = billed_items.append(it) %}
+  {% endif %}
+ {% endfor %}
+
+ <!-- Service (Sales tax taxable) -->
+ {% set service_items = billed_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'service')|list +
+ (billed_items|rejectattr('item_type', 'defined')|list) %}
+ {% set estimated_service_items = estimated_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'service')|list +
+ (estimated_items|rejectattr('item_type', 'defined')|list) %}
+ {% if service_items|length
+> 0 and not outgoing_mode %}
+ <!-- Discount Confirm -->
+ {% set has_service_discount = namespace(value=false) %} {% for it in
+ service_items %} {% if ((it['discount'] if 'discount' in it.keys() else 0)|float)> 0
+ %} {% set has_service_discount.value = true %} {% endif %} {% endfor %}
+ <div class="sheet section">
+  <div class="section-title">
+   {{ t_lang('service_cost_vat_taxable', invoice_lang) }}
+  </div>
+  <div class="table-card">
+   <table class="invoice-print-table">
+    <thead>
+     <tr>
+      <th
+       style="width:{{ '50%' if has_service_discount.value else '55%' }}"
+     >
+       {{ t_lang('description', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '12%' if has_service_discount.value else '15%' }}"
+     >
+       {{ t_lang('quantity', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '15%' if has_service_discount.value else '15%' }}"
+     >
+       {{ t_lang('unit_price', invoice_lang) }}
+      </th>
+      {% if has_service_discount.value %}
+      <th class="right" style="width: 8%">
+       {{ t_lang('discount', invoice_lang) }}
+      </th>
+      {% endif %}
+      <th class="right" style="width: 15%">
+       {{ t_lang('amount', invoice_lang) }}
+      </th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for it in service_items %}
+     {{ item_macros.render_standard_item_row(it, has_service_discount.value, invoice['currency']) }}
+     {% endfor %}
+    </tbody>
+    <tfoot>
+     {% set service_sum = namespace(value=0) %} {% for it in service_items
+     %} {% set amt = item_macros.standard_item_amount(it)|float %} {% set service_sum.value =
+     service_sum.value + amt %} {% endfor %} {% set colspan_val = '4' if
+     has_service_discount.value else '3' %} {% if invoice['vat_rate']> 0
+     %}
+     <tr>
+      <td
+       colspan="{{ colspan_val }}"
+       class="right"
+       style="font-weight: 700"
+     >
+       {{ t_lang('service_total_excl_vat', invoice_lang) }}
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(service_sum.value, invoice['currency']) }}
+      </td>
+     </tr>
+     <tr>
+      <td
+       colspan="{{ colspan_val }}"
+       class="right"
+       style="font-weight: 700"
+     >
+       {{ t_lang('service_total_incl_vat', invoice_lang,
+       rate=invoice['vat_rate']) }}
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(service_sum.value * (1 + invoice['vat_rate']/100),
+       invoice['currency']) }}
+      </td>
+     </tr>
+     {% else %}
+     <tr>
+      <td
+       colspan="{{ colspan_val }}"
+       class="right"
+       style="font-weight: 700"
+     >
+       {{ t_lang('service_total', invoice_lang) }}
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(service_sum.value, invoice['currency']) }}
+      </td>
+     </tr>
+     {% endif %}
+    </tfoot>
+   </table>
+  </div>
+ </div>
+ {% endif %}
+
+ <!-- Admin (Sales tax exempt) -->
+ {% set admin_items = billed_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'admin')|list %} {% if
+ admin_items|length> 0 %}
+ <!-- Discount Confirm -->
+ {% set has_admin_discount = namespace(value=false) %} {% for it in admin_items
+ %} {% if ((it['discount'] if 'discount' in it.keys() else 0)|float)> 0 %} {% set
+ has_admin_discount.value = true %} {% endif %} {% endfor %}
+ <div class="sheet section">
+  <div class="section-title">
+   {{ t_lang('admin_fee_vat_exempt', invoice_lang) }}
+  </div>
+  <div class="table-card">
+   <table class="invoice-print-table">
+    <thead>
+     <tr>
+      <th
+       style="width:{{ '50%' if has_admin_discount.value else '55%' }}"
+     >
+       {{ t_lang('description', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '12%' if has_admin_discount.value else '15%' }}"
+     >
+       {{ t_lang('quantity', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '15%' if has_admin_discount.value else '15%' }}"
+     >
+       {{ t_lang('unit_price', invoice_lang) }}
+      </th>
+      {% if has_admin_discount.value %}
+      <th class="right" style="width: 8%">
+       {{ t_lang('discount', invoice_lang) }}
+      </th>
+      {% endif %}
+      <th class="right" style="width: 15%">
+       {{ t_lang('amount', invoice_lang) }}
+      </th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for it in admin_items %}
+     {{ item_macros.render_standard_item_row(it, has_admin_discount.value, invoice['currency']) }}
+     {% endfor %}
+    </tbody>
+    <tfoot>
+     {% set admin_sum = namespace(value=0) %} {% for it in admin_items %}
+     {% set amt = item_macros.standard_item_amount(it)|float %} {% set admin_sum.value =
+     admin_sum.value + amt %} {% endfor %} {% set colspan_val = '4' if
+     has_admin_discount.value else '3' %}
+     <tr>
+      <td
+       colspan="{{ colspan_val }}"
+       class="right"
+       style="font-weight: 700"
+     >
+       {{ t_lang('admin_total', invoice_lang) }}
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(admin_sum.value, invoice['currency']) }}
+      </td>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+ </div>
+ {% endif %} {# ========== Invoice (Phase ) ========== #} {%
+ set fx_items = billed_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'foreign')|list %}
+ {% set estimated_fx_items = estimated_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'foreign')|list %}
+ {% if
+ outgoing_mode and (fx_items|length> 0 or service_items|length> 0 or estimated_items|length> 0) %} {#
+ Phase  #} {% set phase_defs = [ {'k':'app', 'title':'Filing',
+ 'is_estimated':false}, {'k':'oa', 'title':'OA ', 'is_estimated':true},
+ {'k':'reg', 'title':'Registration costs', 'is_estimated':true} ] %} {# 1. Billing Phase: 
+  is_estimated=false Item Display #} {% for p in phase_defs %} {#
+ Phase  #} {% set phase_svc = [] %} {% set phase_fx = [] %} {% for
+ it in service_items %} {% set ph = (it['phase'] if 'phase' in it.keys() else
+ 'app') %} {% if ph == p.k and not (it['is_estimated'] if 'is_estimated' in
+ it.keys() else 0) %} {% set _ = phase_svc.append(it) %} {% endif %} {% endfor
+ %} {% for it in fx_items %} {% set ph = (it['phase'] if 'phase' in it.keys()
+ else 'app') %} {% if ph == p.k and not (it['is_estimated'] if 'is_estimated'
+ in it.keys() else 0) %} {% set _ = phase_fx.append(it) %} {% endif %} {%
+ endfor %} {# Phase  Display #} {% if phase_svc|length>
+ 0 or phase_fx|length> 0 %}
+ <div class="sheet section">
+  <div
+   class="section-title"
+   style="display: flex; align-items: center; justify-content: space-between"
+ >
+   <span>{{ p.title }}</span>
+   <span
+    style="
+     font-size: 0.75em;
+     color: #166534;
+     background: #f0fdf4;
+     padding: 3px 8px;
+     border-radius: 4px;
+     border: 1px solid #bbf7d0;
+    "
+   >Billing</span
+  >
+  </div>
+
+  {# Domestic cost #} {% if phase_svc|length> 0 %} {% set domestic_subtotal
+  = namespace(value=0) %} {% set has_phase_svc_discount =
+  namespace(value=false) %} {% for it in phase_svc %} {% if ((it['discount']
+  if 'discount' in it.keys() else 0)|float)> 0 %} {% set
+  has_phase_svc_discount.value = true %} {% endif %} {% endfor %}
+  <div style="margin-bottom: 12px">
+   <div style="font-weight: 700; color: var(--ink); margin-bottom: 6px">
+    Domestic cost
+   </div>
+   <div class="table-card">
+    <table class="invoice-print-table">
+     <thead>
+      <tr>
+       <th
+        style="width:{{ '44%' if has_phase_svc_discount.value else '50%' }}"
+      >
+        {{ t_lang('description', invoice_lang) }}
+       </th>
+       <th class="right" style="width: 12%">
+        {{ t_lang('quantity', invoice_lang) }}
+       </th>
+       <th
+        class="right"
+        style="width:{{ '16%' if has_phase_svc_discount.value else '18%' }}"
+      >
+        {{ t_lang('unit_price', invoice_lang) }}
+       </th>
+       {% if has_phase_svc_discount.value %}
+       <th class="right" style="width: 8%">
+        {{ t_lang('discount', invoice_lang) }}
+       </th>
+       {% endif %}
+       <th class="right" style="width: 20%">
+        {{ t_lang('amount', invoice_lang) }}
+       </th>
+      </tr>
+     </thead>
+     <tbody>
+      {% for it in phase_svc %} {% set amt = item_macros.standard_item_amount(it)|float %} {%
+      set domestic_subtotal.value = domestic_subtotal.value + amt %}
+      {{ item_macros.render_standard_item_row(it, has_phase_svc_discount.value, invoice['currency']) }}
+      {% endfor %}
+     </tbody>
+     <tfoot>
+      {% set _vat = invoice['vat_rate'] or 0 %} {% if _vat> 1 %}{% set
+      _vat = _vat / 100 %}{% endif %} {% set phase_colspan = '4' if
+      has_phase_svc_discount.value else '3' %}
+      <tr>
+       <td colspan="{{ phase_colspan }}" class="right" style="font-weight: 700">
+        Service fee total excluding tax
+       </td>
+       <td class="right num" style="font-weight: 700">
+        {{ currency(domestic_subtotal.value, invoice['currency']) }}
+       </td>
+      </tr>
+      <tr>
+       <td colspan="{{ phase_colspan }}" class="right" style="font-weight: 700">
+        Service fee total(Sales tax {{ (_vat * 100)|round(1) }}%)
+       </td>
+       <td class="right num" style="font-weight: 700">
+        {{ currency(domestic_subtotal.value * (1 + _vat),
+        invoice['currency']) }}
+       </td>
+      </tr>
+     </tfoot>
+    </table>
+   </div>
+  </div>
+  {% endif %} {# Foreign expense (Non-taxable) #} {% set fx_exempt =
+  phase_fx|selectattr('is_taxable','defined')|rejectattr('is_taxable')|list +
+  phase_fx|rejectattr('is_taxable','defined')|list %} {% if fx_exempt|length>
+  0 %} {% set ex_subtotal = namespace(value=0) %} {% set markup_check =
+  namespace(init=false, val=0, uniform=true) %}
+  <div>
+   <div style="font-weight: 700; color: var(--ink); margin-bottom: 6px">
+    Foreign expense
+   </div>
+   <div class="table-card">
+    <table class="invoice-print-table">
+     <thead>
+      <tr>
+       <th style="width: 30%">Country/</th>
+       <th style="width: 10%">Currency</th>
+       <th class="right" style="width: 18%">Fee</th>
+       <th class="right" style="width: 22%">Official fee</th>
+       <th class="right" style="width: 20%">USD amount</th>
+      </tr>
+     </thead>
+     <tbody>
+      {% for it in fx_exempt %} {% set m = (it['fx_markup'] or 0) %} {% if not markup_check.init %} {% set markup_check.init = true %}
+      {% set markup_check.val = m %} {% elif markup_check.val != m %} {%
+      set markup_check.uniform = false %} {% endif %} {% set usd = item_macros.fx_item_amount_usd(it)|float %} {% set ex_subtotal.value =
+      ex_subtotal.value + usd %}
+      {{ item_macros.render_fx_cost_row(it) }}
+      {% endfor %}
+     </tbody>
+     <tfoot>
+      <tr style="background: #f8fafc">
+       <td
+        colspan="4"
+        style="font-weight: 700; text-align: right; padding-right: 8px"
+      >
+        Foreign expense total()
+       </td>
+       <td
+        class="right num"
+        style="font-weight: 700; white-space: nowrap"
+      >
+        {{ currency(ex_subtotal.value, invoice['currency'] or 'USD') }}
+       </td>
+      </tr>
+     </tfoot>
+    </table>
+    <div style="margin-top: 6px; font-size: 0.85rem; color: var(--muted)">
+     {% if markup_check.uniform %} Foreign expense ({{
+     markup_check.val|round(1) }}% Exchange rate Apply) {% else %}
+     Foreign expense ( Exchange rate Apply) {% endif %}
+    </div>
+   </div>
+  </div>
+  {% endif %} {# Foreign expense (Apply sales tax) #} {% set fx_taxable =
+  phase_fx|selectattr('is_taxable','defined')|selectattr('is_taxable')|list %}
+  {% if fx_taxable|length> 0 %} {% set tx_subtotal = namespace(value=0) %}
+  <div style="margin-top: 10px">
+   <div style="font-weight: 700; color: var(--ink); margin-bottom: 6px">
+    Foreign expense (Apply sales tax)
+   </div>
+   <div class="table-card">
+    <table class="invoice-print-table">
+     <thead>
+      <tr>
+       <th style="width: 30%">Country/</th>
+       <th style="width: 10%">Currency</th>
+       <th class="right" style="width: 18%">Fee</th>
+       <th class="right" style="width: 22%">Official fee</th>
+       <th class="right" style="width: 20%">USD amount</th>
+      </tr>
+     </thead>
+     <tbody>
+      {% for it in fx_taxable %} {% set usd = item_macros.fx_item_amount_usd(it)|float %} {% set tx_subtotal.value = tx_subtotal.value + usd %}
+      {{ item_macros.render_fx_cost_row(it) }}
+      {% endfor %}
+     </tbody>
+     <tfoot>
+      {% set vat_multiplier = (invoice['vat_rate'] or 0) %} {% if
+      vat_multiplier> 1 %}{% set vat_multiplier = vat_multiplier / 100
+      %}{% endif %} {% set vat_pct = (invoice['vat_rate'] if
+      invoice['vat_rate']>1 else (invoice['vat_rate']*100))|round(1) %}
+      <tr style="background: #f8fafc">
+       <td
+        colspan="4"
+        style="font-weight: 700; text-align: right; padding-right: 8px"
+      >
+        Foreign expense total()
+       </td>
+       <td
+        class="right num"
+        style="font-weight: 700; white-space: nowrap"
+      >
+        {{ currency(tx_subtotal.value, invoice['currency'] or 'USD') }}
+       </td>
+      </tr>
+      <tr style="background: #f8fafc">
+       <td
+        colspan="4"
+        style="font-weight: 700; text-align: right; padding-right: 8px"
+      >
+        Foreign expense total(Sales tax {{ vat_pct }}%)
+       </td>
+       <td
+        class="right num"
+        style="font-weight: 700; white-space: nowrap"
+      >
+        {{ currency(tx_subtotal.value * (1 + vat_multiplier), invoice['currency'] or 'USD') }}
+       </td>
+      </tr>
+     </tfoot>
+    </table>
+   </div>
+  </div>
+  {% endif %} {# Phase Total #} {% set phase_total = namespace(value=0) %} {%
+  if phase_svc|length> 0 %} {% for it in phase_svc %} {% set amt = item_macros.standard_item_amount(it)|float %} {% set phase_total.value = phase_total.value + amt %} {% endfor
+  %} {% endif %} {% if phase_fx|length> 0 %} {% for it in phase_fx %} {% set
+  usd = item_macros.fx_item_amount_usd(it)|float %} {% set phase_total.value = phase_total.value + usd %}
+  {% endfor %} {% endif %} {#
+  Sales tax (Domestic cost + Apply sales tax Foreign expense) #} {% set phase_vat =
+  namespace(value=0) %} {% set vat_multiplier = (invoice['vat_rate'] or 0) %}
+  {% if vat_multiplier> 1 %}{% set vat_multiplier = vat_multiplier / 100 %}{%
+  endif %} {% if phase_svc|length> 0 %} {% for it in phase_svc %} {% set amt
+  = item_macros.standard_item_amount(it)|float %} {% set phase_vat.value = phase_vat.value + (amt *
+  vat_multiplier) %} {% endfor %} {% endif %} {% if phase_fx|length> 0 %} {%
+  for it in phase_fx %} {% if (it['is_taxable'] if 'is_taxable' in it.keys()
+  else 0) %} {% set usd = item_macros.fx_item_amount_usd(it)|float %} {% set phase_vat.value =
+  phase_vat.value + (usd * vat_multiplier) %} {% endif %} {% endfor %} {% endif %}
+
+  <div class="table-card" style="margin-top: 12px; overflow:hidden; border:1px solid var(--line); border-radius:8px;">
+    <table style="width:100%; font-size: 1.1rem;">
+      <tbody>
+        <tr style="background: #f8fafc; font-weight: 800; font-size: 1.1rem; color: var(--accent);">
+          <td style="padding: 10px 12px;">
+            {{ p.title }} Total
+          </td>
+          <td class="right num" style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+             {{ currency(phase_total.value + phase_vat.value, 'USD') }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+ </div>
+ {% endif %} {% endfor %} {# 2. Estimated cost Phase (is_estimated=true) 
+  2column  #} {% set estimated_phases = [] %} {% for p in
+ phase_defs %} {% set phase_svc = [] %} {% set phase_fx
+ = [] %} {% for it in estimated_service_items %} {% set ph = (it['phase'] if 'phase' in
+ it.keys() else 'app') %} {% if ph == p.k and (it['is_estimated'] if
+ 'is_estimated' in it.keys() else 0) %} {% set _ = phase_svc.append(it) %} {%
+ endif %} {% endfor %} {% for it in estimated_fx_items %} {% set ph = (it['phase'] if
+ 'phase' in it.keys() else 'app') %} {% if ph == p.k and (it['is_estimated'] if
+ 'is_estimated' in it.keys() else 0) %} {% set _ = phase_fx.append(it) %} {%
+ endif %} {% endfor %} {% if phase_svc|length> 0 or phase_fx|length> 0 %} {%
+ set _ = estimated_phases.append({'def': p, 'svc': phase_svc, 'fx': phase_fx})
+ %} {% endif %} {% endfor %} {% if estimated_phases|length> 0 %}
+ <div class="sheet section">
+  <div
+   class="section-title"
+   style="display: flex; align-items: center; justify-content: space-between"
+ >
+   <span>Estimated cost</span>
+   <span
+    style="
+     font-size: 0.75em;
+     color: #71717a;
+     background: #fafafa;
+     padding: 3px 8px;
+     border-radius: 4px;
+     border: 1px solid #e5e7eb;
+    "
+   > </span
+  >
+  </div>
+
+  <div
+   style="
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+   "
+ >
+   {% for ep in estimated_phases %}
+   <div
+    style="
+     border: 1px solid var(--line);
+     border-radius: 8px;
+     padding: 12px;
+     background: #fcfcfd;
+     color: #71717a;
+    "
+  >
+    <div
+     style="
+      font-weight: 700;
+      color: #52525b;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+     "
+   >
+     {{ ep.def.title }}
+    </div>
+
+    {# Domestic cost #} {% if ep.svc|length> 0 %} {% set
+    domestic_subtotal = namespace(value=0) %} {% set
+    has_estimated_svc_discount = namespace(value=false) %} {% for it in
+    ep.svc %} {% if ((it['discount'] if 'discount' in it.keys() else
+    0)|float)> 0 %} {% set has_estimated_svc_discount.value = true %} {%
+    endif %} {% endfor %}
+    <div style="margin-bottom: 10px">
+     <div
+      style="
+       font-weight: 600;
+       color: #71717a;
+       margin-bottom: 4px;
+       font-size: 0.8rem;
+      "
+    >
+      Domestic cost
+     </div>
+     <div class="table-card">
+      <table class="invoice-print-table" style="font-size: 0.85rem">
+       <thead>
+        <tr>
+         <th
+          style="width:{{ '44%' if has_estimated_svc_discount.value else '50%' }}"
+        >
+          {{ t_lang('description', invoice_lang) }}
+         </th>
+         <th class="right" style="width: 12%">
+          {{ t_lang('quantity', invoice_lang) }}
+         </th>
+         <th
+          class="right"
+          style="width:{{ '16%' if has_estimated_svc_discount.value else '18%' }}"
+        >
+          {{ t_lang('unit_price', invoice_lang) }}
+         </th>
+         {% if has_estimated_svc_discount.value %}
+         <th class="right" style="width: 8%">
+          {{ t_lang('discount', invoice_lang) }}
+         </th>
+         {% endif %}
+         <th class="right" style="width: 20%">
+          {{ t_lang('amount', invoice_lang) }}
+         </th>
+        </tr>
+       </thead>
+       <tbody>
+        {% for it in ep.svc %} {% set amt = item_macros.standard_item_amount(it)|float
+        %} {% set domestic_subtotal.value = domestic_subtotal.value +
+        amt %}
+        {{ item_macros.render_standard_item_row(it, has_estimated_svc_discount.value, invoice['currency']) }}
+        {% endfor %}
+       </tbody>
+       <tfoot>
+        {% set _vat = invoice['vat_rate'] or 0 %} {% if _vat> 1 %}{%
+        set _vat = _vat / 100 %}{% endif %} {% set
+        estimated_colspan = '4' if has_estimated_svc_discount.value
+        else '3' %}
+        <tr>
+         <td
+          colspan="{{ estimated_colspan }}"
+          class="right"
+          style="font-weight: 700; font-size: 0.8rem"
+        >
+          Service fee total excluding tax
+         </td>
+         <td class="right num" style="font-weight: 700">
+          {{ currency(domestic_subtotal.value, invoice['currency']) }}
+         </td>
+        </tr>
+        <tr>
+         <td
+          colspan="{{ estimated_colspan }}"
+          class="right"
+          style="font-weight: 700; font-size: 0.8rem"
+        >
+          Service fee total(Sales tax {{ (_vat * 100)|round(1) }}%)
+         </td>
+         <td class="right num" style="font-weight: 700">
+          {{ currency(domestic_subtotal.value * (1 + _vat),
+          invoice['currency']) }}
+         </td>
+        </tr>
+       </tfoot>
+      </table>
+     </div>
+    </div>
+    {% endif %} {# Foreign expense #} {% if ep.fx|length> 0 %} {% set
+    foreign_subtotal = namespace(value=0) %} {% set markup_check =
+    namespace(init=false, val=0, uniform=true) %}
+    <div>
+     <div
+      style="
+       font-weight: 600;
+       color: #71717a;
+       margin-bottom: 4px;
+       font-size: 0.8rem;
+      "
+    >
+      Foreign expense
+     </div>
+     <div class="table-card">
+      <table class="invoice-print-table" style="font-size: 0.85rem">
+       <thead>
+        <tr>
+         <th style="width: 30%">Country/</th>
+         <th style="width: 10%">Currency</th>
+         <th class="right" style="width: 18%">Fee</th>
+         <th class="right" style="width: 22%">Official fee</th>
+         <th class="right" style="width: 20%">USD amount</th>
+        </tr>
+       </thead>
+       <tbody>
+        {% for it in ep.fx %} {% set m = (it['fx_markup'] or 0) %} {% if not markup_check.init %} {% set markup_check.init
+        = true %} {% set markup_check.val = m %} {% elif
+        markup_check.val != m %} {% set markup_check.uniform = false %}
+        {% endif %} {% set usd = item_macros.fx_item_amount_usd(it)|float %} {% set foreign_subtotal.value = foreign_subtotal.value + usd %}
+        {{ item_macros.render_fx_cost_row(it) }}
+        {% endfor %}
+       </tbody>
+       <tfoot>
+        <tr>
+         <td
+          colspan="4"
+          style="
+           font-weight: 700;
+           text-align: right;
+           padding-right: 8px;
+           font-size: 0.8rem;
+          "
+        >
+          Foreign expense subtotal (Sales tax )
+         </td>
+         <td class="right num" style="font-weight: 700">
+          {{ currency(foreign_subtotal.value, invoice['currency'] or 'USD') }}
+         </td>
+        </tr>
+       </tfoot>
+      </table>
+     </div>
+    </div>
+    {% endif %} {# Phase Total #} {% set phase_total = namespace(value=0) %}
+    {% if ep.svc|length> 0 %} {% for it in ep.svc %} {% set amt = item_macros.standard_item_amount(it)|float %} {% set phase_total.value = phase_total.value + amt %} {%
+    endfor %} {% endif %} {% if ep.fx|length> 0 %} {% for it in ep.fx %} {%
+    set usd = item_macros.fx_item_amount_usd(it)|float %}
+    {% set phase_total.value = phase_total.value + usd %} {% endfor %} {% endif %}
+    {# Sales tax (Domestic cost + Apply sales tax Foreign expense) #} {% set phase_vat =
+    namespace(value=0) %} {% set vat_multiplier = (invoice['vat_rate'] or 0)
+    %} {% if vat_multiplier> 1 %}{% set vat_multiplier = vat_multiplier /
+    100 %}{% endif %} {% if ep.svc|length> 0 %} {% for it in ep.svc %} {%
+    set amt = item_macros.standard_item_amount(it)|float %} {% set phase_vat.value =
+    phase_vat.value + (amt * vat_multiplier) %} {% endfor %} {% endif %} {%
+    if ep.fx|length> 0 %} {% for it in ep.fx %} {% if (it['is_taxable'] if
+    'is_taxable' in it.keys() else 0) %} {% set usd = item_macros.fx_item_amount_usd(it)|float %} {% set
+    phase_vat.value = phase_vat.value + (usd * vat_multiplier) %} {% endif %}
+    {% endfor %} {% endif %}
+
+    <div class="table-card" style="margin-top: 10px; overflow:hidden; border:1px solid var(--line); border-radius:8px;">
+      <table style="width:100%">
+        <tbody>
+          <tr style="background: #f8fafc; font-weight: 800; font-size: 0.9rem; color: #52525b;">
+            <td style="padding: 10px 12px;">
+              {{ ep.def.title }} Total
+            </td>
+            <td class="right num" style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+               {{ currency(phase_total.value + phase_vat.value, 'USD') }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+   </div>
+   {% endfor %}
+  </div>
+ </div>
+ {% endif %}
+ {% endif %}
+
+ <!-- Foreign (Sales tax exempt) -->
+ {% set foreign_items = billed_items|selectattr('item_type',
+ 'defined')|selectattr('item_type', 'equalto', 'foreign')|list %} {% if
+ foreign_items|length> 0 and not outgoing_mode %}
+ <!-- Discount Confirm -->
+ {% set has_foreign_discount = namespace(value=false) %} {% for it in
+ foreign_items %} {% if ((it['discount'] if 'discount' in it.keys() else 0)|float)> 0
+ %} {% set has_foreign_discount.value = true %} {% endif %} {% endfor %}
+ <div class="sheet section">
+  <div class="section-title">
+   {{ t_lang('foreign_cost_vat_exempt', invoice_lang) }}
+  </div>
+  <div class="table-card">
+   <table class="invoice-print-table">
+    <thead>
+     <tr>
+      <th
+       style="width:{{ '50%' if has_foreign_discount.value else '55%' }}"
+     >
+       {{ t_lang('description', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '12%' if has_foreign_discount.value else '15%' }}"
+     >
+       {{ t_lang('quantity', invoice_lang) }}
+      </th>
+      <th
+       class="right"
+       style="width:{{ '15%' if has_foreign_discount.value else '15%' }}"
+     >
+       {{ t_lang('unit_price', invoice_lang) }}
+      </th>
+      {% if has_foreign_discount.value %}
+      <th class="right" style="width: 8%">
+       {{ t_lang('discount', invoice_lang) }}
+      </th>
+      {% endif %}
+      <th class="right" style="width: 15%">
+       {{ t_lang('amount', invoice_lang) }}
+      </th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for it in foreign_items %}
+     {{ item_macros.render_standard_item_row(it, has_foreign_discount.value, invoice['currency']) }}
+     {% endfor %}
+    </tbody>
+    <tfoot>
+     {% set foreign_sum = namespace(value=0) %} {% for it in foreign_items
+     %} {% set amt = item_macros.standard_item_amount(it)|float %} {% set foreign_sum.value =
+     foreign_sum.value + amt %} {% endfor %} {% set colspan_val = '4' if
+     has_foreign_discount.value else '3' %}
+     <tr>
+      <td
+       colspan="{{ colspan_val }}"
+       class="right"
+       style="font-weight: 700"
+     >
+       {{ t_lang('foreign_cost_vat_exempt', invoice_lang) }} Total
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(foreign_sum.value, invoice['currency']) }}
+      </td>
+     </tr>
+    </tfoot>
+   </table>
+  </div>
+ </div>
+ {% endif %}
+
+ {% if estimated_items|length> 0 and not outgoing_mode %}
+ {% set has_estimated_discount = namespace(value=false) %}
+ {% for it in estimated_items %}
+  {% if ((it['discount'] if 'discount' in it.keys() else 0)|float)> 0 %}
+   {% set has_estimated_discount.value = true %}
+  {% endif %}
+ {% endfor %}
+ <div class="sheet section">
+  <div
+   class="section-title"
+   style="display: flex; align-items: center; justify-content: space-between"
+ >
+   <span>Estimated cost</span>
+   <span
+    style="
+     font-size: 0.75em;
+     color: #71717a;
+     background: #fafafa;
+     padding: 3px 8px;
+     border-radius: 4px;
+     border: 1px solid #e5e7eb;
+    "
+   > </span
+  >
+  </div>
+  <div class="table-card">
+   <table class="invoice-print-table">
+    <thead>
+     <tr>
+      <th style="width:{{ '42%' if has_estimated_discount.value else '47%' }}">
+       {{ t_lang('description', invoice_lang) }}
+      </th>
+      <th style="width: 13%">Type</th>
+      <th class="right" style="width: 10%">
+       {{ t_lang('quantity', invoice_lang) }}
+      </th>
+      <th class="right" style="width: 15%">
+       {{ t_lang('unit_price', invoice_lang) }}
+      </th>
+      {% if has_estimated_discount.value %}
+      <th class="right" style="width: 8%">
+       {{ t_lang('discount', invoice_lang) }}
+      </th>
+      {% endif %}
+      <th class="right" style="width: 15%">
+       {{ t_lang('amount', invoice_lang) }}
+      </th>
+     </tr>
+    </thead>
+    <tbody>
+     {% set estimated_subtotal = namespace(value=0) %}
+     {% set estimated_tax = namespace(value=0) %}
+     {% set estimated_vat = invoice['vat_rate'] or 0 %}
+     {% if estimated_vat> 1 %}{% set estimated_vat = estimated_vat / 100 %}{% endif %}
+     {% for it in estimated_items %}
+      {% set item_type = (it['item_type'] if 'item_type' in it.keys() else 'service') %}
+      {% set amt = item_macros.standard_item_amount(it)|float %}
+      {% set estimated_subtotal.value = estimated_subtotal.value + amt %}
+      {% if (it['is_taxable'] if 'is_taxable' in it.keys() else (1 if item_type == 'service' else 0)) %}
+       {% set estimated_tax.value = estimated_tax.value + (amt * estimated_vat) %}
+      {% endif %}
+      <tr style="color:#71717a">
+       <td class="cell-description">{{ it['description'] }}</td>
+       <td>
+        {% if item_type == 'admin' %}Official fee{% elif item_type == 'foreign' %}Foreign expense{% else %}Service fee{% endif %}
+       </td>
+       <td class="right num">{{ it['qty']|int }}</td>
+       <td class="right num">
+        {{ "{:,.0f}".format(it['unit_price']) if invoice['currency'] == 'USD' else "{:,.2f}".format(it['unit_price']) }}
+       </td>
+       {% if has_estimated_discount.value %}
+       <td class="right num">{{ (item_macros.item_discount(it)|float)|round(1) }}%</td>
+       {% endif %}
+       <td class="right num">{{ amount_no_unit(amt, invoice['currency']) }}</td>
+      </tr>
+     {% endfor %}
+    </tbody>
+    <tfoot>
+     {% set estimated_colspan = '5' if has_estimated_discount.value else '4' %}
+     <tr>
+      <td colspan="{{ estimated_colspan }}" class="right" style="font-weight: 700">
+       Estimated cost Total()
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(estimated_subtotal.value, invoice['currency']) }}
+      </td>
+     </tr>
+     {% if estimated_tax.value %}
+     <tr>
+      <td colspan="{{ estimated_colspan }}" class="right" style="font-weight: 700">
+       Estimated cost Total(including sales tax)
+      </td>
+      <td class="right num" style="font-weight: 700">
+       {{ currency(estimated_subtotal.value + estimated_tax.value, invoice['currency']) }}
+      </td>
+     </tr>
+     {% endif %}
+    </tfoot>
+   </table>
+  </div>
+ </div>
+ {% endif %}
+
+ <!-- Summary -->
+ <div class="sheet section summary-section">
+  <div class="table-card" style="overflow:hidden; border:1px solid var(--line); border-radius:8px;">
+    <table style="width:100%; font-size: 1.3rem;">
+      {% set dep_applied = (deposit_applied_minor or 0)|int %}
+      {% set has_deposit = (dep_applied> 0) and (deposit_outstanding_minor is not none) %}
+      <tbody>
+        {% if has_deposit %}
+        <tr style="font-weight: 700; font-size: 1.05rem; color: #334155;">
+          <td style="padding: 8px 12px;">
+            {{ t_lang('invoice_total', invoice_lang) }}
+          </td>
+          <td class="right num" style="padding: 8px 12px; text-align: right; white-space: nowrap;">
+             {% if outgoing_mode %}{{ currency(total_billed.value + total_billed.vat, invoice['currency'] or 'USD') }}{% else %}{{ currency(invoice['total'], invoice['currency']) }}{% endif %}
+          </td>
+        </tr>
+        <tr style="font-weight: 700; font-size: 1.05rem; color: #334155;">
+          <td style="padding: 8px 12px;">
+            {{ t_lang('deposit_used', invoice_lang) }}
+          </td>
+          <td class="right num" style="padding: 8px 12px; text-align: right; white-space: nowrap; color: #ef4444;">
+             {{ (-1 * dep_applied)|currency_minor(invoice['currency']) }}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+      <tfoot>
+        <tr style="background: #f8fafc; font-weight: 800; font-size: 1.5rem; color: var(--accent);">
+          <td style="padding: 10px 12px;">
+            {% if has_deposit %}{{ t_lang('amount_due', invoice_lang) }}{% elif outgoing_mode %}Total amount due{% else %}{{ t_lang('billing_total', invoice_lang) }}{% endif %}
+          </td>
+          <td class="right num" style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+             {% if has_deposit %}{{ deposit_outstanding_minor|currency_minor(invoice['currency']) }}{% elif outgoing_mode %}{{ currency(total_billed.value + total_billed.vat, invoice['currency'] or 'USD') }}{% else %}{{ currency(invoice['total'], invoice['currency']) }}{% endif %}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  {% if estimated_items|length> 0 %}
+  <div
+   style="
+    margin-top: 12px;
+    font-size: 0.85rem;
+    color: #71717a;
+    background: #fafafa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+   "
+ >
+   <strong>Estimated cost</strong>  to, Current Billing
+    .
+  </div>
+  {% endif %} {% if biz_profile.bank_account %}
+  <div
+   class="bank"
+   style="
+    margin-top: 10px;
+    position: relative;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+   "
+ >
+   <!-- () -->
+   <div
+    style="position: relative; z-index: 2; text-align: left; width: 100%"
+  >
+    <div
+     style="
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+     "
+   >
+     {{ t_lang('bank_account', invoice_lang) }}
+    </div>
+    <div
+     style="
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      line-height: 1.5;
+     "
+   >
+     {{ format_notes(biz_profile.bank_account) | safe }}
+    </div>
+   </div>
+  </div>
+  {% endif %} {% if invoice['notes'] %}
+  <div style="margin-top: 10px">
+   <div
+    style="
+     font-weight: 700;
+     color: var(--ink);
+     margin-bottom: 4px;
+     font-size: 0.85rem;
+    "
+  >
+    {{ t_lang('notes', invoice_lang) }}
+   </div>
+   <div style="line-height: 1.5; color: var(--muted); font-size: 0.8rem">
+    {{ format_notes(invoice['notes']) | safe }}
+   </div>
+  </div>
+  {% endif %}
+ </div>

@@ -1,0 +1,194 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block content %}
+<div class="container-fluid mt-4 fade-in">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold text-dark mb-1"> </h3>
+      <p class="text-muted small mb-0"> Client   .</p>
+    </div>
+    <div>
+      <a class="btn btn-primary d-inline-flex align-items-center gap-2 px-4 shadow-sm"
+         href="{{ url_for('customers.lead_create') }}">
+        <i class="bi bi-plus-lg"></i>  Registration
+      </a>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm rounded-3">
+    <div class="card-body p-4">
+      <!-- Filters -->
+      <form class="row g-2 mb-4 align-items-center">
+        <div class="col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0 text-muted">
+              <i class="bi bi-search"></i>
+            </span>
+            <input class="form-control border-start-0 bg-light" type="text" name="q"
+                   value="{{ q or '' }}" placeholder="Name, Company, Email Search...">
+          </div>
+        </div>
+        <div class="col-auto">
+          <select class="form-select" name="status" onchange="this.form.submit()">
+            <option value=""> Status</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto">
+          <select class="form-select" name="per_page" onchange="this.form.submit()">
+            <option value="20" {% if per_page == 20 %}selected{% endif %}>20 items</option>
+            <option value="50" {% if per_page == 50 %}selected{% endif %}>50 items</option>
+            <option value="100" {% if per_page == 100 %}selected{% endif %}>100 items</option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button class="btn btn-dark px-4">Search</button>
+        </div>
+        {% if q or current_status %}
+        <div class="col-auto">
+          <a href="{{ url_for('customers.lead_list') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+        {% endif %}
+      </form>
+
+      <!-- Status Summary Pills -->
+      <div class="d-flex gap-2 mb-4 flex-wrap">
+        <a href="{{ url_for('customers.lead_list') }}"
+           class="badge rounded-pill py-2 px-3 text-decoration-none {% if not current_status %}bg-dark{% else %}bg-light text-dark border{% endif %}">
+          All
+        </a>
+        {% for value, label in status_choices %}
+        <a href="{{ url_for('customers.lead_list', status=value) }}"
+           class="badge rounded-pill py-2 px-3 text-decoration-none
+           {% if current_status == value %}
+             {% if value == 'new' %}bg-primary
+             {% elif value == 'contacted' %}bg-info
+             {% elif value == 'qualified' %}bg-warning text-dark
+             {% elif value == 'converted' %}bg-success
+             {% else %}bg-secondary{% endif %}
+           {% else %}bg-light text-dark border{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+
+      <!-- Leads Table -->
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="min-width: 800px">
+          <thead class="bg-light">
+            <tr>
+              <th class="py-3 ps-3" style="width: 25%">Name / Company</th>
+              <th class="py-3" style="width: 20%">Phone</th>
+              <th class="py-3" style="width: 12%">Status</th>
+              <th class="py-3" style="width: 12%"></th>
+              <th class="py-3" style="width: 15%">Contact</th>
+              <th class="py-3 text-end pe-3" style="width: 16%"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lead in leads %}
+            <tr>
+              <td class="ps-3 py-3">
+                <a href="{{ url_for('customers.lead_view', lead_id=lead.id) }}"
+                   class="fw-bold text-dark text-decoration-none">{{ lead.name }}</a>
+                {% if lead.company_name %}
+                <div class="small text-muted">{{ lead.company_name }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="d-flex flex-column gap-1">
+                  {% if lead.email %}
+                  <div class="small">
+                    <i class="bi bi-envelope me-1 text-muted"></i> {{ lead.email }}
+                  </div>
+                  {% endif %}
+                  {% if lead.phone %}
+                  <div class="small">
+                    <i class="bi bi-telephone me-1 text-muted"></i> {{ lead.phone }}
+                  </div>
+                  {% endif %}
+                  {% if not lead.email and not lead.phone %}
+                  <span class="text-muted small">-</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <span class="badge
+                  {% if lead.status == 'new' %}bg-primary
+                  {% elif lead.status == 'contacted' %}bg-info
+                  {% elif lead.status == 'qualified' %}bg-warning text-dark
+                  {% elif lead.status == 'converted' %}bg-success
+                  {% else %}bg-secondary{% endif %}">
+                  {{ dict(status_choices).get(lead.status, lead.status) }}
+                </span>
+              </td>
+              <td>
+                <span class="text-secondary small">
+                  {{ dict([('website', ''), ('referral', ''), ('cold_call', ''),
+                           ('advertisement', ''), ('trade_show', ''), ('other', 'Other')]).get(lead.source, lead.source or '-') }}
+                </span>
+              </td>
+              <td>
+                {% if lead.assignee %}
+                <span class="small">{{ lead.assignee.display_name or lead.assignee.username }}</span>
+                {% else %}
+                <span class="text-muted small">-</span>
+                {% endif %}
+              </td>
+              <td class="text-end pe-3">
+                <a class="btn btn-sm btn-outline-primary me-1"
+                   href="{{ url_for('customers.lead_edit', lead_id=lead.id) }}">Edit</a>
+                {% if lead.status != 'converted' %}
+                <form action="{{ url_for('customers.lead_convert', lead_id=lead.id) }}"
+                      method="post" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-success"
+                          data-confirm="  Clientto ?"></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                Registration  none.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="text-muted small">
+          Total {{ total }}items
+          {% if pages %}({{ page }} / {{ pages }} page){% endif %}
+        </div>
+
+        {% set lead_pagination_args = request.args.to_dict(flat=True) %}
+        {% set _ = lead_pagination_args.update({'q': q or '', 'status': current_status or '', 'per_page': per_page}) %}
+        {{ ui.pagination('customers.lead_list', page, pages or 1, lead_pagination_args, ' Pagination') }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .table-hover tbody tr:hover td {
+    background-color: #f8f9fa;
+    transition: background-color 0.2s;
+  }
+</style>
+{% endblock %}

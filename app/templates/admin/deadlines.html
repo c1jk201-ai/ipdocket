@@ -1,0 +1,202 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Deadline and Annuity Settings{% endblock %}
+
+{% block admin_content %}
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0">Notice and Deadline Settings</h5>
+            </div>
+            <div class="card-body">
+                <form id="deadline-settings-form">
+                    <h6 class="text-muted fw-bold mb-3 border-bottom pb-2">Deadline Reminder Schedule</h6>
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-6">
+                        <label class="form-label">Deadline reminder days (D-N, comma separated)</label>
+                        <input id="ds-reminder-days" class="form-control" value="30,14,7,1" placeholder="30,14,7,1">
+                        <div class="form-text">Example: 30,14,7,1 sends reminders 30, 14, 7, and 1 day before the due date.</div>
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Annuity reminder days (D-N)</label>
+                        <input id="ds-annuity-days" class="form-control" value="60,30,14" placeholder="60,30,14">
+                        <div class="form-text">Example: 60,30,14 sends reminders 60, 30, and 14 days before the due date.</div>
+                      </div>
+                    </div>
+
+                    <h6 class="text-muted fw-bold mb-3 border-bottom pb-2">Feature Toggles</h6>
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-3">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="ds-notif-enabled" checked>
+                          <label class="form-check-label" for="ds-notif-enabled">Email reminders enabled</label>
+                        </div>
+                      </div>
+                      <div class="col-md-3 d-none">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="ds-external-calendar-enabled" checked>
+                          <label class="form-check-label" for="ds-external-calendar-enabled">External calendar sync disabled</label>
+                        </div>
+                      </div>
+                      <div class="col-md-3">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="ds-cleanup-enabled" checked>
+                          <label class="form-check-label" for="ds-cleanup-enabled">Automatic cleanup enabled</label>
+                        </div>
+                      </div>
+                      <div class="col-md-3 d-none">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="ds-external-alert-enabled">
+                          <label class="form-check-label" for="ds-external-alert-enabled">External alerts disabled</label>
+                        </div>
+                        <div class="form-text">The published deployment does not use external alerts.</div>
+                      </div>
+                    </div>
+
+                    <h6 class="text-muted fw-bold mb-3 border-bottom pb-2">Annuity Generation Defaults</h6>
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-3">
+                        <label class="form-label">Starting annuity year</label>
+                        <input id="ds-annuity-start" type="number" class="form-control" value="1" placeholder="1">
+                        <div class="form-text">Default starts from year 1. Use 4 when the first three years are included in the registration fee.</div>
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Visible annuity cycles (N)</label>
+                        <input id="ds-annuity-visible-cycles" type="number" class="form-control" value="2" placeholder="2">
+                        <div class="form-text">Number of upcoming annuity items shown in lists.</div>
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Auto-generated future annuity years (N)</label>
+                        <input id="ds-annuity-future-years" type="number" class="form-control" value="3" placeholder="3">
+                        <div class="form-text">When full-term generation is off, only N years from the current annuity year are generated.</div>
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Internal notice deadline (D-)</label>
+                        <input id="ds-annuity-notice-days" type="number" class="form-control" value="60" placeholder="60">
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Internal renewal open date (D-)</label>
+                        <input id="ds-annuity-open-days" type="number" class="form-control" value="30" placeholder="30">
+                      </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-4">
+                        <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="ds-annuity-full-term" checked>
+                          <label class="form-check-label" for="ds-annuity-full-term">Generate annuities through the full term</label>
+                        </div>
+                        <div class="form-text">When enabled, the future-year setting is ignored.</div>
+                      </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-3">
+                        <label class="form-label">Patent maximum annuity year</label>
+                        <input id="ds-patent-term" type="number" class="form-control" value="20" placeholder="20">
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Utility model maximum annuity year</label>
+                        <input id="ds-utility-term" type="number" class="form-control" value="10" placeholder="10">
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Design maximum annuity year</label>
+                        <input id="ds-design-term" type="number" class="form-control" value="20" placeholder="20">
+                      </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                      <div class="col-md-4">
+                        <label class="form-label">Default trademark registration payment term</label>
+                        <select id="ds-tm-payment-term-default" class="form-select">
+                          <option value="10" selected>10 years</option>
+                          <option value="5">5 years</option>
+                        </select>
+                        <div class="form-text">Default applied when a trademark matter does not have a matter-specific setting.</div>
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Trademark 5-year split payment second notice deadline (D-)</label>
+                        <input id="ds-tm-split-notice-days" type="number" class="form-control" value="90" placeholder="90">
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Trademark 5-year split payment second open date (D-)</label>
+                        <input id="ds-tm-split-open-days" type="number" class="form-control" value="180" placeholder="180">
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Save settings</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+  // Deadline Settings
+  document.addEventListener("DOMContentLoaded", () => {
+    loadDeadlineSettings();
+  });
+
+  async function loadDeadlineSettings() {
+    const r = await fetch("{{ url_for('admin.api_deadline_settings') }}");
+    const data = await r.json();
+
+    const get = (k, d = "") => (data && data[k] != null ? data[k] : d);
+    const emailEnabled = get(
+      "DEADLINE_EMAIL_ENABLED",
+      get("DEADLINE_NOTIFICATION_ENABLED", "true")
+    );
+    document.getElementById("ds-reminder-days").value = get("DEADLINE_REMINDER_DAYS", "30,14,7,1");
+    document.getElementById("ds-annuity-days").value = get("DEADLINE_ANNUITY_REMINDER_DAYS", "60,30,14");
+    document.getElementById("ds-notif-enabled").checked = String(emailEnabled).toLowerCase() === "true";
+    document.getElementById("ds-external-calendar-enabled").checked = false;
+    document.getElementById("ds-cleanup-enabled").checked = get("DEADLINE_AUTO_CLEANUP_ENABLED", "true").toLowerCase() === "true";
+    document.getElementById("ds-external-alert-enabled").checked = false;
+    document.getElementById("ds-annuity-visible-cycles").value = get("ANNUITY_VISIBLE_CYCLE_COUNT", "2");
+    document.getElementById("ds-annuity-start").value = get("DEADLINE_DEFAULT_ANNUITY_START_YEAR", "4");
+    document.getElementById("ds-annuity-future-years").value = get("DEADLINE_ANNUITY_AUTOGEN_FUTURE_YEARS", "3");
+    document.getElementById("ds-annuity-full-term").checked = get("DEADLINE_ANNUITY_FULL_TERM", "true").toLowerCase() === "true";
+    document.getElementById("ds-annuity-notice-days").value = get("DEADLINE_ANNUITY_RENEWAL_NOTICE_DAYS", "60");
+    document.getElementById("ds-annuity-open-days").value = get("DEADLINE_ANNUITY_RENEWAL_OPEN_DAYS", "30");
+    document.getElementById("ds-patent-term").value = get("DEADLINE_DEFAULT_PATENT_TERM", "20");
+    document.getElementById("ds-utility-term").value = get("DEADLINE_DEFAULT_UTILITY_TERM", "10");
+    document.getElementById("ds-design-term").value = get("DEADLINE_DEFAULT_DESIGN_TERM", "20");
+    document.getElementById("ds-tm-payment-term-default").value = get("DEADLINE_TRADEMARK_REGISTRATION_PAYMENT_TERM_DEFAULT", "10");
+    document.getElementById("ds-tm-split-notice-days").value = get("DEADLINE_TRADEMARK_SPLIT_PAYMENT_NOTICE_DAYS", "90");
+    document.getElementById("ds-tm-split-open-days").value = get("DEADLINE_TRADEMARK_SPLIT_PAYMENT_OPEN_DAYS", "180");
+  }
+
+  document.getElementById("deadline-settings-form").onsubmit = async (e) => {
+      e.preventDefault();
+      const payload = {
+        DEADLINE_REMINDER_DAYS: document.getElementById("ds-reminder-days").value,
+        DEADLINE_ANNUITY_REMINDER_DAYS: document.getElementById("ds-annuity-days").value,
+        DEADLINE_EMAIL_ENABLED: document.getElementById("ds-notif-enabled").checked ? "true" : "false",
+        DEADLINE_NOTIFICATION_ENABLED: document.getElementById("ds-notif-enabled").checked ? "true" : "false",
+        DEADLINE_CALENDAR_SYNC_ENABLED: "false",
+        DEADLINE_AUTO_CLEANUP_ENABLED: document.getElementById("ds-cleanup-enabled").checked ? "true" : "false",
+        ANNUITY_VISIBLE_CYCLE_COUNT: document.getElementById("ds-annuity-visible-cycles").value,
+        DEADLINE_DEFAULT_ANNUITY_START_YEAR: document.getElementById("ds-annuity-start").value,
+        DEADLINE_ANNUITY_AUTOGEN_FUTURE_YEARS: document.getElementById("ds-annuity-future-years").value,
+        DEADLINE_ANNUITY_FULL_TERM: document.getElementById("ds-annuity-full-term").checked ? "true" : "false",
+        DEADLINE_ANNUITY_RENEWAL_NOTICE_DAYS: document.getElementById("ds-annuity-notice-days").value,
+        DEADLINE_ANNUITY_RENEWAL_OPEN_DAYS: document.getElementById("ds-annuity-open-days").value,
+        DEADLINE_DEFAULT_PATENT_TERM: document.getElementById("ds-patent-term").value,
+        DEADLINE_DEFAULT_UTILITY_TERM: document.getElementById("ds-utility-term").value,
+        DEADLINE_DEFAULT_DESIGN_TERM: document.getElementById("ds-design-term").value,
+        DEADLINE_TRADEMARK_REGISTRATION_PAYMENT_TERM_DEFAULT: document.getElementById("ds-tm-payment-term-default").value,
+        DEADLINE_TRADEMARK_SPLIT_PAYMENT_NOTICE_DAYS: document.getElementById("ds-tm-split-notice-days").value,
+        DEADLINE_TRADEMARK_SPLIT_PAYMENT_OPEN_DAYS: document.getElementById("ds-tm-split-open-days").value,
+      };
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+      await fetch("{{ url_for('admin.api_deadline_settings') }}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+        body: JSON.stringify(payload),
+      });
+      try { await window.AppAlert("Deadline reminder settings were saved.", { title: "Done" }); } catch (e2) {}
+  };
+
+</script>
+{% endblock %}

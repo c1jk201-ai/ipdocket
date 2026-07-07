@@ -1,0 +1,737 @@
+<!-- Fit-to-page & Print scaling -->
+<script>
+ (function () {
+  var container = document.getElementById("invoice-print-container");
+  if (!container) return;
+
+  var fitBtn = document.getElementById("fitPageBtn");
+
+  // A4 constants (must match invoice_print.css)
+  var PRINT_PAGE_MM_W = 210;
+  var PRINT_PAGE_MM_H = 297;
+  // invoice_print.css: @page { margin: 0.6cm; } => 6mm
+  var PRINT_MARGIN_MM = 6;
+
+  // Do not shrink below 55% (too small to read; prefer multi-page printing).
+  var HARD_MIN_SCALE = 0.55;
+  var _pxPerMmCache = null;
+  var _resizeTimer = null;
+
+  function safeAlert(message, title) {
+   try {
+    if (window.AppAlert) return window.AppAlert(message, { title: title || "Confirm" });
+   } catch (e) {}
+   try {
+    window.alert(message);
+   } catch (e2) {}
+  }
+
+  function setButtonBusy(btn, busy, text) {
+   if (!btn) return;
+   try {
+    if (busy) {
+     if (btn.dataset.originalHtml === undefined) btn.dataset.originalHtml = btn.innerHTML;
+     btn.disabled = true;
+     btn.setAttribute("aria-busy", "true");
+     btn.innerHTML =
+      '<span class="inline-spinner" aria-hidden="true"></span>' +
+      (text || "Processing...");
+    } else {
+     btn.disabled = false;
+     btn.removeAttribute("aria-busy");
+     if (btn.dataset.originalHtml !== undefined) btn.innerHTML = btn.dataset.originalHtml;
+    }
+   } catch (e) {}
+  }
+
+  function isFitted() {
+   return container.dataset.fitted === "true";
+  }
+
+  function setBtnActive(active, scale) {
+   if (!fitBtn) return;
+   if (active) {
+    fitBtn.classList.add("active");
+    fitBtn.style.background = "#EAF4FF";
+    fitBtn.style.color = "#005EA8";
+    try { fitBtn.setAttribute("aria-pressed", "true"); } catch (e) {}
+    try {
+     var pct = Math.round((scale && isFinite(scale) ? scale : 1) * 100);
+     fitBtn.title = "Scale to fit one A4 page (" + pct + "%)";
+    } catch (e) {
+     fitBtn.title = "Scale to fit one A4 page";
+    }
+   } else {
+    fitBtn.classList.remove("active");
+    fitBtn.style.background = "";
+    fitBtn.style.color = "";
+    try { fitBtn.setAttribute("aria-pressed", "false"); } catch (e) {}
+    fitBtn.title = "Scale to fit one A4 page";
+   }
+  }
+
+  function syncPublishFitInput() {
+   try {
+    var fitInput = document.getElementById("publishAndPrintFit");
+    if (!fitInput) return;
+    fitInput.value = isFitted() ? "1" : "0";
+   } catch (e) {}
+  }
+
+  function pxPerMm() {
+   if (_pxPerMmCache) return _pxPerMmCache;
+   try {
+    // Use a larger length to reduce rounding errors (and to honor browser zoom).
+    var probe = document.createElement("div");
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    probe.style.width = "100mm";
+    probe.style.height = "0";
+    probe.style.padding = "0";
+    probe.style.border = "0";
+    document.body.appendChild(probe);
+    var w = probe.getBoundingClientRect().width;
+    document.body.removeChild(probe);
+    if (w && isFinite(w)) {
+     _pxPerMmCache = w / 100;
+     return _pxPerMmCache;
+    }
+   } catch (e) {}
+   _pxPerMmCache = 96 / 25.4;
+   return _pxPerMmCache;
+  }
+
+  function isPrintMedia() {
+   try {
+    return !!(window.matchMedia && window.matchMedia("print").matches);
+   } catch (e) {
+    return false;
+   }
+  }
+
+  function getTargetBoxPx() {
+   // In print preview, browser margins can override @page margins.
+   // When print media is active, use viewport units to match the *actual* page box
+   // used by the browser (more reliable than hardcoded mm margins).
+   if (isPrintMedia()) {
+    try {
+     // Clamp by A4 physical size so "vw/vh" can't accidentally become the window viewport.
+     var ppmPrint = pxPerMm();
+     var maxW = PRINT_PAGE_MM_W * ppmPrint;
+     var maxH = PRINT_PAGE_MM_H * ppmPrint;
+
+     var pageProbe = document.createElement("div");
+     pageProbe.style.position = "fixed";
+     pageProbe.style.left = "0";
+     pageProbe.style.top = "0";
+     pageProbe.style.width = "100vw";
+     pageProbe.style.height = "100vh";
+     pageProbe.style.visibility = "hidden";
+     pageProbe.style.pointerEvents = "none";
+     pageProbe.style.zIndex = "-1";
+     document.body.appendChild(pageProbe);
+     var r = pageProbe.getBoundingClientRect();
+     document.body.removeChild(pageProbe);
+     if (r && r.width> 0 && r.height> 0) {
+      return { width: Math.min(r.width, maxW), height: Math.min(r.height, maxH) };
+     }
+    } catch (e) {}
+   }
+
+   var ppm = pxPerMm();
+   return {
+    width: (PRINT_PAGE_MM_W - PRINT_MARGIN_MM * 2) * ppm,
+    height: (PRINT_PAGE_MM_H - PRINT_MARGIN_MM * 2) * ppm,
+   };
+  }
+
+  function clampScale(scale) {
+   if (!scale || !isFinite(scale)) return 1;
+   if (scale> 1) scale = 1;
+   if (scale < HARD_MIN_SCALE) scale = HARD_MIN_SCALE;
+   return scale;
+  }
+
+  function measureUnscaled(targetWidthPx) {
+   // Measure the layout at scale=1 and *at the target print width*.
+   // This prevents a false "width-limited" shrink caused by a wide desktop layout.
+   var prevScale = container.style.getPropertyValue("--invoice-print-scale");
+   var prevWidth = container.style.width;
+   var prevMaxWidth = container.style.maxWidth;
+   var prevMarginLeft = container.style.marginLeft;
+   var prevMarginRight = container.style.marginRight;
+
+   container.style.setProperty("--invoice-print-scale", "1");
+
+   var forceWidth = !!(targetWidthPx && isFinite(targetWidthPx) && targetWidthPx> 0);
+   if (forceWidth) {
+    container.style.width = targetWidthPx + "px";
+    container.style.maxWidth = targetWidthPx + "px";
+    container.style.marginLeft = "auto";
+    container.style.marginRight = "auto";
+   }
+
+   // Force layout flush
+   var rect = container.getBoundingClientRect();
+   var w = rect && rect.width ? rect.width : 0;
+   var h = rect && rect.height ? rect.height : 0;
+
+   // If something still overflows (e.g. fixed-width content), honor scroll size.
+   var sw = container.scrollWidth || 0;
+   var sh = container.scrollHeight || 0;
+   if (sw) w = w ? Math.max(w, sw) : sw;
+   if (sh) h = h ? Math.max(h, sh) : sh;
+
+   if (forceWidth) {
+    container.style.width = prevWidth;
+    container.style.maxWidth = prevMaxWidth;
+    container.style.marginLeft = prevMarginLeft;
+    container.style.marginRight = prevMarginRight;
+   }
+
+   if (prevScale) container.style.setProperty("--invoice-print-scale", prevScale);
+   else container.style.removeProperty("--invoice-print-scale");
+
+   return { width: w, height: h };
+  }
+
+  function computeFitScale() {
+   var target = getTargetBoxPx();
+   var measured = measureUnscaled(target.width);
+   if (!measured.width || !measured.height) return 1;
+   var scaleW = target.width / measured.width;
+   var scaleH = target.height / measured.height;
+   return clampScale(Math.min(scaleW, scaleH, 1));
+  }
+
+  function computeFit() {
+   var target = getTargetBoxPx();
+   var measured = measureUnscaled(target.width);
+   if (!measured.width || !measured.height) {
+    return { scale: 1, rawScale: 1, scaleW: 1, scaleH: 1, limiting: "none", clamped: false };
+   }
+   var scaleW = target.width / measured.width;
+   var scaleH = target.height / measured.height;
+   var raw = Math.min(scaleW, scaleH, 1);
+   var limiting = "none";
+   if (raw < 1) {
+    limiting = scaleW <= scaleH ? "width" : "height";
+   }
+   var clamped = raw < HARD_MIN_SCALE;
+   return {
+    scale: clampScale(raw),
+    rawScale: raw,
+    scaleW: scaleW,
+    scaleH: scaleH,
+    limiting: limiting,
+    clamped: clamped,
+   };
+  }
+
+  function applyFit(scale) {
+   container.style.setProperty("--invoice-print-scale", String(scale));
+   container.dataset.fitted = "true";
+   setBtnActive(true, scale);
+   syncPublishFitInput();
+  }
+
+  function clearFit() {
+   // Backward-compat cleanup (older versions used inline transforms)
+   container.style.transform = "";
+   container.style.transformOrigin = "";
+   container.style.marginLeft = "";
+   container.style.marginRight = "";
+   container.style.width = "";
+
+   container.style.removeProperty("--invoice-print-scale");
+   container.dataset.fitted = "false";
+   setBtnActive(false);
+   syncPublishFitInput();
+  }
+
+  function recalcIfFitted() {
+   if (!isFitted()) return;
+   // Browser zoom changes mm->px; recompute on demand.
+   _pxPerMmCache = null;
+   var scale = computeFitScale();
+   container.style.setProperty("--invoice-print-scale", String(scale));
+   setBtnActive(true, scale);
+  }
+
+  function scheduleRecalc() {
+   if (!isFitted()) return;
+   try {
+    if (_resizeTimer) clearTimeout(_resizeTimer);
+   } catch (e) {}
+   _resizeTimer = setTimeout(recalcIfFitted, 150);
+  }
+
+  function recalcForPrint() {
+   if (!isFitted()) return;
+   // Print-preview timing is browser-dependent; run a few passes to ensure
+   // print media styles are fully applied before measuring.
+   try {
+    recalcIfFitted();
+   } catch (e) {}
+   try {
+    setTimeout(recalcIfFitted, 0);
+   } catch (e) {}
+   try {
+    setTimeout(recalcIfFitted, 80);
+   } catch (e) {}
+   try {
+    setTimeout(recalcIfFitted, 250);
+   } catch (e) {}
+  }
+
+  function warnFitScale(fit) {
+   // Soft warning: too much shrink usually means multi-page is the right answer.
+   // If clamped, it means 1-page fit is impossible under the readability limit.
+   if (fit.clamped) {
+    safeAlert(
+     "Content 1page " +
+      Math.round((fit.rawScale || fit.scale) * 100) +
+      "% scale down required,\n 55% scale downdoes not.\n2page   exists.",
+     "Guidance"
+    );
+   } else if (fit.scale < 0.7) {
+    if (fit.limiting === "width") {
+     safeAlert(
+      "Invoice A4  " +
+       Math.round(fit.scale * 100) +
+       "% scale down.\n(  scale down,  days exists.)",
+      "Guidance"
+     );
+    } else {
+     safeAlert(
+      "Content 1page " +
+       Math.round(fit.scale * 100) +
+       "% scale down.\n  2page   exists.",
+      "Guidance"
+     );
+    }
+   }
+  }
+
+  function enableFitToPage(opts) {
+   _pxPerMmCache = null;
+   var fit = computeFit();
+   applyFit(fit.scale);
+   if (!(opts && opts.silent)) warnFitScale(fit);
+   return fit;
+  }
+
+  // Fit to page logic (screen preview + print zoom)
+  window.enableFitToPage = function (opts) {
+   return enableFitToPage(opts || {});
+  };
+  window.toggleFitToPage = function () {
+   if (isFitted()) {
+    clearFit();
+    return;
+   }
+   enableFitToPage({ silent: false });
+  };
+
+  var printBtn = document.getElementById("printBtn");
+  if (printBtn) {
+   printBtn.addEventListener("click", function (e) {
+    try {
+     if (e && e.preventDefault) e.preventDefault();
+     if (e && e.stopPropagation) e.stopPropagation();
+    } catch (err) {}
+
+    setButtonBusy(printBtn, true, " ...");
+
+    var originalTitle = document.title || "";
+    var restored = false;
+    var restoreOnce = function () {
+     if (restored) return;
+     restored = true;
+     try { document.title = originalTitle; } catch (e0) {}
+     setButtonBusy(printBtn, false);
+    };
+    // Some browsers don't reliably fire `afterprint`. Keep a timeout fallback.
+    try { window.addEventListener("afterprint", restoreOnce, { once: true }); } catch (e2) {}
+    try { setTimeout(restoreOnce, 20000); } catch (e3) {}
+
+    function csrfToken() {
+     try {
+      var m = document.querySelector('meta[name="csrf-token"]');
+      return (m && m.getAttribute("content")) || "";
+     } catch (e) {
+      return "";
+     }
+    }
+
+    var isRevisionView = {{ 'true' if (is_revision_view is defined and is_revision_view) else 'false' }};
+    var ensureUrlBase = "{{ url_for('billing_invoices.invoices.ensure_print_revision', invoice_id=invoice['id']) }}";
+    var ensureQuery = "?lang={{ invoice_lang }}&outgoing={{ '1' if outgoing_mode else '0' }}";
+
+    function ensurePrintRevision(timeoutMs) {
+     if (isRevisionView) return Promise.resolve(null);
+     if (!ensureUrlBase || !window.fetch) return Promise.resolve(null);
+
+     var url = ensureUrlBase + ensureQuery;
+     var headers = { "Accept": "application/json" };
+     var tok = csrfToken();
+     if (tok) headers["X-CSRFToken"] = tok;
+
+     var controller = null;
+     var timer = null;
+     try {
+      if (window.AbortController) controller = new AbortController();
+     } catch (e) {}
+     try {
+      var ms = timeoutMs && isFinite(timeoutMs) ? timeoutMs : 2500;
+      timer = setTimeout(function () {
+       try { if (controller) controller.abort(); } catch (e2) {}
+      }, ms);
+     } catch (e) {}
+
+     return fetch(url, {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      signal: controller ? controller.signal : undefined,
+     })
+      .then(function (res) {
+       return res.json().catch(function () { return null; });
+      })
+      .then(function (data) {
+       if (data && data.ok && data.title) return data;
+       return null;
+      })
+      .catch(function () { return null; })
+      .finally(function () {
+       try { if (timer) clearTimeout(timer); } catch (e3) {}
+      });
+    }
+
+    ensurePrintRevision(2500).then(function (meta) {
+     try {
+      if (meta && meta.title) document.title = String(meta.title);
+     } catch (e0) {}
+     setButtonBusy(printBtn, true, "  ...");
+     try {
+      requestAnimationFrame(function () {
+       window.print();
+      });
+     } catch (err) {
+      try { window.print(); } catch (err2) {}
+     }
+    });
+   });
+  }
+
+  // Ensure print uses correct scale under actual print CSS (no more guessing pixels).
+  try {
+   window.addEventListener("beforeprint", function () {
+    recalcForPrint();
+   });
+   window.addEventListener("afterprint", function () {
+    scheduleRecalc();
+   });
+  } catch (e) {}
+
+  // Some browsers fire matchMedia('print') reliably when entering/leaving print preview.
+  try {
+   if (window.matchMedia) {
+    var mql = window.matchMedia("print");
+    var onPrintMediaChange = function (e) {
+     try {
+      if (e && e.matches) recalcForPrint();
+      else scheduleRecalc();
+     } catch (e2) {}
+    };
+    if (mql && mql.addEventListener) mql.addEventListener("change", onPrintMediaChange);
+    else if (mql && mql.addListener) mql.addListener(onPrintMediaChange);
+   }
+  } catch (e) {}
+
+  try {
+   window.addEventListener("resize", scheduleRecalc);
+   window.addEventListener("load", scheduleRecalc);
+  } catch (e) {}
+
+  try {
+   if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(scheduleRecalc).catch(function () {});
+   }
+  } catch (e) {}
+
+  try {
+   var publishAndPrintForm = document.getElementById("publishAndPrintForm");
+   if (publishAndPrintForm && publishAndPrintForm.addEventListener) {
+    publishAndPrintForm.addEventListener("submit", function () {
+     syncPublishFitInput();
+    });
+   }
+   syncPublishFitInput();
+  } catch (e) {}
+ })();
+</script>
+{% if request.args.get('print') == '1' %}
+<script>
+ (function () {
+  var isRevisionView = {{ 'true' if (is_revision_view is defined and is_revision_view) else 'false' }};
+  var ensureUrlBase = "{{ url_for('billing_invoices.invoices.ensure_print_revision', invoice_id=invoice['id']) }}";
+  var ensureQuery = "?lang={{ invoice_lang }}&outgoing={{ '1' if outgoing_mode else '0' }}";
+  var autoFitRequested = "{{ '1' if request.args.get('fit') == '1' else '0' }}" === "1";
+
+  function csrfToken() {
+   try {
+    var m = document.querySelector('meta[name="csrf-token"]');
+    return (m && m.getAttribute("content")) || "";
+   } catch (e) {
+    return "";
+   }
+  }
+
+  function ensurePrintRevision(timeoutMs) {
+   if (isRevisionView) return Promise.resolve(null);
+   if (!ensureUrlBase || !window.fetch) return Promise.resolve(null);
+
+   var url = ensureUrlBase + ensureQuery;
+   var headers = { "Accept": "application/json" };
+   var tok = csrfToken();
+   if (tok) headers["X-CSRFToken"] = tok;
+
+   var controller = null;
+   var timer = null;
+   try {
+    if (window.AbortController) controller = new AbortController();
+   } catch (e) {}
+   try {
+    var ms = timeoutMs && isFinite(timeoutMs) ? timeoutMs : 2500;
+    timer = setTimeout(function () {
+     try { if (controller) controller.abort(); } catch (e2) {}
+    }, ms);
+   } catch (e) {}
+
+   return fetch(url, {
+    method: "POST",
+    headers: headers,
+    credentials: "same-origin",
+    signal: controller ? controller.signal : undefined,
+   })
+    .then(function (res) {
+     return res.json().catch(function () { return null; });
+    })
+    .then(function (data) {
+     if (data && data.ok && data.title) return data;
+     return null;
+    })
+    .catch(function () { return null; })
+    .finally(function () {
+     try { if (timer) clearTimeout(timer); } catch (e3) {}
+    });
+  }
+
+  function printNow() {
+   var originalTitle = document.title || "";
+   var restoredTitle = false;
+   var restoreTitleOnce = function () {
+    if (restoredTitle) return;
+    restoredTitle = true;
+    try { document.title = originalTitle; } catch (e0) {}
+   };
+   try { window.addEventListener("afterprint", restoreTitleOnce, { once: true }); } catch (e2) {}
+   try { setTimeout(restoreTitleOnce, 20000); } catch (e3) {}
+
+   // Ensure revision is recorded and the PDF filename includes revN.
+   ensurePrintRevision(2500).then(function (meta) {
+    try {
+     if (meta && meta.title) document.title = String(meta.title);
+    } catch (e0) {}
+    try {
+     window.print();
+    } catch (e) {
+     console && console.warn("print failed", e);
+    }
+   });
+  }
+  function setStatus(text) {
+   try {
+    var el = document.getElementById("printModeStatus");
+    if (el) el.textContent = text;
+   } catch (e) {}
+  }
+  function bindManualPrint() {
+   try {
+    var btn = document.getElementById("manualPrintBtn");
+    if (!btn) return;
+    btn.addEventListener("click", function (e) {
+     try {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+     } catch (err) {}
+     try {
+      if (btn.dataset.originalHtml === undefined) btn.dataset.originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.setAttribute("aria-busy", "true");
+      btn.innerHTML = '<span class="inline-spinner" aria-hidden="true"></span>  ...';
+      var restored = false;
+      var restoreOnce = function () {
+       if (restored) return;
+       restored = true;
+       try {
+        btn.disabled = false;
+        btn.removeAttribute("aria-busy");
+        if (btn.dataset.originalHtml !== undefined) btn.innerHTML = btn.dataset.originalHtml;
+       } catch (e2) {}
+      };
+      try { window.addEventListener("afterprint", restoreOnce, { once: true }); } catch (e3) {}
+      try { setTimeout(restoreOnce, 15000); } catch (e4) {}
+     } catch (e2) {}
+     printNow();
+    });
+   } catch (e) {}
+  }
+
+  function setCertPreviewVisible(show, opts) {
+   try {
+    var cert = document.querySelector(".cert-print");
+    var btn = document.getElementById("toggleCertPreviewBtn");
+    if (!cert || !btn) return;
+
+    if (show) {
+     cert.style.display = "block";
+     cert.setAttribute("aria-hidden", "false");
+     try { btn.setAttribute("aria-expanded", "true"); } catch (e2) {}
+     btn.dataset.open = "1";
+     btn.textContent = "people ";
+     if (opts && opts.scroll) {
+      try {
+       cert.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) {
+       try { cert.scrollIntoView(true); } catch (e2) {}
+      }
+     }
+    } else {
+     cert.style.display = "none";
+     cert.setAttribute("aria-hidden", "true");
+     try { btn.setAttribute("aria-expanded", "false"); } catch (e2) {}
+     btn.dataset.open = "0";
+     btn.textContent = "🔎 people Preview";
+    }
+   } catch (e) {}
+  }
+
+  function bindCertPreviewToggle() {
+   try {
+    var btn = document.getElementById("toggleCertPreviewBtn");
+    if (!btn) return;
+    btn.addEventListener("click", function (e) {
+     try {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
+     } catch (err) {}
+     var open = btn.dataset.open === "1";
+     setCertPreviewVisible(!open, { scroll: !open });
+    });
+   } catch (e) {}
+  }
+
+  function applyRequestedFit() {
+   if (!autoFitRequested) return;
+   try {
+    if (window.enableFitToPage) {
+     window.enableFitToPage({ silent: true });
+    }
+   } catch (e) {}
+  }
+
+  window.addEventListener("load", function () {
+   bindManualPrint();
+   bindCertPreviewToggle();
+   applyRequestedFit();
+   try { setTimeout(applyRequestedFit, 80); } catch (e) {}
+
+   // Optional: open screen preview for troubleshooting (?cert_preview=1)
+   try {
+    var params = new URLSearchParams(window.location.search || "");
+    if (params.get("cert_preview") === "1") {
+     setCertPreviewVisible(true, { scroll: true });
+    }
+   } catch (e) {}
+
+   var withCert = document.body.classList.contains("print-with-cert");
+   if (withCert) {
+    var imgs = document.querySelectorAll(".cert-print img");
+    if (!imgs || imgs.length === 0) {
+     setStatus("people Image not found. …");
+     printNow();
+     return;
+    }
+
+    var imgList = Array.prototype.slice.call(imgs);
+    var total = imgList.length;
+    var counted = new Array(total);
+    for (var i = 0; i < total; i++) counted[i] = false;
+
+    var doneCount = 0;
+    var failed = 0;
+    var done = false;
+    var autoPrintEnabled = true;
+
+    function updateStatus() {
+     var msg = "people Loading… (" + doneCount + "/" + total + ")";
+     if (failed) msg += " · Error " + failed;
+     setStatus(msg);
+    }
+
+    function markIndex(i, isError) {
+     if (done) return;
+     if (counted[i]) return;
+     counted[i] = true;
+     doneCount += 1;
+     if (isError) failed += 1;
+     updateStatus();
+
+     if (doneCount>= total) {
+      done = true;
+      if (failed) {
+       autoPrintEnabled = false;
+       setStatus("people Error exists. below to Retry people PDF confirm.");
+       return;
+      }
+      if (!autoPrintEnabled) {
+       setStatus("people Done. below  .");
+       return;
+      }
+      setStatus(" …");
+      setTimeout(printNow, 120);
+     }
+    }
+
+    // Attach listeners first, then account for already-complete images (avoids race conditions).
+    imgList.forEach(function (img, idx) {
+     try {
+      img.addEventListener("load", function () { markIndex(idx, false); }, { once: true });
+      img.addEventListener("error", function () { markIndex(idx, true); }, { once: true });
+     } catch (e) {}
+    });
+    imgList.forEach(function (img, idx) {
+     try {
+      if (img && img.complete) {
+       markIndex(idx, !(img.naturalWidth> 0));
+      }
+     } catch (e) {}
+    });
+    if (!done) updateStatus();
+
+    // If certificate images take unusually long, stop auto-print and rely on manual print.
+    setTimeout(function () {
+     if (done) return;
+     autoPrintEnabled = false;
+     setStatus("people Delayed. Done below  .");
+    }, 15000);
+   } else {
+    setStatus(" …");
+    setTimeout(printNow, autoFitRequested ? 320 : 200); // small delay to settle layout
+   }
+  });
+ })();
+</script>
+{% endif %}

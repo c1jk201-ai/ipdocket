@@ -1,0 +1,86 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">Account</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_general_ledger') }}">TotalAccountLedger</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">Account Add</h3>
+  <form method="post" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-4 col-lg-2">
+    <label></label>
+    <input type="text" name="code" placeholder=": 5000" required>
+   </div>
+   <div class="col-12 col-md-4 col-lg-4">
+    <label>Accountpeople</label>
+    <input type="text" name="name" required>
+   </div>
+   <div class="col-12 col-md-4 col-lg-3">
+    <label></label>
+    <select name="type" required>
+     <option value="asset">Assets</option>
+     <option value="liability">Liabilities</option>
+     <option value="equity">Equity</option>
+     <option value="revenue"></option>
+     <option value="expense"></option>
+    </select>
+   </div>
+   <div class="col-12 col-md-4 col-lg-3">
+    <label> </label>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+     <input type="checkbox" name="is_active" value="1" checked>
+     active
+    </label>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Add</button>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <div style="overflow:auto;">
+   <table class="table">
+    <thead>
+     <tr>
+      <th></th>
+      <th>Accountpeople</th>
+      <th></th>
+      <th>Status</th>
+      <th style="width:120px;"></th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for acc in accounts %}
+     <tr>
+      <td>
+       <a class="text-decoration-none" href="{{ url_for('business.accounting_general_ledger', account_id=acc.id) }}">{{ acc.code }}</a>
+      </td>
+      <td>
+       <a class="text-decoration-none" href="{{ url_for('business.accounting_general_ledger', account_id=acc.id) }}">{{ acc.name }}</a>
+      </td>
+      <td>{{ acc.type }}</td>
+      <td>{% if acc.is_active %}active{% else %}active{% endif %}</td>
+      <td>
+       <form method="post" action="{{ url_for('business.accounting_ledger_toggle_account', account_id=acc.id) }}" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-ghost btn-sm" type="submit">{% if acc.is_active %}disabled{% else %}active{% endif %}</button>
+       </form>
+      </td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="5" class="muted">Registration Account none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

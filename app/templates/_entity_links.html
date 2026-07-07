@@ -1,0 +1,205 @@
+{% macro _link(url, label, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not url %}
+    {{ label or '-' }}
+  {% else %}
+    <a href="{{ url }}"
+       class="{{ classes }}"
+       {% if target %}target="{{ target }}"{% endif %}
+       {% if rel %}rel="{{ rel }}"{% endif %}>{{ label or url }}</a>
+  {% endif %}
+{%- endmacro %}
+
+{% macro case_detail(case_id, label=None, anchor=None, workflow_id=None, docket_id=None, invoice_id=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% if workflow_id %}
+      {% set _url = url_for('case_work.case_detail', case_id=case_id, workflow_id=workflow_id, docket_id=docket_id, invoice_id=invoice_id, _anchor=anchor) %}
+    {% else %}
+      {% set _url = url_for('case_work.case_detail', case_id=case_id, docket_id=docket_id, invoice_id=invoice_id, _anchor=anchor) %}
+    {% endif %}
+    {{ _link(_url, label or case_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro case_list_search(query, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not query %}
+    {{ label or '' }}
+  {% else %}
+    {% set _url = url_for('case_work.case_list', q=query) %}
+    {{ _link(_url, label or query, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro workflow_detail(workflow_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not workflow_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('workflow.detail', workflow_id=workflow_id) %}
+    {{ _link(_url, label or workflow_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro worklog_owner(owner_id, label=None, filter='todo', owner_role='owner', classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not owner_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('worklog.index', owner_role=owner_role, owner=owner_id, owner_name=label, filter=filter) %}
+    {{ _link(_url, label or owner_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro deadline_calendar(date_value, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not date_value %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('deadlines.calendar_month', date=date_value) %}
+    {{ _link(_url, label or date_value, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro crm_client(client_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not client_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('customers.client_view', client_id=client_id) %}
+    {{ _link(_url, label or client_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro invoice_client(client_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not client_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% if has_endpoint is defined and has_endpoint('billing_invoices.clients.view_client') %}
+      {% set _url = url_for('billing_invoices.clients.view_client', client_id=client_id) %}
+    {% elif has_endpoint is defined and has_endpoint('view_client') %}
+      {% set _url = url_for('view_client', client_id=client_id) %}
+    {% else %}
+      {% set _url = None %}
+    {% endif %}
+    {{ _link(_url, label or client_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro invoice_view(invoice_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not invoice_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% if has_endpoint is defined and has_endpoint('billing_invoices.invoices.view_invoice') %}
+      {% set _url = url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice_id) %}
+    {% elif has_endpoint is defined and has_endpoint('view_invoice') %}
+      {% set _url = url_for('view_invoice', invoice_id=invoice_id) %}
+    {% else %}
+      {% set _url = None %}
+    {% endif %}
+    {{ _link(_url, label or invoice_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro invoice_any(invoice_id, open_url=None, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not invoice_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = open_url %}
+    {% if not _url %}
+      {% if has_endpoint is defined and has_endpoint('billing_invoices.invoices.view_invoice') %}
+        {% set _url = url_for('billing_invoices.invoices.view_invoice', invoice_id=invoice_id) %}
+      {% elif has_endpoint is defined and has_endpoint('view_invoice') %}
+        {% set _url = url_for('view_invoice', invoice_id=invoice_id) %}
+      {% else %}
+        {% set _url = None %}
+      {% endif %}
+    {% endif %}
+    {{ _link(_url, label or invoice_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro docket_detail(docket_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not docket_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% if has_endpoint is defined and has_endpoint('deadlines.docket_detail') %}
+      {% set _url = url_for('deadlines.docket_detail', docket_id=docket_id) %}
+    {% else %}
+      {% set _url = None %}
+    {% endif %}
+    {{ _link(_url, label or docket_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_notice_edit(case_id, oa_id, label=None, popup=1, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not oa_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_notice_edit', case_id=case_id, oa_id=oa_id, popup=popup) %}
+    {{ _link(_url, label or oa_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_notice_view(case_id, oa_id, label=None, popup=1, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not oa_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_notice_view', case_id=case_id, oa_id=oa_id, popup=popup) %}
+    {{ _link(_url, label or oa_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_letter_edit(case_id, comm_id, label=None, popup=1, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not comm_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_letter_edit', case_id=case_id, comm_id=comm_id, popup=popup) %}
+    {{ _link(_url, label or comm_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_letter_view(case_id, comm_id, label=None, popup=1, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not comm_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_letter_view', case_id=case_id, comm_id=comm_id, popup=popup) %}
+    {{ _link(_url, label or comm_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_notice_attachments(case_id, oa_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not oa_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_notice_attachments', case_id=case_id, oa_id=oa_id) %}
+    {{ _link(_url, label or oa_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro history_letter_attachments(case_id, comm_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not comm_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.history_letter_attachments', case_id=case_id, comm_id=comm_id) %}
+    {{ _link(_url, label or comm_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro file_asset_open(case_id, file_asset_id, label=None, inline=1, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not case_id or not file_asset_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% set _url = url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=file_asset_id, inline=inline) %}
+    {{ _link(_url, label or file_asset_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}
+
+{% macro crm_client_edit(client_id, label=None, classes='text-decoration-none', target=None, rel='noopener') -%}
+  {% if not client_id %}
+    {{ label or '-' }}
+  {% else %}
+    {% if has_endpoint is defined and has_endpoint('customers.client_edit') %}
+      {% set _url = url_for('customers.client_edit', client_id=client_id) %}
+    {% else %}
+      {% set _url = None %}
+    {% endif %}
+    {{ _link(_url, label or client_id, classes, target, rel) }}
+  {% endif %}
+{%- endmacro %}

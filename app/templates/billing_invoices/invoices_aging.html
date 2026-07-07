@@ -1,0 +1,196 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="page-header" style="margin-bottom:16px; align-items:center; gap:8px;">
+ <div>
+  <h2 class="invoice-page-title">Aging report</h2>
+  <div class="invoice-page-subtitle">Outstanding balances grouped by client.</div>
+ </div>
+ <h2 style="margin:0;">📊 Aging report (Aging)</h2>
+ <div class="muted">as of {{ as_of }}</div>
+ <div class="page-actions">
+  <div class="invoice-clean-actions">
+   <a class="btn btn-primary" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}">Client view</a>
+   <a class="btn btn-outline-primary" href="{{ url_for('billing_invoices.aging.aging_invoices', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q) }}">Invoice view</a>
+   <a class="btn" href="{{ url_for('billing_invoices.invoices.list_invoices', business_profile_id=request.args.get('business_profile_id','')) }}">Invoice list</a>
+  </div>
+  <div class="filter-actions">
+   <a class="btn btn-primary" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by) }}">Client</a>
+   <a class="btn btn-outline-primary" href="{{ url_for('billing_invoices.aging.aging_invoices', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q) }}" title="Aging report (Invoice-level Aging)">📊 Aging (Invoices)</a>
+   <a class="btn" href="{{ url_for('billing_invoices.invoices.list_invoices', business_profile_id=request.args.get('business_profile_id','')) }}">← Invoice list</a>
+  </div>
+ </div>
+</div>
+
+<div class="invoice-filter-panel">
+ <h3 class="invoice-section-title">Search and filters</h3>
+ <form method="get" class="row g-2 align-items-end">
+  <div class="col-12 col-md-3 col-lg-3">
+   <label></label>
+   <select name="business_profile_id" onchange="this.form.submit()">
+    <option value="">Default</option>
+    {% for p in all_profiles %}
+     <option value="{{ p['id'] }}" {% if bp and bp['id']==p['id'] %}selected{% endif %}>{{ p['name'] }}</option>
+    {% endfor %}
+   </select>
+  </div>
+
+  <div class="col-12 col-md-3 col-lg-2">
+   <label>reference date</label>
+   <input type="date" name="as_of" value="{{ as_of }}" />
+  </div>
+
+  <div class="col-12 col-md-4 col-lg-3">
+   <label>Search</label>
+   <input type="text" name="q" value="{{ q }}" placeholder="Client Search" />
+  </div>
+
+  <div class="col-12 col-md-2 col-lg-2">
+   <label>Matter Link</label>
+   <select name="case_linked" onchange="this.form.submit()">
+    <option value="" {% if not case_linked %}selected{% endif %}>All</option>
+    <option value="linked" {% if case_linked == 'linked' %}selected{% endif %}>linked</option>
+    <option value="unlinked" {% if case_linked == 'unlinked' %}selected{% endif %}>Link</option>
+   </select>
+  </div>
+
+  <div class="col-12 col-md-2 col-lg-2">
+   <label>Sort</label>
+   <select name="sort" onchange="this.form.submit()">
+    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+    <option value="overdue_desc" {% if sort_by == 'overdue_desc' %}selected{% endif %}>Total overdue </option>
+   </select>
+  </div>
+
+  <div class="col-12 col-md-6">
+   <label></label>
+   <div class="d-flex align-items-center gap-3 flex-wrap" style="min-height:38px;">
+    <label style="display:inline-flex; align-items:center; gap:6px; margin:0; white-space:nowrap;">
+     <input type="checkbox" name="overdue_only" value="1" {% if overdue_only %}checked{% endif %}>
+     overdue View
+    </label>
+   </div>
+  </div>
+  <div class="col-12 col-md-6">
+   <div class="d-flex gap-2 justify-content-end flex-wrap">
+    <button class="btn btn-primary" type="submit">Apply</button>
+    <a class="btn btn-ghost" href="{{ url_for('billing_invoices.aging.aging_report') }}">Reset</a>
+    <a class="btn btn-outline-secondary invoice-export-action" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by, format='xlsx') }}"><i class="bi bi-file-earmark-spreadsheet"></i> Excel</a>
+    <a class="btn btn-outline-secondary invoice-export-action" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by, format='json') }}"><i class="bi bi-filetype-json"></i> JSON</a>
+    <a class="btn btn-outline-secondary desktop-preferred-action" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by, format='xlsx') }}">⬇️ Excel</a>
+    <a class="btn btn-outline-secondary desktop-preferred-action" href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked, q=q, sort=sort_by, format='json') }}">⬇️ JSON</a>
+   </div>
+  </div>
+ </form>
+</div>
+
+<div class="invoice-data-panel">
+ <h3 style="margin:0 0 8px 0;">Currency Total</h3>
+  <table class="striped" style="min-width:720px;">
+   <thead>
+    <tr>
+     <th>Currency</th>
+     <th class="right">Current</th>
+     <th class="right">1-30</th>
+     <th class="right">31-60</th>
+     <th class="right">61-90</th>
+     <th class="right">90+</th>
+     <th class="right">Total</th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for cur, t in totals_by_currency.items() %}
+    <tr>
+     <td>{{ cur }}</td>
+     {% if cur in ('USD', 'JPY') %}
+      <td class="right">{{ '{:,.0f}'.format(t['current']) }}</td>
+      <td class="right">{{ '{:,.0f}'.format(t['d1_30']) }}</td>
+      <td class="right">{{ '{:,.0f}'.format(t['d31_60']) }}</td>
+      <td class="right {% if t['d61_90']> 0 %}aging-warning{% endif %}">{{ '{:,.0f}'.format(t['d61_90']) }}</td>
+      <td class="right {% if t['d91_plus']> 0 %}aging-danger{% endif %}">{{ '{:,.0f}'.format(t['d91_plus']) }}</td>
+      <td class="right"><strong>{{ '{:,.0f}'.format(t['total']) }}</strong></td>
+     {% else %}
+      <td class="right">{{ '{:,.2f}'.format(t['current']) }}</td>
+      <td class="right">{{ '{:,.2f}'.format(t['d1_30']) }}</td>
+      <td class="right">{{ '{:,.2f}'.format(t['d31_60']) }}</td>
+      <td class="right {% if t['d61_90']> 0 %}aging-warning{% endif %}">{{ '{:,.2f}'.format(t['d61_90']) }}</td>
+      <td class="right {% if t['d91_plus']> 0 %}aging-danger{% endif %}">{{ '{:,.2f}'.format(t['d91_plus']) }}</td>
+      <td class="right"><strong>{{ '{:,.2f}'.format(t['total']) }}</strong></td>
+     {% endif %}
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="muted">No data.</td></tr>
+    {% endfor %}
+   </tbody>
+  </table>
+</div>
+
+<style>
+ .aging-warning { color: #0B1F3A; }
+ .aging-danger { color: #dc2626; font-weight: 600; }
+ .aging-table { width: 100%; table-layout: auto; }
+ .aging-table th, .aging-table td { white-space: nowrap; padding: 8px 12px; }
+ .aging-table .col-client { position: sticky; left: 0; background: #fff; z-index: 1; min-width: 120px; }
+ .aging-table thead .col-client { background: #f9fafb; }
+ .aging-table .col-currency { width: 50px; text-align: center; }
+ .aging-table .col-amount { min-width: 90px; }
+ .aging-table .col-count { width: 50px; }
+ .aging-table .col-action { width: 60px; }
+</style>
+
+<div class="card">
+ <h3 style="margin:0 0 8px 0;">Client </h3>
+ <div style="overflow-x:auto; max-width:100%;">
+  <table class="striped aging-table">
+   <thead>
+    <tr>
+     <th class="col-client">Client</th>
+     <th class="col-currency">Currency</th>
+     <th class="right col-amount">Current</th>
+     <th class="right col-amount">1-30</th>
+     <th class="right col-amount">31-60</th>
+     <th class="right col-amount">61-90</th>
+     <th class="right col-amount">90+</th>
+     <th class="right col-amount">Total</th>
+     <th class="right col-count">items</th>
+     <th class="col-action">Details</th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for r in rows %}
+    <tr>
+     <td class="col-client">
+      <a href="{{ url_for('billing_invoices.clients.view_client', client_id=r['client_id'], business_profile_id=request.args.get('business_profile_id',''), currency=r['currency'], as_of=as_of, current_only=1, overdue_only=1 if overdue_only else None) }}" style="color:#005EA8;">{{ r['client_name'] }}</a>
+      <div class="text-xs text-muted">
+       <a class="text-decoration-none text-muted" href="{{ url_for('customers.clients', q=r['client_name']) }}">CRM</a>
+       <span class="mx-1">·</span>
+       <a class="text-decoration-none text-muted" href="{{ url_for('billing_invoices.invoices.list_invoices', q=r['client_name'], business_profile_id=request.args.get('business_profile_id','')) }}">Invoice</a>
+      </div>
+     </td>
+     <td class="col-currency">{{ r['currency'] }}</td>
+     {% if r['currency'] in ('USD', 'JPY') %}
+      <td class="right col-amount">{{ '{:,.0f}'.format(r['current']) }}</td>
+      <td class="right col-amount">{{ '{:,.0f}'.format(r['d1_30']) }}</td>
+      <td class="right col-amount">{{ '{:,.0f}'.format(r['d31_60']) }}</td>
+      <td class="right col-amount {% if r['d61_90']> 0 %}aging-warning{% endif %}">{{ '{:,.0f}'.format(r['d61_90']) }}</td>
+      <td class="right col-amount {% if r['d91_plus']> 0 %}aging-danger{% endif %}">{{ '{:,.0f}'.format(r['d91_plus']) }}</td>
+      <td class="right col-amount"><strong>{{ '{:,.0f}'.format(r['total']) }}</strong></td>
+     {% else %}
+      <td class="right col-amount">{{ '{:,.2f}'.format(r['current']) }}</td>
+      <td class="right col-amount">{{ '{:,.2f}'.format(r['d1_30']) }}</td>
+      <td class="right col-amount">{{ '{:,.2f}'.format(r['d31_60']) }}</td>
+      <td class="right col-amount {% if r['d61_90']> 0 %}aging-warning{% endif %}">{{ '{:,.2f}'.format(r['d61_90']) }}</td>
+      <td class="right col-amount {% if r['d91_plus']> 0 %}aging-danger{% endif %}">{{ '{:,.2f}'.format(r['d91_plus']) }}</td>
+      <td class="right col-amount"><strong>{{ '{:,.2f}'.format(r['total']) }}</strong></td>
+     {% endif %}
+     <td class="right col-count">{{ r['count'] }}</td>
+     <td class="col-action"><a class="btn btn-sm" href="{{ url_for('billing_invoices.aging.aging_details', client_id=r['client_id'], currency=r['currency'], business_profile_id=request.args.get('business_profile_id',''), as_of=as_of, overdue_only=1 if overdue_only else 0, case_linked=case_linked) }}">Details</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="10" class="muted">No data.</td></tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+
+{% endblock %}

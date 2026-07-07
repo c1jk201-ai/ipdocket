@@ -1,0 +1,76 @@
+{% extends "layouts/base.html" %} {% block content %}
+<h2>Case Detail: {{ case.ref_no }}</h2>
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <div><strong>Title:</strong> {{ case.title }}</div>
+        <div><strong>Status:</strong> {{ case.status }}</div>
+        <div><strong>Type:</strong> {{ case.right_type }}</div>
+        <div><strong>Country:</strong> {{ case.country }}</div>
+        <div><strong>App No:</strong> {{ case.app_no or '-' }}</div>
+        <div><strong>Division:</strong> {{ case.division or '-' }}</div>
+      </div>
+      <div class="col-md-6">
+        <div>
+          <strong>Client:</strong> {{ case.client.name if case.client else '-'
+          }}
+        </div>
+        <div>
+          <strong>Manager:</strong> {{ case.manager.username if case.manager
+          else '-' }}
+        </div>
+        <div><strong>Filing Date:</strong> {{ case.filing_date or '-' }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">Task Add</div>
+  <div class="card-body">
+    <form
+      method="POST"
+      action="{{ url_for('workflow.create') }}"
+      class="row g-3"
+    >
+      <input type="hidden" name="case_id" value="{{ case.id }}" />
+      <div class="col-md-6">
+        <label class="form-label">Task</label>
+        <input class="form-control" type="text" name="name" required />
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Due date</label>
+        <input class="form-control" type="date" name="due_date" />
+      </div>
+      <div class="col-md-3 align-self-end">
+        <button class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<h4>Task</h4>
+<table class="table table-sm">
+  <thead>
+    <tr>
+      <th>Task</th>
+      <th>Deadline</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for wf in case.workflows.all() %}
+    <tr class="{% if wf.is_urgent %}table-danger{% endif %}">
+      <td>{{ wf.name|workflow_title }}</td>
+      <td>{{ wf.due_date }}</td>
+      <td>{{ wf.status }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="3">No workflow steps.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

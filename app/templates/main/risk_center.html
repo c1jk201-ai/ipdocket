@@ -1,0 +1,272 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<style>
+  .risk-center {
+    color: #1f2937;
+  }
+  .risk-header {
+    background: #172033;
+    border-radius: 8px;
+    color: #f8fafc;
+    padding: 18px 20px;
+  }
+  .risk-kpi {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+  }
+  .risk-kpi__label {
+    color: #6b7280;
+    font-size: .82rem;
+  }
+  .risk-kpi__value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .risk-level {
+    display: inline-flex;
+    min-width: 78px;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: .75rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+  }
+  .risk-level--critical { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .risk-level--high { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+  .risk-level--medium { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+  .risk-level--low { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+  .risk-table td,
+  .risk-table th {
+    vertical-align: middle;
+  }
+  .risk-reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: .75rem;
+    background: #f9fafb;
+    margin: 0 4px 4px 0;
+  }
+  .risk-json {
+    max-width: 360px;
+    max-height: 90px;
+    overflow: auto;
+    white-space: pre-wrap;
+    font-size: .75rem;
+    margin: 0;
+  }
+</style>
+
+<div class="risk-center container-fluid py-3">
+  <div class="risk-header mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div>
+      <div class="small text-white-50 mb-1">Matter 360   </div>
+      <h1 class="h4 mb-0">Today  </h1>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-light" href="{{ url_for('main.risk_center', refresh=1, scope=scope, team=team_filter) }}">
+        <i class="bi bi-arrow-clockwise me-1"></i>
+      </a>
+      <a class="btn btn-sm btn-outline-light" href="{{ url_for('main.index') }}"></a>
+    </div>
+  </div>
+
+  {% if refresh_result %}
+  <div class="alert alert-info small">
+    {% if refresh_result.error %}
+       Failed.
+    {% else %}
+       Done:  {{ refresh_result.risks.updated if refresh_result.risks else 0 }}items
+      {% if refresh_result.verification %} · Deadlines checked: {{ refresh_result.verification.checked }}{% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-3">
+      <div class="risk-kpi">
+        <div class="risk-kpi__label"> Matter</div>
+        <div class="risk-kpi__value">{{ summary.total }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="risk-kpi">
+        <div class="risk-kpi__label">CRITICAL / HIGH</div>
+        <div class="risk-kpi__value">{{ summary.levels.get('CRITICAL', 0) }} / {{ summary.levels.get('HIGH', 0) }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="risk-kpi">
+        <div class="risk-kpi__label">Deadline </div>
+        <div class="risk-kpi__value">{{ summary.deadline_reviews }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="risk-kpi">
+        <div class="risk-kpi__label">Auto </div>
+        <div class="risk-kpi__value">{{ summary.automation_reviews }}</div>
+      </div>
+    </div>
+  </div>
+
+  <form class="row g-2 align-items-end mb-3" method="get">
+    <div class="col-sm-3">
+      <label class="form-label small text-muted"></label>
+      <select class="form-select form-select-sm" name="scope">
+        <option value="mine" {% if scope == 'mine' %}selected{% endif %}> Responsible</option>
+        {% if can_global %}
+        <option value="all" {% if scope == 'all' %}selected{% endif %}>All</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="col-sm-3">
+      <label class="form-label small text-muted"></label>
+      <select class="form-select form-select-sm" name="team">
+        <option value="">All</option>
+        {% for team in teams %}
+          <option value="{{ team }}" {% if team_filter == team %}selected{% endif %}>{{ team }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-sm-3">
+      <button class="btn btn-sm btn-primary" type="submit">Apply</button>
+    </div>
+  </form>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Matter  </div>
+      <div class="small text-muted"></div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover risk-table mb-0">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="text-end"></th>
+            <th>Matter</th>
+            <th>Responsible</th>
+            <th>Next Deadline</th>
+            <th> </th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for fact, matter, idx in rows %}
+          {% set level = (fact.risk_level or 'LOW')|lower %}
+          <tr>
+            <td><span class="risk-level risk-level--{{ level }}">{{ fact.risk_level }}</span></td>
+            <td class="text-end fw-semibold">{{ fact.score }}</td>
+            <td>
+              <div class="fw-semibold">{{ matter.our_ref or matter.matter_id }}</div>
+              <div class="small text-muted">{{ matter.right_name or '-' }}</div>
+            </td>
+            <td class="small">
+              {% if idx %}
+                {{ idx.handler or idx.attorney or idx.manager or fact.owner_staff_party_id or '-' }}
+              {% else %}
+                {{ fact.owner_staff_party_id or '-' }}
+              {% endif %}
+            </td>
+            <td class="small">{{ fact.next_due_date or '-' }}</td>
+            <td>
+              {% for reason in fact.risk_reasons_json or [] %}
+                <span class="risk-reason">
+                  {{ reason["type"] }}
+                  {% if reason["count"] is defined %}{{ reason["count"] }}{% endif %}
+                  {% if reason["amount"] is defined %}{{ "{:,.0f}".format(reason["amount"]) }}{% endif %}
+                </span>
+              {% endfor %}
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">Open</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">   exists.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-xl-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">Deadline  </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Matter</th>
+                <th>Type</th>
+                <th>/Current</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item, matter in deadline_reviews %}
+              <tr>
+                <td><span class="badge bg-danger-subtle text-danger">{{ item.severity }}</span></td>
+                <td class="small">{{ matter.our_ref or item.matter_id }}</td>
+                <td class="small">{{ item.issue_type }}</td>
+                <td>
+                  <pre class="risk-json">{{ {"expected": item.expected_json, "actual": item.actual_json}|tojson(indent=0) }}</pre>
+                </td>
+                <td class="text-end">
+                  <form method="post" action="{{ url_for('main.risk_center_resolve_deadline_review', queue_id=item.id) }}">
+                    {% if csrf_token is defined %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button class="btn btn-sm btn-outline-secondary" type="submit"></button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-4">column Deadline  item none.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-5">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Active Learning </div>
+        <div class="list-group list-group-flush">
+          {% for item in automation_feedback.suggestions[:8] %}
+          <div class="list-group-item small">
+            <div class="fw-semibold">{{ item.doc_type }} · {{ item.field_path }}</div>
+            <div class="text-muted">{{ item.reason }} · samples {{ item.samples }}</div>
+          </div>
+          {% else %}
+          <div class="list-group-item text-muted small">Auto    none.</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold">Recent ChangeSet</div>
+        <div class="list-group list-group-flush">
+          {% for op in recent_operations %}
+          <div class="list-group-item small">
+            <div class="d-flex justify-content-between gap-2">
+              <span class="fw-semibold">{{ op.action }}</span>
+              <span class="text-muted">{{ op.status }}</span>
+            </div>
+            <div class="text-muted">{{ op.created_at or '-' }} · risk {{ op.risk_level }}</div>
+          </div>
+          {% else %}
+          <div class="list-group-item text-muted small">Log Actions none.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

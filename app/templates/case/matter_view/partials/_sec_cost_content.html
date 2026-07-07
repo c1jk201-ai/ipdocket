@@ -1,0 +1,453 @@
+{% from "_entity_links.html" import invoice_any with context %}
+    <div id="sec-cost">
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title">Expense management</div>
+      </div>
+
+      <div class="legacy-nav-wrapper legacy-nav-wrapper--finance mb-2">
+        <div class="legacy-nav">
+          <button type="button" class="legacy-nav-btn legacy-tab active" data-finance-tab="ledger" onclick="showFinanceTab('ledger')">Full ledger</button>
+          <button type="button" class="legacy-nav-btn legacy-tab" data-finance-tab="invoice" onclick="showFinanceTab('invoice')">Billing</button>
+          <button type="button" class="legacy-nav-btn legacy-tab" data-finance-tab="payable" onclick="showFinanceTab('payable')">Expense</button>
+        </div>
+      </div>
+
+      {% set finance_summary = case_finance_summary or {} %}
+      {% set ar_summary = finance_summary.get('ar', {}) %}
+      {% set ap_summary = finance_summary.get('ap', {}) %}
+      {% set link_summary = finance_summary.get('links', {}) %}
+
+      <div class="finance-kpi-grid">
+        <div class="finance-kpi-card">
+          <div class="label">Total billed</div>
+          <div class="value">{{ (ar_summary.get('billed_minor', 0) or 0)|currency_minor(ar_summary.get('currency', 'USD')) }}</div>
+          <div class="meta">Billing</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">Total Amount</div>
+          <div class="value">{{ (ar_summary.get('paid_minor', 0) or 0)|currency_minor(ar_summary.get('currency', 'USD')) }}</div>
+          <div class="meta"></div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">Outstanding balance</div>
+          <div class="value">{{ (ar_summary.get('outstanding_minor', 0) or 0)|currency_minor(ar_summary.get('currency', 'USD')) }}</div>
+          <div class="meta">Billing Balance</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">overdue items</div>
+          <div class="value">{{ ar_summary.get('overdue_count', 0) or 0 }}items</div>
+          <div class="meta">overdue</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">Total </div>
+          <div class="value">{{ ap_summary.get('currency', 'USD') }} {{ "{:,}".format((ap_summary.get('requested', 0) or 0)|int) }}</div>
+          <div class="meta">Expense</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">Total </div>
+          <div class="value">{{ ap_summary.get('currency', 'USD') }} {{ "{:,}".format((ap_summary.get('paid', 0) or 0)|int) }}</div>
+          <div class="meta"></div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label"></div>
+          <div class="value">{{ ap_summary.get('currency', 'USD') }} {{ "{:,}".format((ap_summary.get('outstanding', 0) or 0)|int) }}</div>
+          <div class="meta">Expense Balance</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label"> items</div>
+          <div class="value">{{ ap_summary.get('unpaid_count', 0) or 0 }}items</div>
+          <div class="meta">Expense</div>
+        </div>
+        <div class="finance-kpi-card">
+          <div class="label">Billing Expense</div>
+          <div class="value">{{ link_summary.get('unbilled_expense_count', 0) or 0 }}items</div>
+          <div class="meta">Link None</div>
+        </div>
+      </div>
+
+      <div class="border rounded p-2 mb-2" data-editmode-skip="1">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="small fw-semibold">Invoice Module</div>
+            {% if can_invoice %}
+              <button type="button" class="btnConv edit-only" onclick="toggleBlock('payableAdd')">Expense Add</button>
+              {% if invoice_module_new_url %}
+                <a href="{{ invoice_module_new_url }}" class="btn btn-sm btn-outline-success">Invoice Create</a>
+              {% else %}
+                <form method="post" action="/case/{{ matter.matter_id }}/quick/invoice" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-success">Invoice Create</button>
+                </form>
+              {% endif %}
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleBlock('invoiceLinkPanel')">Existing Invoice Link</button>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center flex-wrap mt-2">
+          {% if can_invoice %}
+            <a
+              href="{{ url_for('billing_invoices.case_matching.page', preselect_case=(matter.our_ref or matter.matter_id), mode='case_first') }}"
+              class="btn btn-sm btn-outline-secondary"
+            >Matching </a>
+          {% endif %}
+        </div>
+        {% set _invoice_base = (invoice_module_list_url.split('?')[0] if invoice_module_list_url else '') %}
+        {% if case_finance_invoices %}
+          <div class="d-flex flex-column gap-1 mt-2">
+            <div class="small text-muted">Link Invoice</div>
+            {% for inv in (case_finance_invoices or []) %}
+              {% set _inv_label = (inv.invoice_no or ('#' ~ inv.invoice_id)) %}
+              {% set _module_url = (inv.open_url or '') %}
+              {% if _module_url and not (_module_url.startswith('http') or _module_url.startswith('/')) %}
+                {% set _module_url = '' %}
+              {% endif %}
+              {% if _module_url and _module_url.startswith('/') %}
+                {% set _module_url = request.url_root.rstrip('/') ~ _module_url %}
+              {% elif (not _module_url) and _invoice_base %}
+                {% set _module_url = _invoice_base.rstrip('/') ~ '/' ~ (inv.invoice_id or '') %}
+                {% if _module_url.startswith('/') %}
+                  {% set _module_url = request.url_root.rstrip('/') ~ _module_url %}
+                {% endif %}
+              {% endif %}
+              <div class="d-flex align-items-center flex-wrap gap-2">
+                {{ invoice_any(inv.invoice_id, open_url=_module_url, label=_inv_label, classes='btn btn-sm btn-outline-primary') }}
+                {% if inv.billing_status_label %}
+                  <span class="case-invoice-pill case-invoice-pill--{{ inv.billing_status_pill or inv.billing_status }}">
+                    {{ inv.billing_status_label }}
+                  </span>
+                {% endif %}
+                {% if inv.payment_status and inv.payment_status != 'none' and inv.payment_status_label %}
+                  <span class="case-invoice-pill case-invoice-pill--{{ inv.payment_status_pill or inv.payment_status }}">
+                    {{ inv.payment_status_label }}
+                  </span>
+                {% endif %}
+                {% if inv.is_overdue %}
+                  <span class="case-invoice-pill case-invoice-pill--alert">overdue</span>
+                {% endif %}
+                {% if _module_url %}
+                  <span class="text-muted small text-break">Invoice Module: {{ _module_url }}</span>
+                {% else %}
+                  <span class="text-muted small">Invoice Module: -</span>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if can_invoice %}
+        <div id="invoiceLinkPanel" class="border rounded p-2 mb-2" style="display:none;">
+          <form id="invoiceLinkForm" class="d-flex gap-2 align-items-center flex-wrap">
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="invoiceLinkRef"
+              style="width: 260px"
+              placeholder="Invoice ID  (INV-...)"
+            />
+            <button type="submit" class="btn btn-sm btn-outline-primary edit-only">Link</button>
+            <span class="text-muted small">Existing Invoice Matter Link.</span>
+          </form>
+        </div>
+      {% endif %}
+
+      {% if can_invoice %}
+        <div id="payableAdd" class="p-3 bg-light rounded mb-3 border" style="display:none;">
+          <h6 class="fw-bold mb-3"><i class="bi bi-wallet2 text-primary me-2"></i> Expense Add</h6>
+          <form id="payableCreateForm" class="row g-3">
+            <div class="col-md-2">
+              <label class="form-label small mb-1 fw-bold text-muted">Expense</label>
+              <input class="form-control form-control-sm bg-white" type="date" name="dn_date" />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1 fw-bold text-muted"></label>
+              <input class="form-control form-control-sm bg-white" type="date" name="due_date" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1 fw-bold text-muted"></label>
+              <input class="form-control form-control-sm bg-white" name="vendor_name" placeholder=": Patent office" />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1 fw-bold text-muted">category</label>
+              <input class="form-control form-control-sm bg-white" name="category_code" placeholder=": Official fee/" />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1 fw-bold text-muted"></label>
+              <input class="form-control form-control-sm bg-white text-end" name="requested_total" placeholder="0" />
+            </div>
+            <div class="col-md-1">
+              <label class="form-label small mb-1 fw-bold text-muted">Currency</label>
+              <input class="form-control form-control-sm bg-white text-center" name="currency" value="USD" />
+            </div>
+            <div class="col-md-9">
+              <label class="form-label small mb-1 fw-bold text-muted">Content</label>
+              <input class="form-control form-control-sm bg-white" name="description" placeholder="Expense Details Content Input" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1 fw-bold text-muted">Expense Ref</label>
+              <input class="form-control form-control-sm bg-white" name="expense_ref" placeholder=" " />
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2 mt-3 pt-2 text-end">
+              <button class="btnBlue edit-only px-3" type="submit">Add</button>
+              <button class="btnWhite px-3" type="button" onclick="toggleBlock('payableAdd')">Close</button>
+            </div>
+          </form>
+        </div>
+      {% endif %}
+
+      <div id="costTabLedger" class="finance-tab mb-2">
+        <div class="legacy-grid-wrap">
+          <table class="legacy-grid small">
+            <thead>
+              <tr>
+                <th style="width: 110px;"></th>
+                <th style="width: 80px;">Type</th>
+                <th>Item</th>
+                <th style="width: 120px;">Amount</th>
+                <th style="width: 120px;">/</th>
+                <th style="width: 120px;">Balance</th>
+                <th style="width: 100px;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in (case_finance_ledger or []) %}
+                {% set type_label = 'Billing' if item.type == 'INVOICE' else 'Expense' %}
+                {% set status_label = item.status or '' %}
+                {% if item.type == 'PAYABLE' %}
+                  {% if status_label == 'PAID' %}
+                    {% set status_label = 'Done' %}
+                  {% elif status_label == 'UNPAID' %}
+                    {% set status_label = '' %}
+                  {% endif %}
+                {% endif %}
+                <tr class="legacy-row-hover" data-invoice-id="{{ item.invoice_id }}">
+                  <td align="center">{{ item.date or '-' }}</td>
+                  <td align="center">{{ type_label }}</td>
+                  <td style="text-align:left;">{{ item.title or '' }}</td>
+                  <td align="right">
+                    {% if item.type == 'INVOICE' %}
+                      {{ (item.amount_minor or 0)|currency_minor(item.currency or ar_summary.get('currency', 'USD')) }}
+                    {% else %}
+                      {{ ap_summary.get('currency', 'USD') }} {{ "{:,}".format((item.amount or 0)|int) }}
+                    {% endif %}
+                  </td>
+                  <td align="right">
+                    {% if item.type == 'INVOICE' %}
+                      {{ (item.paid_minor or 0)|currency_minor(item.currency or ar_summary.get('currency', 'USD')) }}
+                    {% else %}
+                      {{ "{:,}".format((item.paid or 0)|int) }}
+                    {% endif %}
+                  </td>
+                  <td align="right">
+                    {% if item.type == 'INVOICE' %}
+                      {{ (item.outstanding_minor or 0)|currency_minor(item.currency or ar_summary.get('currency', 'USD')) }}
+                    {% else %}
+                      {{ "{:,}".format((item.outstanding or 0)|int) }}
+                    {% endif %}
+                  </td>
+                  <td align="center">
+                    {% if item.type == 'INVOICE' %}
+                      {% set _billing_label = item.billing_status_label or '' %}
+                      {% set _payment_label = item.payment_status_label or '' %}
+                      <div class="case-invoice-status-stack">
+                        {% if _billing_label %}
+                          <span class="case-invoice-pill case-invoice-pill--{{ item.billing_status_pill or item.billing_status }}">
+                            {{ _billing_label }}
+                          </span>
+                        {% endif %}
+                        {% if item.payment_status and item.payment_status != 'none' and _payment_label %}
+                          <span class="case-invoice-pill case-invoice-pill--{{ item.payment_status_pill or item.payment_status }}">
+                            {{ _payment_label }}
+                          </span>
+                        {% endif %}
+                        {% if item.is_overdue %}
+                          <span class="case-invoice-pill case-invoice-pill--alert">overdue</span>
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      {{ status_label }}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="7" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-journal"></i><span>No ledger data.</span></div></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="costTabInv" class="finance-tab mb-2" style="display:none;">
+        <div class="legacy-grid-wrap">
+          <table class="legacy-grid small">
+            <thead>
+              <tr>
+                <th style="width: 130px;">Invoice number</th>
+                <th>Title</th>
+                <th style="width: 100px;">Issue date</th>
+                <th style="width: 100px;">Due date</th>
+                <th style="width: 150px;">Status</th>
+                <th style="width: 120px;">Total</th>
+                <th style="width: 120px;"></th>
+                <th style="width: 120px;">outstanding</th>
+                <th style="width: 160px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for inv in (case_finance_invoices or []) %}
+                <tr class="legacy-row-hover" data-invoice-id="{{ inv.invoice_id }}">
+                  {% set _inv_label = (inv.invoice_no or ('#' ~ inv.invoice_id)) %}
+                  <td>
+                    {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=_inv_label, classes='text-decoration-none') }}
+                  </td>
+                  <td style="text-align:left;">
+                    {% if inv.title %}
+                      {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=inv.title, classes='text-decoration-none') }}
+                    {% else %}
+                      {{ '' }}
+                    {% endif %}
+                  </td>
+                  <td align="center">
+                    {% if inv.issue_date %}
+                      {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=inv.issue_date, classes='text-decoration-none') }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td align="center">
+                    {% if inv.due_date %}
+                      {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=inv.due_date, classes='text-decoration-none') }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td align="center">
+                    <div class="case-invoice-status-stack">
+                      {% if inv.billing_status_label %}
+                        <span class="case-invoice-pill case-invoice-pill--{{ inv.billing_status_pill or inv.billing_status }}">
+                          {{ inv.billing_status_label }}
+                        </span>
+                      {% endif %}
+                      {% if inv.payment_status and inv.payment_status != 'none' and inv.payment_status_label %}
+                        <span class="case-invoice-pill case-invoice-pill--{{ inv.payment_status_pill or inv.payment_status }}">
+                          {{ inv.payment_status_label }}
+                        </span>
+                      {% endif %}
+                      {% if inv.is_overdue %}
+                        <span class="case-invoice-pill case-invoice-pill--alert">overdue</span>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td align="right">
+                    {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=((inv.total_minor or 0)|currency_minor(inv.currency or 'USD')), classes='text-decoration-none') }}
+                  </td>
+                  <td align="right">
+                    {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=((inv.paid_minor or 0)|currency_minor(inv.currency or 'USD')), classes='text-decoration-none') }}
+                  </td>
+                  <td align="right">
+                    {{ invoice_any(inv.invoice_id, open_url=inv.open_url, label=((inv.outstanding_minor or 0)|currency_minor(inv.currency or 'USD')), classes='text-decoration-none') }}
+                  </td>
+                  <td align="center">
+                    {% if inv.open_url %}
+                      <a href="{{ inv.open_url }}" class="btn btn-sm btn-outline-secondary">Open</a>
+                    {% endif %}
+                    {% if inv.pdf_url %}
+                      <a href="{{ inv.pdf_url }}" target="_blank" class="btn btn-sm btn-outline-secondary">PDF</a>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="9" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-receipt"></i><span>Invoice Data none.</span></div></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="costTabExp" class="finance-tab mb-2" style="display:none;">
+        <div class="legacy-grid-wrap">
+          <table class="legacy-grid small">
+            <thead>
+              <tr>
+                <th style="width: 110px;">Expense</th>
+                <th style="width: 120px;"></th>
+                <th>Content</th>
+                <th style="width: 110px;"></th>
+                <th style="width: 110px;"></th>
+                <th style="width: 110px;"></th>
+                <th style="width: 100px;">Status</th>
+                <th style="width: 200px;">Invoice link</th>
+                <th style="width: 180px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for exp in (case_finance_payables or []) %}
+                {% set status_label = exp.status or '' %}
+                {% if status_label == 'PAID' %}
+                  {% set status_label = 'Done' %}
+                {% elif status_label == 'UNPAID' %}
+                  {% set status_label = '' %}
+                {% endif %}
+                <tr class="legacy-row-hover">
+                  <td align="center">{{ exp.expense_date or exp.dn_date or '-' }}</td>
+                  <td align="center">{{ exp.vendor_name or '-' }}</td>
+                  <td style="text-align:left;">{{ exp.description or '' }}</td>
+                  <td align="right">{{ exp.currency or 'USD' }} {{ "{:,}".format((exp.requested_total or 0)|int) }}</td>
+                  <td align="right">{{ "{:,}".format((exp.paid_total or 0)|int) }}</td>
+                  <td align="right">{{ "{:,}".format((exp.outstanding or 0)|int) }}</td>
+                  <td align="center">{{ status_label }}</td>
+                  <td>
+                    {% if exp.linked_invoices %}
+                      <div class="d-flex gap-1 flex-wrap">
+                        {% for link in exp.linked_invoices %}
+                          <span class="finance-link-chip">
+                            {% set _inv_chip = '#' ~ link.billing_invoice_id ~ (('-' ~ link.billing_line_item_id) if link.billing_line_item_id else '') %}
+                            {{ invoice_any(link.billing_invoice_id, label=_inv_chip, classes='text-decoration-none') }}
+                            {% if link.amount_minor %}
+                              <span class="text-muted">({{ (link.amount_minor or 0)|currency_minor(link.currency or (exp.currency or 'USD')) }})</span>
+                            {% endif %}
+                            {% if can_invoice %}
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-link text-danger p-0 edit-only"
+                                onclick="unlinkExpenseInvoice({{ exp.expense_id|tojson }}, {{ link.billing_invoice_id }}, {{ link.billing_line_item_id|tojson }})"
+                              >Clear</button>
+                            {% endif %}
+                          </span>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      <span class="text-muted">Billing</span>
+                    {% endif %}
+                  </td>
+                  <td align="center">
+                    {% if can_invoice %}
+                      <div class="d-flex gap-1 justify-content-center flex-wrap">
+                        <button type="button" class="btnConv edit-only" onclick="registerPayablePayment({{ exp.expense_id|tojson }}, {{ (exp.outstanding or 0)|tojson }})">Registration</button>
+                        <button type="button" class="btnConv edit-only" onclick="linkPayableInvoice({{ exp.expense_id|tojson }})">Invoice link</button>
+                        <button
+                          type="button"
+                          class="btnConv edit-only"
+                          onclick="editPayable({{ exp.expense_id|tojson }}, {{ (exp.description or '')|tojson }}, {{ (exp.requested_total or 0)|tojson }}, {{ (exp.dn_date or '')|tojson }})"
+                        >Edit</button>
+                        <button type="button" class="btnRed edit-only" onclick="deletePayable({{ exp.expense_id|tojson }})">Delete</button>
+                      </div>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="9" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-cash-stack"></i><span>Expense Data none.</span></div></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>

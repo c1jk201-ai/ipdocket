@@ -1,0 +1,508 @@
+    {% if is_inc_pat or is_out_pat or is_pct %}
+    <hr class="my-4" />
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      {% if is_pct %}
+        {% set patent_title = 'PCT ' %}
+      {% else %}
+        {% set patent_title = ('' ~ patent_label ~ ' ') if is_inc_pat else ('Foreign' ~ patent_label ~ ' ') %}
+      {% endif %}
+      <h5 class="mb-0">{{ patent_title }}</h5>
+      <span class="small text-muted">Registry/management fields(Add/)</span>
+    </div>
+    {% if staff_picker and staff_picker.has_any %}
+      <div class="alert alert-light border small mb-2">
+        Contact// Item <b>Login account user</b>from Select  Input  exists.
+      </div>
+    {% endif %}
+    {% if is_inc_pat %}
+      {% set patent_sections = [
+        ('Default/Responsible', (inc_patent_fields or [])[0:6]),
+        ('PCT/EP', (inc_patent_fields or [])[6:8]),
+        ('Filing/Publication', (inc_patent_fields or [])[8:16]),
+        ('Applicant/Title', (inc_patent_fields or [])[16:19]),
+        ('Priority/', (inc_patent_fields or [])[19:24]),
+        ('Billing//', (inc_patent_fields or [])[24:27]),
+        ('Registration/', (inc_patent_fields or [])[27:31]),
+        ('//', (inc_patent_fields or [])[31:39]),
+        ('Examination/Other', (inc_patent_fields or [])[39:43]),
+        ('Done/', (inc_patent_fields or [])[43:]),
+      ] %}
+    {% elif is_out_pat %}
+      {% set patent_sections = [
+        ('Default/Responsible', (out_patent_fields or [])[0:8]),
+        ('PCT/EP', (out_patent_fields or [])[8:10]),
+        ('Filing/Publication/Examination', (out_patent_fields or [])[10:14]),
+        ('Applicant/Title', (out_patent_fields or [])[14:18]),
+        ('Priority/', (out_patent_fields or [])[18:23]),
+        ('Billing//', (out_patent_fields or [])[23:26]),
+        ('Registration/', (out_patent_fields or [])[26:32]),
+        ('//', (out_patent_fields or [])[32:38]),
+        ('Other/Done/', (out_patent_fields or [])[38:]),
+      ] %}
+    {% else %}
+      {% set patent_sections = [
+        ('Default/Responsible', (pct_fields or [])[0:6]),
+        ('Filing/Publication/Preliminary examination', (pct_fields or [])[6:10]),
+        ('Applicant/Title', (pct_fields or [])[10:13]),
+        ('Priority//', (pct_fields or [])[13:17]),
+        ('Domestic/', (pct_fields or [])[17:20]),
+        ('Abandoned/Other/Closed', (pct_fields or [])[20:]),
+      ] %}
+    {% endif %}
+    {% set patent_fields = inc_patent_fields if is_inc_pat else (out_patent_fields if is_out_pat else pct_fields) %}
+    {% set patent_sections = patent_fields|case_field_sections(patent_sections) %}
+    {% for section in patent_sections %}
+      <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <div class="fw-bold">{{ section[0] }}</div>
+        <div></div>
+      </div>
+      <div class="table-responsive mb-3">
+        <table class="table table-bordered table-sm small align-middle mb-0" style="table-layout: fixed; min-width: 980px;">
+          <colgroup>
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+            <col style="width: 14%; background-color: #f8f9fa" />
+            <col style="width: 36%" />
+          </colgroup>
+          <tbody>
+            {% for pair in (section[1] or []) %}
+              {% set left = pair[0] %}
+              {% set right = pair[1] %}
+              {% set left_cell = left %}
+              {% set right_cell = right %}
+              {% set left_is_basic = left_cell[1] in basic_hidden_fields %}
+              {% set right_is_basic = right_cell[1] in basic_hidden_fields %}
+              {% if not (left_is_basic and right_is_basic) %}
+                {% if left_is_basic and not right_is_basic %}
+                  {% set left_cell = right_cell %}
+                  {% set left_is_basic = False %}
+                  {% set right_cell = blank_cell %}
+                  {% set right_is_basic = True %}
+                {% elif right_is_basic and not left_is_basic %}
+                  {% set right_cell = blank_cell %}
+                  {% set right_is_basic = True %}
+                {% endif %}
+              <tr>
+                {% set left_label = left_cell[0] ~ (' *' if left_cell[1] in required_staff_fields else '') %}
+                <th class="text-center{% if left_is_basic %} d-none{% endif %}">{{ '' if left_is_basic else left_label }}</th>
+                <td class="{% if left_is_basic %}d-none{% endif %}">
+                  {% if left_is_basic %}
+                    {# Hidden: managed in Default #}
+                  {% elif left_cell[1] == 'client_name' %}
+                    <div class="position-relative">
+                      <input
+                        id="clientNameInput"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="client_name"
+                        required
+                        value="{{ (form_data.get('client_name') if form_data else '') or '' }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="clientIdInput"
+                        data-client-menu="clientMenu"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input
+                        id="clientIdInput"
+                        type="hidden"
+                        name="client_id"
+                        value="{{ (form_data.get('client_id') if form_data else '') or '' }}"
+                      />
+                      <div
+                        id="clientMenu"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif left_cell[1] == 'applicant_name' %}
+                    {% set _applicant_id = 'applicantNameInputL-inc-' ~ loop.index %}
+                    {% set _applicant_hidden = _applicant_id ~ '-id' %}
+                    {% set _applicant_menu = _applicant_id ~ '-menu' %}
+                    <div class="form-check mb-1">
+                      <input class="form-check-input" type="checkbox" id="{{ _applicant_id }}-same" data-same-client="1" data-target-id="{{ _applicant_id }}" {% if same_client_checked %}checked{% endif %}>
+                      <label class="form-check-label small text-muted" for="{{ _applicant_id }}-same">Client </label>
+                    </div>
+                    <div class="position-relative">
+                      <input
+                        id="{{ _applicant_id }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="applicant_name"
+                        value="{{ (form_data.get('applicant_name') if form_data else '') or '' }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _applicant_hidden }}"
+                        data-client-menu="{{ _applicant_menu }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _applicant_hidden }}" type="hidden" value="" />
+                      <div
+                        id="{{ _applicant_menu }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif left_cell[2] == 'date' %}
+                    <div class="input-group input-group-sm">
+                      <input class="form-control form-control-sm" type="date" name="{{ left_cell[1] }}" value="{{ (form_data.get(left_cell[1]) if form_data else '') or '' }}"/>
+                      <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Today  Input">Today</button>
+                    </div>
+                  {% elif left_cell[2] == 'select_filing_type' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in filing_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left_cell[2] == 'select_app_route' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in app_route_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left_cell[2] == 'select_application_language' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in application_language_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left_cell[2] == 'select_department' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::::Select:::::</option>
+                      {% for opt in department_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left_cell[2] == 'select_stand_reason' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ left_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}></option>
+                      {% for opt in stand_reason_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif left_cell[2] == 'select_yn' %}
+                    {% set v = ((form_data.get(left_cell[1]) if form_data else '') or '') %}
+                    {% set vl = v.lower() %}
+                    <div class="d-flex gap-3">
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left_cell[1] }}" id="{{ left_cell[1] }}-n-inc" value="" {% if not v %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left_cell[1] }}-n-inc">Select</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left_cell[1] }}" id="{{ left_cell[1] }}-y-inc" value="Yes" {% if vl in ['yes','y','1','true'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left_cell[1] }}-y-inc">Yes</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ left_cell[1] }}" id="{{ left_cell[1] }}-no-inc" value="No" {% if vl in ['no','n','0','false'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ left_cell[1] }}-no-inc">No</label>
+                      </div>
+                    </div>
+                  {% elif left_cell[2] == 'textarea' %}
+                    <textarea class="form-control form-control-sm" name="{{ left_cell[1] }}" rows="2">{{ (form_data.get(left_cell[1]) if form_data else '') or '' }}</textarea>
+                  {% elif left_cell[2] == 'blank' or left_cell[1] == '__blank__' %}
+                    &nbsp;
+                  {% elif left_cell[1] in staff_fields %}
+                    {% set _id = 'staff-' ~ left_cell[1] ~ '-inc-L-' ~ loop.index %}
+                    {% set _more_id = _id ~ '-more' %}
+                    {% set staff_kind = 'all' %}
+                    {% if left_cell[1] == 'manager' %}{% set staff_kind = 'management' %}{% endif %}
+                    {% if left_cell[1] in ['handler','attorney','drawing_handler'] %}{% set staff_kind = 'professional' %}{% endif %}
+                    {% set staff_list = (staff_assignment.management_users if staff_kind == 'management' else (staff_assignment.professional_users if staff_kind == 'professional' else staff_assignment.all_users)) if staff_assignment else [] %}
+                    <div class="input-group input-group-sm">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id }}', this)">
+                        {% if staff_kind == 'management' %}
+                          <option value="">--   User Select --</option>
+                        {% elif staff_kind == 'professional' %}
+                          <option value="">-- Attorney  User Select --</option>
+                        {% else %}
+                          <option value="">-- User Select --</option>
+                        {% endif %}
+                        {% for u in (staff_list or []) %}
+                          <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-outline-secondary" onclick="toggleStaffMore('{{ _more_id }}')">View</button>
+                      <input id="{{ _id }}" class="form-control form-control-sm" type="text" name="{{ left_cell[1] }}" value="{{ (form_data.get(left_cell[1]) if form_data else '') or '' }}" placeholder=" Input " {% if left_cell[1] in required_staff_fields %}required{% endif %} />
+                    </div>
+                    <div id="{{ _more_id }}" class="mt-1" style="display:none;">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id }}', this)">
+                        <option value="">-- All (View) --</option>
+                        {% if staff_picker and staff_picker.local_users %}
+                          <optgroup label="Login accounts">
+                            {% for u in staff_picker.local_users %}
+                              <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                            {% endfor %}
+                          </optgroup>
+                        {% endif %}
+                        {% if staff_picker and staff_picker.groups %}
+                          {% for g in staff_picker.groups %}
+                            {% if g.members %}
+                              <optgroup label=": {{ g.label }}">
+                                {% for m in g.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        {% if staff_picker and staff_picker.org_units %}
+                          {% for ou in staff_picker.org_units %}
+                            {% if ou.members %}
+                              <optgroup label=": {{ ou.label }}">
+                                {% for m in ou.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      </select>
+                    </div>
+                  {% else %}
+                    <input class="form-control form-control-sm" type="text" name="{{ left_cell[1] }}" value="{{ (form_data.get(left_cell[1]) if form_data else '') or '' }}"/>
+                  {% endif %}
+                </td>
+                {% set right_label = right_cell[0] ~ (' *' if right_cell[1] in required_staff_fields else '') %}
+                <th class="text-center{% if right_is_basic %} d-none{% endif %}">{{ '' if right_is_basic else right_label }}</th>
+                <td class="{% if right_is_basic %}d-none{% endif %}">
+                  {% if right_is_basic %}
+                    {# Hidden: managed in Default #}
+                  {% elif right_cell[1] == 'client_name' %}
+                    <div class="position-relative">
+                      <input
+                        id="clientNameInputR"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="client_name"
+                        required
+                        value="{{ (form_data.get('client_name') if form_data else '') or '' }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="clientIdInputR"
+                        data-client-menu="clientMenuR"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input
+                        id="clientIdInputR"
+                        type="hidden"
+                        name="client_id"
+                        value="{{ (form_data.get('client_id') if form_data else '') or '' }}"
+                      />
+                      <div
+                        id="clientMenuR"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif right_cell[2] == 'client_search' %}
+                    {% set _client_id2 = 'clientSearch-' ~ right_cell[1] ~ '-inc-R-' ~ loop.index %}
+                    {% set _client_hidden2 = _client_id2 ~ '-id' %}
+                    {% set _client_menu2 = _client_id2 ~ '-menu' %}
+                    <div class="position-relative">
+                      <input
+                        id="{{ _client_id2 }}"
+                        class="form-control form-control-sm"
+                        type="text"
+                        name="{{ right_cell[1] }}"
+                        value="{{ (form_data.get(right_cell[1]) if form_data else '') or '' }}"
+                        autocomplete="off"
+                        data-client-search="1"
+                        data-client-id="{{ _client_hidden2 }}"
+                        data-client-menu="{{ _client_menu2 }}"
+                        placeholder="Client name Input Search (2 )"
+                      />
+                      <input id="{{ _client_hidden2 }}" type="hidden" name="{{ right_cell[1] }}_id" value="{{ (form_data.get(right_cell[1] ~ '_id') if form_data else '') or '' }}" />
+                      <div
+                        id="{{ _client_menu2 }}"
+                        class="list-group position-absolute w-100 shadow"
+                        style="z-index: 2000; display: none; max-height: 240px; overflow: auto;"
+                      ></div>
+                      <div class="d-flex gap-2 mt-1">
+                        <a class="btn btn-sm btn-outline-secondary" href="#" data-client-create="1">ClientRegistration</a>
+                        <span class="text-muted small">Name/Email/Registration No. Search</span>
+                      </div>
+                    </div>
+                  {% elif right_cell[2] == 'date' %}
+                    <div class="input-group input-group-sm">
+                      <input class="form-control form-control-sm" type="date" name="{{ right_cell[1] }}" value="{{ (form_data.get(right_cell[1]) if form_data else '') or '' }}"/>
+                      <button type="button" class="btn btn-outline-secondary" data-set-today="1" title="Today  Input">Today</button>
+                    </div>
+                  {% elif right_cell[2] == 'select_app_route' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in app_route_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_application_language' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in application_language_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_litigation_right_type' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_right_type_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_litigation_case' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_case_name_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_litigation_court' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_court_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_litigation_result' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::Select:::</option>
+                      {% for opt in litigation_decision_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_department' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}>:::::Select:::::</option>
+                      {% for opt in department_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_stand_reason' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    <select class="form-select form-select-sm" name="{{ right_cell[1] }}">
+                      <option value="" {% if not v %}selected{% endif %}></option>
+                      {% for opt in stand_reason_options %}
+                        <option value="{{ opt }}" {% if v == opt %}selected{% endif %}>{{ opt }}</option>
+                      {% endfor %}
+                    </select>
+                  {% elif right_cell[2] == 'select_yn' %}
+                    {% set v = ((form_data.get(right_cell[1]) if form_data else '') or '') %}
+                    {% set vl = v.lower() %}
+                    <div class="d-flex gap-3">
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right_cell[1] }}" id="{{ right_cell[1] }}-n-inc-r" value="" {% if not v %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right_cell[1] }}-n-inc-r">Select</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right_cell[1] }}" id="{{ right_cell[1] }}-y-inc-r" value="Yes" {% if vl in ['yes','y','1','true'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right_cell[1] }}-y-inc-r">Yes</label>
+                      </div>
+                      <div class="form-check form-check-inline mb-0">
+                        <input class="form-check-input" type="radio" name="{{ right_cell[1] }}" id="{{ right_cell[1] }}-no-inc-r" value="No" {% if vl in ['no','n','0','false'] %}checked{% endif %}>
+                        <label class="form-check-label" for="{{ right_cell[1] }}-no-inc-r">No</label>
+                      </div>
+                    </div>
+                  {% elif right_cell[2] == 'textarea' %}
+                    <textarea class="form-control form-control-sm" name="{{ right_cell[1] }}" rows="2">{{ (form_data.get(right_cell[1]) if form_data else '') or '' }}</textarea>
+                  {% elif right_cell[2] == 'blank' or right_cell[1] == '__blank__' %}
+                    &nbsp;
+                  {% elif right_cell[1] in staff_fields %}
+                    {% set _id2 = 'staff-' ~ right_cell[1] ~ '-inc-R-' ~ loop.index %}
+                    {% set _more_id2 = _id2 ~ '-more' %}
+                    {% set staff_kind2 = 'all' %}
+                    {% if right_cell[1] == 'manager' %}{% set staff_kind2 = 'management' %}{% endif %}
+                    {% if right_cell[1] in ['handler','attorney','drawing_handler'] %}{% set staff_kind2 = 'professional' %}{% endif %}
+                    {% set staff_list2 = (staff_assignment.management_users if staff_kind2 == 'management' else (staff_assignment.professional_users if staff_kind2 == 'professional' else staff_assignment.all_users)) if staff_assignment else [] %}
+                    <div class="input-group input-group-sm">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id2 }}', this)">
+                        {% if staff_kind2 == 'management' %}
+                          <option value="">--   User Select --</option>
+                        {% elif staff_kind2 == 'professional' %}
+                          <option value="">-- Attorney  User Select --</option>
+                        {% else %}
+                          <option value="">-- User Select --</option>
+                        {% endif %}
+                        {% for u in (staff_list2 or []) %}
+                          <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="button" class="btn btn-outline-secondary" onclick="toggleStaffMore('{{ _more_id2 }}')">View</button>
+                      <input id="{{ _id2 }}" class="form-control form-control-sm" type="text" name="{{ right_cell[1] }}" value="{{ (form_data.get(right_cell[1]) if form_data else '') or '' }}" placeholder=" Input " {% if right_cell[1] in required_staff_fields %}required{% endif %} />
+                    </div>
+                    <div id="{{ _more_id2 }}" class="mt-1" style="display:none;">
+                      <select class="form-select form-select-sm" onchange="pickStaffValue('{{ _id2 }}', this)">
+                        <option value="">-- All (View) --</option>
+                        {% if staff_picker and staff_picker.local_users %}
+                          <optgroup label="Login accounts">
+                            {% for u in staff_picker.local_users %}
+                              <option value="{{ u.value }}" data-staff-id="{{ u.id or '' }}">{{ u.label }}</option>
+                            {% endfor %}
+                          </optgroup>
+                        {% endif %}
+                        {% if staff_picker and staff_picker.groups %}
+                          {% for g in staff_picker.groups %}
+                            {% if g.members %}
+                              <optgroup label=": {{ g.label }}">
+                                {% for m in g.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                        {% if staff_picker and staff_picker.org_units %}
+                          {% for ou in staff_picker.org_units %}
+                            {% if ou.members %}
+                              <optgroup label=": {{ ou.label }}">
+                                {% for m in ou.members %}
+                                  <option value="{{ m.value }}">{{ m.label }}</option>
+                                {% endfor %}
+                              </optgroup>
+                            {% endif %}
+                          {% endfor %}
+                        {% endif %}
+                      </select>
+                    </div>
+                  {% else %}
+                    <input class="form-control form-control-sm" type="text" name="{{ right_cell[1] }}" value="{{ (form_data.get(right_cell[1]) if form_data else '') or '' }}"/>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+            <tr class="table-light">
+              <th class="text-center text-muted">Responsible Item</th>
+              <td colspan="3" class="text-muted small">Responsible assignments are entered in the default section.</td>
+            </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+    {% endif %}

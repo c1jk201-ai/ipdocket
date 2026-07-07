@@ -1,0 +1,29 @@
+{% macro patent_center_application_link(value, title='Open Patent Center file history') -%}
+  {% set _number = (value or '')|replace('-', '')|replace('/', '')|replace(',', '')|replace(' ', '') %}
+  {% if _number %}
+    <a
+      class="ms-1 text-decoration-none link-muted"
+      href="https://patentcenter.uspto.gov/applications/{{ _number|urlencode }}/ifw/docs"
+      target="_blank"
+      rel="noopener"
+      title="{{ title }}"
+    >
+      <i class="bi bi-box-arrow-up-right"></i>
+    </a>
+  {% endif %}
+{%- endmacro %}
+
+{% macro patent_center_search_link(value, title='Search Patent Center') -%}
+  {% set _number = (value or '')|replace('-', '')|replace('/', '')|replace(',', '')|replace(' ', '') %}
+  {% if _number %}
+    <a
+      class="ms-1 text-decoration-none link-muted"
+      href="https://patentcenter.uspto.gov/search"
+      target="_blank"
+      rel="noopener"
+      title="{{ title }}"
+    >
+      <i class="bi bi-box-arrow-up-right"></i>
+    </a>
+  {% endif %}
+{%- endmacro %}

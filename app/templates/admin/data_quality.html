@@ -1,0 +1,422 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Data Quality{% endblock %}
+
+{% block admin_content %}
+<div class="card mb-3">
+  <div class="card-body">
+    <form class="row g-2 align-items-end" method="get">
+      <div class="col-md-2">
+        <label class="form-label">Sample Size</label>
+        <input class="form-control" type="number" name="sample" min="5" max="100" value="{{ sample_limit }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Parse Window (days)</label>
+        <input class="form-control" type="number" name="parse_days" min="1" max="90" value="{{ parse_days }}">
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100" type="submit">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Quality Score</div>
+        <div class="display-6 fw-bold">{{ quality_score }}</div>
+        {% if score_level == "good" %}
+        <span class="badge bg-success">GOOD</span>
+        {% elif score_level == "warning" %}
+        <span class="badge bg-warning text-dark">WARNING</span>
+        {% else %}
+        <span class="badge bg-danger">CRITICAL</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small">High Severity Issues</div>
+        <div class="display-6 fw-bold text-danger">{{ high_issue_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Total Issues</div>
+        <div class="display-6 fw-bold">{{ total_issue_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="text-muted small">Parse Failures</div>
+        <div class="display-6 fw-bold">{{ parse_failure_count }}</div>
+        <div class="small text-muted">Recent {{ parse_days }} days</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Issue Summary</div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Severity</th>
+            <th>Item</th>
+            <th class="text-end">Count</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for issue in issues %}
+          <tr>
+            <td>
+              {% if issue.severity == "high" %}
+              <span class="badge bg-danger">HIGH</span>
+              {% elif issue.severity == "medium" %}
+              <span class="badge bg-warning text-dark">MEDIUM</span>
+              {% else %}
+              <span class="badge bg-secondary">LOW</span>
+              {% endif %}
+            </td>
+            <td class="fw-semibold">{{ issue.label }}</td>
+            <td class="text-end">{{ issue.count }}</td>
+            <td class="small text-muted">{{ issue.desc }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="accordion" id="dqAccordion">
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#secOrphanDocket">Orphan Dockets</button></h2>
+    <div id="secOrphanDocket" class="accordion-collapse collapse show" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>docket_id</th><th>matter_id</th><th>name_ref</th><th>due_date</th></tr></thead>
+            <tbody>
+              {% for row in orphan_dockets %}
+              <tr>
+                <td>{{ row.docket_id }}</td>
+                <td>{{ row.matter_id }}</td>
+                <td>{{ row.name_ref or "-" }}</td>
+                <td>{{ row.due_date or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secOrphanAnnuity">Orphan Annuities</button></h2>
+    <div id="secOrphanAnnuity" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>annuity_id</th><th>matter_id</th><th>cycle_no</th><th>due_date</th></tr></thead>
+            <tbody>
+              {% for row in orphan_annuities %}
+              <tr><td>{{ row.annuity_id }}</td><td>{{ row.matter_id }}</td><td>{{ row.cycle_no if row.cycle_no is not none else "-" }}</td><td>{{ row.due_date or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secOrphanWorkflow">Orphan Tasks</button></h2>
+    <div id="secOrphanWorkflow" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>workflow_id</th><th>case_id</th><th>name</th><th>status</th></tr></thead>
+            <tbody>
+              {% for row in orphan_workflows %}
+              <tr><td>{{ row.id }}</td><td>{{ row.case_id }}</td><td>{{ row.name or "-" }}</td><td>{{ row.status or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secMissingDue">Dockets Missing Due Date</button></h2>
+    <div id="secMissingDue" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>docket_id</th><th>matter_id</th><th>name_ref</th></tr></thead>
+            <tbody>
+              {% for row in dockets_missing_due %}
+              <tr><td>{{ row.docket_id }}</td><td>{{ row.matter_id }}</td><td>{{ row.name_ref or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secLegacyCaseOnlyLinks">Unresolved Legacy Case Links</button></h2>
+    <div id="secLegacyCaseOnlyLinks" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="small text-muted mb-2">
+          Active legacy rows still keyed by cases.id that cannot resolve to a canonical Matter record.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>table</th><th>row_id</th><th>legacy_case_id</th><th>case_ref</th><th>title</th><th>status</th></tr></thead>
+            <tbody>
+              {% for row in legacy_case_only_links %}
+              <tr>
+                <td>{{ row.table_name }}</td>
+                <td>{{ row.row_id }}</td>
+                <td>{{ row.legacy_case_id }}</td>
+                <td>{{ row.case_ref or "-" }}</td>
+                <td>{{ row.title or "-" }}</td>
+                <td>{{ row.status or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secLegacyV2MissingDue">Legacy V2_LIMIT Reference Dockets</button></h2>
+    <div id="secLegacyV2MissingDue" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="small text-muted mb-2">
+          Reference rows imported from LimitHistory are tracked separately from operational missing-due-date issues.
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>docket_id</th><th>matter_id</th><th>name_free</th><th>raw_id</th></tr></thead>
+            <tbody>
+              {% for row in legacy_v2_missing_due %}
+              <tr><td>{{ row.docket_id }}</td><td>{{ row.matter_id }}</td><td>{{ row.name_free or "-" }}</td><td class="small text-muted">{{ row.raw_id or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secMissingOwner">Dockets Missing Owner</button></h2>
+    <div id="secMissingOwner" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>docket_id</th><th>matter_id</th><th>name_ref</th><th>due_date</th></tr></thead>
+            <tbody>
+              {% for row in dockets_missing_owner %}
+              <tr><td>{{ row.docket_id }}</td><td>{{ row.matter_id }}</td><td>{{ row.name_ref or "-" }}</td><td>{{ row.due_date or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secAnnuityCycle">Annuities Missing Cycle</button></h2>
+    <div id="secAnnuityCycle" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>annuity_id</th><th>matter_id</th><th>due_date</th></tr></thead>
+            <tbody>
+              {% for row in annuities_missing_cycle %}
+              <tr><td>{{ row.annuity_id }}</td><td>{{ row.matter_id }}</td><td>{{ row.due_date or "-" }}</td></tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secMatterName">Matters Missing Title</button></h2>
+    <div id="secMatterName" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>matter_id</th><th>our_ref</th><th>status</th></tr></thead>
+            <tbody>
+              {% for row in matters_missing_name %}
+              <tr>
+                <td>{{ row.matter_id }}</td>
+                <td>
+                  <a href="{{ url_for('case_work.case_detail', case_id=row.matter_id) }}">{{ row.our_ref or "-" }}</a>
+                </td>
+                <td>{{ row.status_red or row.status_blue or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secMatterStaff">Matters Without Staff</button></h2>
+    <div id="secMatterStaff" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>matter_id</th><th>our_ref</th><th>right_name</th></tr></thead>
+            <tbody>
+              {% for row in matters_without_staff %}
+              <tr>
+                <td>{{ row.matter_id }}</td>
+                <td><a href="{{ url_for('case_work.case_detail', case_id=row.matter_id) }}">{{ row.our_ref or "-" }}</a></td>
+                <td>{{ row.right_name or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="3" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secDuplicateDocket">Duplicate Open Dockets</button></h2>
+    <div id="secDuplicateDocket" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>matter_id</th><th>name_ref</th><th>due_date</th><th class="text-end">dup_count</th></tr></thead>
+            <tbody>
+              {% for row in duplicate_open_docket_groups %}
+              <tr>
+                <td>{{ row.matter_id }}</td>
+                <td>{{ row.name_ref or "-" }}</td>
+                <td>{{ row.due_date or "-" }}</td>
+                <td class="text-end">{{ row.dup_count }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secParseFailure">Parse Failure Details</button></h2>
+    <div id="secParseFailure" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        {% if parse_failure_table_missing %}
+        <div class="alert alert-warning py-2">Parse failure details are not available.</div>
+        {% else %}
+        <div class="mb-2 d-flex flex-wrap gap-1">
+          {% for kind, cnt in parse_by_kind %}
+          <span class="badge bg-light text-dark border">{{ kind }} {{ cnt }}</span>
+          {% endfor %}
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>created_at</th><th>kind</th><th>source</th><th>field</th><th>raw</th><th>error</th></tr></thead>
+            <tbody>
+              {% for row in parse_recent %}
+              <tr>
+                <td>{{ row.created_at|local_dt if row.created_at else "-" }}</td>
+                <td>{{ row.kind }}</td>
+                <td class="small text-muted">{{ row.source or "-" }}</td>
+                <td>{{ row.field_name or "-" }}</td>
+                <td class="small text-truncate" style="max-width: 140px;">{{ row.raw_value or "-" }}</td>
+                <td class="small text-danger text-truncate" style="max-width: 180px;">{{ row.error or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#secDummy">Placeholder Matters</button></h2>
+    <div id="secDummy" class="accordion-collapse collapse" data-bs-parent="#dqAccordion">
+      <div class="accordion-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead class="table-light"><tr><th>our_ref</th><th>title</th><th>retained_at</th><th>reason</th></tr></thead>
+            <tbody>
+              {% for row in dummy_candidates %}
+              <tr>
+                <td><a href="{{ url_for('case_work.case_detail', case_id=row.matter_id) }}">{{ row.our_ref or "-" }}</a></td>
+                <td>{{ row.title or "-" }}</td>
+                <td>{{ row.retained_at or "-" }}</td>
+                <td class="small">
+                  {% for reason in row.reasons %}
+                  <span class="badge bg-light text-dark border me-1">{{ reason }}</span>
+                  {% endfor %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center text-muted">No data</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

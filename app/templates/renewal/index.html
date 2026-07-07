@@ -1,0 +1,1832 @@
+{% extends "layouts/base.html" %}
+
+{% block styles %}
+<style>
+/* Reusing "App" Theme Styles from Deadline Module */
+:root {
+  --app-soft-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --app-card-border: 1px solid rgba(226, 230, 239, 0.8);
+}
+
+.renewal-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Header & Nav */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--app-navy);
+    letter-spacing: -0.02em;
+}
+
+.nav-segment {
+    background: #e9ecef;
+    padding: 0.25rem;
+    border-radius: 0.75rem;
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.nav-segment .nav-link {
+    color: var(--app-muted);
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.4rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.nav-segment .nav-link:hover {
+    color: var(--app-indigo);
+    background: rgba(255,255,255,0.5);
+}
+
+.nav-segment .nav-link.active {
+    background: #fff;
+    color: var(--app-navy);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Cards */
+.app-card {
+    background: #fffaf0;
+    border: var(--app-card-border);
+    border-radius: 1rem;
+    box-shadow: var(--app-soft-shadow);
+    overflow: hidden;
+}
+
+.filter-toolbar {
+    background: #fff;
+    border: var(--app-card-border);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--app-soft-shadow);
+}
+
+/* Calendar Overrides */
+#rn-calendar {
+    font-family: 'Noto Sans', 'Segoe UI', Arial, Helvetica, sans-serif;
+}
+.fc .fc-toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--app-navy);
+}
+.fc .fc-button-primary {
+    background: #fff !important;
+    border: 1px solid #dee2e6 !important;
+    color: #495057 !important;
+    font-weight: 600;
+    text-transform: capitalize;
+    box-shadow: none !important;
+}
+.fc .fc-button-primary:hover {
+    background: #f8f9fa !important;
+    color: #212529 !important;
+}
+.fc .fc-button-primary:disabled { /* today button */
+    opacity: 0.6;
+}
+.fc .fc-button-active {
+    background: #e9ecef !important;
+    color: #0d6efd !important;
+    border-color: #dee2e6 !important;
+}
+.fc-theme-standard td, .fc-theme-standard th {
+    border-color: #f1f3f5;
+}
+.fc-daygrid-day.fc-day-today {
+    background: rgba(255, 179, 71, 0.16) !important;
+}
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: var(--app-accent);
+    color: var(--app-navy);
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    font-weight: 700;
+    margin: 0.2rem;
+    padding: 0 0.35rem;
+}
+
+/* FullCalendar: prevent event titles/links from overflowing into adjacent day cells */
+.fc .fc-daygrid-event {
+    max-width: 100%;
+    overflow: hidden;
+}
+.fc .fc-daygrid-event .fc-event-main-frame,
+.fc .fc-daygrid-event .fc-event-title-container {
+    min-width: 0;
+    overflow: hidden;
+}
+.fc .fc-daygrid-event .fc-event-title,
+.fc .fc-daygrid-event .app-fc-event-title {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Table */
+.table-custom th {
+    background: #f8fafc;
+    color: var(--app-muted);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-custom td {
+    vertical-align: middle;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+}
+.table-custom tr:last-child td {
+    border-bottom: none;
+}
+.table-row-hover:hover td {
+    background-color: #f8fafc;
+    cursor: default;
+}
+
+/* Badges */
+.badge-soft {
+    padding: 0.35em 0.65em;
+    font-weight: 600;
+    border-radius: 0.5rem;
+}
+.badge-soft-primary { background: #e0f2fe; color: #0369a1; }
+.badge-soft-success { background: #dcfce7; color: #15803d; }
+.badge-soft-warning { background: #fef9c3; color: #a16207; }
+.badge-soft-danger  { background: #fee2e2; color: #b91c1c; }
+.badge-soft-secondary { background: #f1f5f9; color: #475569; }
+
+/* FAB */
+.fab-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+    background: var(--app-navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    font-size: 1.5rem;
+    transition: transform 0.2s, background 0.2s;
+    z-index: 1000;
+    border: none;
+}
+.fab-btn:hover {
+    transform: translateY(-2px);
+    background: #2d3e5e;
+    color: #fff;
+}
+
+/* Fees UX refresh */
+.fees-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.fees-toolbar-main {
+    display: flex;
+    flex: 1 1 900px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 280px;
+}
+
+.fees-toolbar .input-group.rf-control {
+    width: auto !important;
+    min-width: 145px;
+    flex: 1 1 160px;
+}
+
+.fees-toolbar-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.rf-bulk {
+    border-left: 1px solid #e2e8f0;
+    padding-left: 0.75rem;
+    margin-left: 0.25rem;
+}
+
+.rf-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.rf-status-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.rf-chip {
+    border: 1px solid #dbe2ea;
+    background: #fff;
+    color: #526172;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.rf-chip:hover {
+    border-color: #9fb0c4;
+    color: #2f435d;
+}
+
+.rf-chip.active {
+    background: #f1f6fd;
+    border-color: #84a2c2;
+    color: #17395e;
+}
+
+.rf-chip .rf-chip-count {
+    background: #fff;
+    border: 1px solid #dbe2ea;
+    border-radius: 999px;
+    padding: 0.05rem 0.38rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.rf-date-shortcuts .btn {
+    border-color: #dbe2ea;
+    color: #526172;
+}
+
+.rf-date-shortcuts .btn:hover {
+    border-color: #b8c7d8;
+    background: #f8fafc;
+    color: #334155;
+}
+
+#rf-table tbody tr[data-status="overdue"] td {
+    background: #fff8f1;
+}
+
+#rf-table tbody tr[data-status="paid"] td {
+    background: #f7fdf8;
+}
+
+.rf-due-meta {
+    font-size: 0.74rem;
+    margin-top: 0.12rem;
+}
+
+@media (max-width: 992px) {
+    .fees-toolbar .input-group.rf-control {
+        min-width: 45%;
+        flex: 1 1 46%;
+    }
+    .rf-bulk {
+        width: 100%;
+        border-left: 0;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 0.65rem;
+        padding-left: 0;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .fees-toolbar {
+        gap: 0.6rem;
+    }
+    .fees-toolbar-main {
+        min-width: 0;
+    }
+    .fees-toolbar .input-group.rf-control {
+        min-width: 100%;
+        flex: 1 1 100%;
+    }
+    .fees-toolbar-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    .rf-status-row {
+        align-items: flex-start;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid pt-4 px-4 pb-5 renewal-container">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-3">
+            <h1 class="page-title mb-0">RenewalDeadline </h1>
+        </div>
+
+        <nav class="nav-segment">
+            <a href="{{ url_for('annuities.calendar_month') }}"
+               class="nav-link {% if page == 'calendar_month' %}active{% endif %}">
+               <i class="bi bi-calendar3 me-1"></i> Month 
+            </a>
+            <a href="{{ url_for('annuities.fees') }}"
+               class="nav-link {% if page == 'fees' %}active{% endif %}">
+               <i class="bi bi-list-columns-reverse me-1"></i> 
+            </a>
+            <a href="{{ url_for('annuities.giveup') }}"
+               class="nav-link {% if page == 'giveup' %}active{% endif %}">
+               <i class="bi bi-x-circle me-1"></i> Abandoneditems View
+            </a>
+        </nav>
+    </div>
+
+    {% if page == 'fees' %}
+      {% set view_module = "renewal_fees" %}
+      {% include "_saved_views_bar.html" %}
+    {% endif %}
+
+    <!-- Content -->
+    <div class="animate-fade-in">
+
+        <!-- === CALENDAR VIEW === -->
+        {% if page == 'calendar_month' %}
+        <div class="app-card p-3">
+            <div id="rn-calendar-notice" class="alert alert-warning d-none mb-3 small"></div>
+            <div id="rn-calendar"></div>
+        </div>
+
+        <script src="{{ static_asset_url('vendor/fullcalendar/index.global.min.js') }}"></script>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!window.FullCalendar || !window.FullCalendar.Calendar) return;
+            var el = document.getElementById('rn-calendar');
+            if (!el || el.dataset.ipmCalendarBooted === '1') return;
+            el.dataset.ipmCalendarBooted = '1';
+            var noticeEl = document.getElementById('rn-calendar-notice');
+            var pageParams = new URLSearchParams(window.location.search || "");
+            var initialDate = String(pageParams.get("date") || "").trim() || null;
+            function showNotice(msg) {
+              if (!noticeEl) return;
+              const text = String(msg || "").trim();
+              if (!text) { noticeEl.classList.add("d-none"); noticeEl.textContent = ""; return; }
+              noticeEl.textContent = text;
+              noticeEl.classList.remove("d-none");
+            }
+
+            function hasDebugFlag() {
+              try {
+                const qs = new URLSearchParams(window.location.search || "");
+                const v = String(qs.get("debug") || "").toLowerCase();
+                return v === "1" || v === "true" || v === "yes";
+              } catch (e) { return false; }
+            }
+
+            function normalizeCalendarToolbarLabels() {
+              if (!el) return;
+              var root = el.closest('.app-card') || el.parentElement || document;
+              var monthBtn = root.querySelector('.fc-dayGridMonth-button');
+              var listBtn = root.querySelector('.fc-listMonth-button');
+              if (monthBtn) monthBtn.textContent = 'Month';
+              if (listBtn) listBtn.textContent = '';
+            }
+
+            function queueToolbarNormalization() {
+              if (typeof window.requestAnimationFrame === 'function') {
+                window.requestAnimationFrame(normalizeCalendarToolbarLabels);
+                return;
+              }
+              window.setTimeout(normalizeCalendarToolbarLabels, 0);
+            }
+            var calendar = new FullCalendar.Calendar(el, {
+                initialView: 'dayGridMonth',
+                initialDate: initialDate || undefined,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,listMonth'
+                },
+                views: {
+                    dayGridMonth: { buttonText: 'Month' },
+                    listMonth: { buttonText: '' }
+                },
+                buttonText: {
+                    today: 'Today',
+                    week: 'Week',
+                    day: 'Day',
+                },
+                locale: 'en',
+                height: 'auto',
+                contentHeight: 720,
+                dayMaxEvents: true,
+                datesSet: function() {
+                    queueToolbarNormalization();
+                },
+                eventTimeFormat: {
+                    hour: '2-digit', minute: '2-digit', meridiem: false
+                },
+                events: function(info, success, failure) {
+                    const params = new URLSearchParams();
+                    if (info.startStr) params.set("start", info.startStr.slice(0, 10));
+                    if (info.endStr) params.set("end", info.endStr.slice(0, 10));
+                    if (hasDebugFlag()) params.set("debug", "1");
+                    fetch(`{{ url_for('annuities.api_calendar_events') }}?${params.toString()}`)
+                    .then(r => r.json())
+                     .then(payload => {
+                          const rows = payload.events || payload.items || payload || [];
+                          // Diagnostics: explain "  items " (truncated / missing due)
+                          try {
+                            const truncated = !!(payload && payload.truncated);
+                            const skippedMissing = Number(payload && payload.skipped_missing_due || 0);
+                            const skippedGiveup = Number(payload && payload.skipped_giveup || 0);
+                            const filledFromPaid = Number(payload && payload.filled_from_paid_date || 0);
+                            const maxEvents = Number(payload && payload.max_events || 0);
+                            const parts = [];
+                            if (truncated) parts.push(`Rows were limited by max_events=${maxEvents || "?"}.`);
+                            if (skippedMissing > 0) parts.push(`${skippedMissing} item(s) were skipped because no payment deadline was available.`);
+                            if (filledFromPaid > 0) parts.push(`${filledFromPaid} item(s) used the paid date for deadline display.`);
+                            if (skippedGiveup > 0) parts.push(`${skippedGiveup} abandoned item(s) were skipped.`);
+
+                           // If debug samples present, show a short hint (full list is in payload.debug).
+                           if (payload && payload.debug && payload.debug.missing_due_samples && payload.debug.missing_due_samples.length) {
+                             const sample = payload.debug.missing_due_samples.slice(0, 3).map(x => `#${x.annuity_id}/${x.matter_id}`).join(", ");
+                             parts.push(`(debug) missing due samples: ${sample} ...`);
+                             console.log("[renewal debug] missing_due_samples:", payload.debug.missing_due_samples);
+                             console.log("[renewal debug] giveup_samples:", payload.debug.giveup_samples);
+                             console.log("[renewal debug] missing_due_reason_counts:", payload.debug.missing_due_reason_counts);
+                           }
+                            showNotice(parts.join(" "));
+                            if (payload && payload.debug) {
+                              console.log("[renewal debug]", payload.debug);
+                            }
+                          } catch (e) { showNotice(""); }
+                          success(rows);
+                     })
+                    .catch(e => failure(e));
+                },
+                eventClick: function(info) {
+                    if (info.event.url) {
+                        info.jsEvent.preventDefault();
+                        if (window.AppDrilldown && typeof window.AppDrilldown.navigate === 'function') {
+                            window.AppDrilldown.navigate(info.event.url);
+                        } else {
+                            window.location.assign(info.event.url);
+                        }
+                    }
+                }
+            });
+            calendar.render();
+            queueToolbarNormalization();
+        });
+        </script>
+
+        <!-- === FEES LIST VIEW === -->
+        {% elif page == 'fees' %}
+        <div class="filter-toolbar fees-toolbar">
+            <div class="fees-toolbar-main">
+                <!-- Filter Select -->
+                <div class="input-group input-group-sm rf-control">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-funnel"></i></span>
+                    <select id="rf-filter-status" class="form-select border-start-0 ps-0">
+                        <option value="all">All statuses</option>
+                        <option value="open" selected>Open</option>
+                        <option value="pending">Waiting (Pending)</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="giveup">Abandoned</option>
+                    </select>
+                </div>
+
+                <div class="input-group input-group-sm rf-control">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-eye"></i></span>
+                    <select id="rf-view-mode" class="form-select border-start-0 ps-0">
+                        <option value="all">All Renewal</option>
+                        <option value="next" selected>Next Renewal</option>
+                    </select>
+                </div>
+                <div class="input-group input-group-sm rf-control" id="rf-next-n-wrap">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-layers"></i></span>
+                    <select id="rf-next-n" class="form-select border-start-0 ps-0">
+                        {% for _n in range(1, 6) %}
+                          <option value="{{ _n }}" {% if _n == (annuity_visible_cycle_count or 2) %}selected{% endif %}>{{ _n }} renewal cycle(s)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="input-group input-group-sm rf-control">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-journal-check"></i></span>
+                    <select id="rf-filter-regsource" class="form-select border-start-0 ps-0">
+                        <option value="all" selected>Registration date: all</option>
+                        <option value="fallback">Using payment fallback</option>
+                        <option value="missing">Missing registration date</option>
+                        <option value="set">Registration date set</option>
+                    </select>
+                </div>
+                <div class="input-group input-group-sm rf-control">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-calendar-event"></i></span>
+                    <input id="rf-start" type="date" class="form-control border-start-0 ps-0" />
+                </div>
+                <div class="input-group input-group-sm rf-control">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-calendar2-check"></i></span>
+                    <input id="rf-end" type="date" class="form-control border-start-0 ps-0" />
+                </div>
+
+                <!-- Bulk Actions -->
+                <div id="bulk-actions" class="d-flex align-items-center gap-2 rf-bulk opacity-50 desktop-preferred-action">
+                    <span class="text-primary fw-semibold small" id="selected-count">0 items</span>
+                    <span class="small text-muted" id="bulk-hint">Select items to enable bulk actions</span>
+                    <div class="dropdown">
+                        <button id="bulk-status-btn" class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" disabled>
+                           Change status
+                        </button>
+                        <ul class="dropdown-menu shadow-sm border-0">
+                            <li><a class="dropdown-item small" href="#" onclick="bulkUpdateStatus('pending')">Waiting</a></li>
+                            <li><a class="dropdown-item small" href="#" onclick="bulkUpdateStatus('paid')">Paid</a></li>
+                            <li><a class="dropdown-item small" href="#" onclick="bulkUpdateStatus('giveup')">Abandoned</a></li>
+                        </ul>
+                    </div>
+                    <div class="dropdown">
+                        <button id="bulk-matter-btn" class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" disabled>
+                           Matter actions
+                        </button>
+                        <ul class="dropdown-menu shadow-sm border-0">
+                            <li><a class="dropdown-item small" href="#" onclick="bulkMatterAction('ensure')">Update renewal</a></li>
+                            <li><a class="dropdown-item small" href="#" onclick="bulkMatterAction('workflow_sync')">Task</a></li>
+                        </ul>
+                    </div>
+                    <button id="bulk-delete-btn" class="btn btn-sm btn-outline-danger" onclick="bulkDelete()" disabled><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+
+            <div class="fees-toolbar-actions">
+                 <button class="btn btn-sm btn-light border text-secondary" onclick="loadFees()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+                <button class="btn btn-success btn-sm rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addFeeModal">
+                    <i class="bi bi-plus-lg me-1"></i> Add renewal
+                </button>
+            </div>
+        </div>
+
+        <div class="rf-status-row">
+            <div id="rf-status-chips" class="rf-status-chips">
+                <button type="button" class="rf-chip" data-status-chip="open">Open <span class="rf-chip-count" data-chip-count="open">0</span></button>
+                <button type="button" class="rf-chip" data-status-chip="pending">Waiting <span class="rf-chip-count" data-chip-count="pending">0</span></button>
+                <button type="button" class="rf-chip" data-status-chip="overdue">Overdue <span class="rf-chip-count" data-chip-count="overdue">0</span></button>
+                <button type="button" class="rf-chip" data-status-chip="paid">Paid <span class="rf-chip-count" data-chip-count="paid">0</span></button>
+                <button type="button" class="rf-chip" data-status-chip="giveup">Abandoned <span class="rf-chip-count" data-chip-count="giveup">0</span></button>
+            </div>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <div id="rf-mode-hint" class="small text-muted"></div>
+                <div class="btn-group btn-group-sm rf-date-shortcuts" role="group">
+                    <button type="button" class="btn btn-outline-secondary" data-date-shortcut="this_month"></button>
+                    <button type="button" class="btn btn-outline-secondary" data-date-shortcut="next_30">30</button>
+                    <button type="button" class="btn btn-outline-secondary" data-date-shortcut="this_year"></button>
+                    <button type="button" class="btn btn-outline-secondary" data-date-shortcut="clear">Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <div id="rf-filter-summary" class="small text-muted"></div>
+            <div id="rf-page-info" class="small text-muted"></div>
+        </div>
+
+        <div class="app-card">
+            <div class="table-responsive">
+                <table class="table table-custom mb-0 w-100" id="rf-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;"><input type="checkbox" id="select-all" class="form-check-input" onchange="toggleSelectAll(this.checked)"></th>
+                            <th>Ref No.</th>
+                            <th>Matter / Applicant</th>
+                            <th style="width:100px;">Renewal</th>
+                            <th style="width:150px;">Registration date </th>
+                            <th style="width:120px;">Payment deadline</th>
+                            <th style="width:180px;">Total amount</th>
+                            <th style="width:140px;">Status</th>
+                            <th style="width:80px;" class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
+            </div>
+             <!-- Empty State -->
+            <div id="empty-state" class="text-center py-5 d-none">
+                <div class="text-muted mb-2"><i class="bi bi-inbox display-4 opacity-25"></i></div>
+                <p class="text-secondary small">No renewals to display.</p>
+            </div>
+            <div id="load-more-wrap" class="text-center py-3 d-none">
+                <button class="btn btn-sm btn-outline-secondary" id="rf-load-more">View more</button>
+            </div>
+        </div>
+
+        <!-- Add Fee Modal -->
+        <div class="modal fade" id="addFeeModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header border-bottom-0 pb-0">
+                        <h5 class="modal-title fw-bold">Add Renewal Deadline Manually</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                         <div class="alert alert-light border small text-muted mb-3">
+                            <i class="bi bi-info-circle me-1"></i> Renewal payment deadlines are created automatically when possible. Add one manually only when needed.
+                        </div>
+                        <form id="add-fee-form" onsubmit="return false;">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-semibold">Matter ID <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="rf-case" placeholder=": 1234" required>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-6">
+                                    <label class="form-label small text-muted fw-semibold">Renewal () <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="rf-year" placeholder=": 4" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small text-muted fw-semibold">Deadline <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="rf-due" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted fw-semibold">Amount (Select)</label>
+                                <input type="number" class="form-control" id="rf-amt" placeholder="0">
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success py-2 fw-semibold" id="btn-submit-fee">Add</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        let selectedIds = new Set();
+        let currentPage = 1;
+        const perPage = 200;
+        let hasNext = false;
+        const apiBase = "{{ url_for('annuities.api_fees') }}";
+        const apiBulkBase = "{{ url_for('annuities.api_fees_bulk') }}";
+        const apiMatterBulkBase = "{{ url_for('annuities.api_matter_bulk_action') }}";
+        const crmSearchBase = "{{ url_for('customers.clients') }}";
+        const calendarBase = "{{ url_for('annuities.calendar_month') }}";
+        const opsAnnuityBase = "{{ url_for('ops_admin.annuity_home') }}";
+        const nextWindowDefault = Number("{{ annuity_visible_cycle_count or 2 }}") || 2;
+
+        const DEFAULT_FILTERS = {
+            status: "open",
+            mode: "next",
+            reg_source: "all",
+        };
+
+        function ipmConfirm(message) {
+            try {
+                if (window.AppConfirm && typeof window.AppConfirm === "function") {
+                    return window.AppConfirm(message);
+                }
+            } catch (e) {}
+            return Promise.resolve(window.confirm(String(message || "")));
+        }
+
+        function ipmAlert(message, opts) {
+            try {
+                if (window.AppAlert && typeof window.AppAlert === "function") {
+                    return window.AppAlert(message, opts);
+                }
+            } catch (e) {}
+            window.alert(String(message || ""));
+            return Promise.resolve();
+        }
+
+        function parseDateYmd(text) {
+            const raw = String(text || "").trim();
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+            const d = new Date(`${raw}T00:00:00`);
+            return Number.isNaN(d.getTime()) ? null : d;
+        }
+
+        function formatDateYmd(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+            const d = String(dateObj.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        function getStatusValue(item) {
+            return item.status || item.derived_status || item.annuity_status || "pending";
+        }
+
+        function getEffectiveDue(item) {
+            return item.effective_due_date || item.due_date || item.extended_due_date || item.internal_due_date || "";
+        }
+
+        function statusLabel(status) {
+            if (status === "open") return "Done";
+            if (status === "pending") return "Waiting";
+            if (status === "paid") return "Paid";
+            if (status === "overdue") return "Overdue";
+            if (status === "giveup") return "Abandoned";
+            if (status === "all") return "All";
+            return "Waiting";
+        }
+
+        function formatYearLabel(item) {
+            if (item.cycle_label) return item.cycle_label;
+            const yearValue = item.year || item.cycle_no;
+            return yearValue ? `${yearValue}` : "Renewal";
+        }
+
+        function regSourceInfo(raw) {
+            const value = String(raw || "").trim();
+            if (!value) {
+                return { label: "Confirm", badge: "secondary", needsReview: false };
+            }
+            if (value === "reg_fee_paid_date_fallback") {
+                return { label: "Registration Payment", badge: "warning", needsReview: true };
+            }
+            if (value.startsWith("custom_field:")) {
+                return { label: "", badge: "info", needsReview: false };
+            }
+            if (value === "matter_event") {
+                return { label: "", badge: "success", needsReview: false };
+            }
+            return { label: value, badge: "light", needsReview: false };
+        }
+
+        function getCurrentNextN() {
+            const el = document.getElementById("rf-next-n");
+            const val = Number(el?.value || nextWindowDefault || 2);
+            if (!Number.isFinite(val)) return 2;
+            return Math.max(1, Math.min(5, Math.trunc(val)));
+        }
+
+        function normalizeDateRangeInputs() {
+            const startInput = document.getElementById("rf-start");
+            const endInput = document.getElementById("rf-end");
+            if (!startInput || !endInput) return;
+            const start = String(startInput.value || "").trim();
+            const end = String(endInput.value || "").trim();
+            if (!start || !end) return;
+            if (start <= end) return;
+            startInput.value = end;
+            endInput.value = start;
+        }
+
+        function getCurrentFilters() {
+            normalizeDateRangeInputs();
+            return {
+                status: (document.getElementById("rf-filter-status")?.value || DEFAULT_FILTERS.status).trim(),
+                mode: (document.getElementById("rf-view-mode")?.value || DEFAULT_FILTERS.mode).trim(),
+                next_n: getCurrentNextN(),
+                reg_source: (document.getElementById("rf-filter-regsource")?.value || DEFAULT_FILTERS.reg_source).trim(),
+                start: (document.getElementById("rf-start")?.value || "").trim(),
+                end: (document.getElementById("rf-end")?.value || "").trim(),
+            };
+        }
+
+        function syncFiltersToQuery(filters) {
+            try {
+                const params = new URLSearchParams(window.location.search || "");
+                const setOrDelete = (key, value, defaultValue = "") => {
+                    const normalized = String(value || "").trim();
+                    if (!normalized || normalized === String(defaultValue || "").trim()) {
+                        params.delete(key);
+                        return;
+                    }
+                    params.set(key, normalized);
+                };
+
+                setOrDelete("status", filters.status, DEFAULT_FILTERS.status);
+                setOrDelete("mode", filters.mode, DEFAULT_FILTERS.mode);
+                setOrDelete("reg_source", filters.reg_source, DEFAULT_FILTERS.reg_source);
+                if (filters.mode === "next") {
+                    setOrDelete("next_n", String(filters.next_n || nextWindowDefault), String(nextWindowDefault));
+                } else {
+                    params.delete("next_n");
+                }
+                setOrDelete("start", filters.start, "");
+                setOrDelete("end", filters.end, "");
+
+                params.delete("page");
+                params.delete("per_page");
+                params.delete("stats");
+
+                const query = params.toString();
+                const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+                window.history.replaceState({}, "", nextUrl);
+            } catch (e) {}
+        }
+
+        function updateModeHint(mode, nextN) {
+            const el = document.getElementById("rf-mode-hint");
+            const nextWrap = document.getElementById("rf-next-n-wrap");
+            if (nextWrap) nextWrap.classList.toggle("d-none", mode !== "next");
+            if (!el) return;
+            if (mode === "next") {
+                const n = Math.max(1, Number(nextN || 1));
+                el.textContent = `Next Renewal: Matter ${n}items Display.`;
+            } else {
+                el.textContent = "All Renewal Display.";
+            }
+        }
+
+        function updateStatusChips(stats, status) {
+            const byStatus = (stats && stats.by_status) ? stats.by_status : {};
+            document.querySelectorAll("[data-chip-count]").forEach(el => {
+                const key = String(el.dataset.chipCount || "").trim();
+                const n = Number(byStatus[key] || 0);
+                el.textContent = Number.isFinite(n) ? n.toLocaleString() : "0";
+            });
+            document.querySelectorAll("[data-status-chip]").forEach(btn => {
+                const key = String(btn.dataset.statusChip || "").trim();
+                btn.classList.toggle("active", !!status && status !== "all" && key === status);
+            });
+        }
+
+        function updateFilterSummary(stats, filters) {
+            const el = document.getElementById("rf-filter-summary");
+            if (!el) return;
+
+            const pieces = [];
+            if (filters.mode === "next") {
+                pieces.push(`View: Matter ${filters.next_n}items`);
+            } else {
+                pieces.push("View: All Renewal");
+            }
+            if (filters.reg_source && filters.reg_source !== "all") {
+                pieces.push(`Registration date : ${filters.reg_source}`);
+            }
+            if (filters.start || filters.end) {
+                pieces.push(`Period: ${filters.start || "Start"} ~ ${filters.end || ""}`);
+            }
+            if (filters.status && filters.status !== "all") {
+                pieces.push(`Status: ${statusLabel(filters.status)}`);
+            }
+
+            if (!stats || !stats.by_status) {
+                el.textContent = pieces.join(" · ");
+                return;
+            }
+
+            const by = stats.by_status || {};
+            const hidden = [];
+            if (filters.status !== "paid" && Number(by.paid || 0) > 0) {
+                hidden.push(`Paid ${Number(by.paid).toLocaleString()} item(s)`);
+            }
+            if (filters.status !== "giveup" && Number(by.giveup || 0) > 0) {
+                hidden.push(`Abandoned ${Number(by.giveup).toLocaleString()}items`);
+            }
+            if (hidden.length) {
+                pieces.push(`Hidden: ${hidden.join(" · ")}`);
+            }
+            el.textContent = pieces.join(" · ");
+        }
+
+        function updatePageInfo(stats) {
+            const el = document.getElementById("rf-page-info");
+            if (!el) return;
+            const total = stats && Number.isFinite(stats.filtered_total) ? Number(stats.filtered_total) : null;
+            const shown = document.querySelectorAll("#table-body tr").length;
+            const parts = [];
+            if (total != null) {
+                parts.push(`${shown.toLocaleString()} / ${total.toLocaleString()}items`);
+            } else {
+                parts.push(`${shown.toLocaleString()}items Display`);
+            }
+            parts.push(`page ${currentPage}`);
+            parts.push(`page ${perPage}items`);
+            if (hasNext) parts.push("Add page ");
+            el.textContent = parts.join(" · ");
+
+            const loadMoreBtn = document.getElementById("rf-load-more");
+            if (loadMoreBtn && total != null) {
+                const remain = Math.max(total - shown, 0);
+                if (remain > 0) {
+                    loadMoreBtn.textContent = ` View (${Math.min(perPage, remain).toLocaleString()}items)`;
+                } else {
+                    loadMoreBtn.textContent = " page";
+                }
+            }
+        }
+
+        // --- Selection Logic ---
+        function getSelectedMatterIds() {
+            const matters = new Set();
+            document.querySelectorAll('#rf-table tbody input[type="checkbox"]:checked').forEach(cb => {
+                const mid = String(cb.dataset.matterId || "").trim();
+                if (mid) matters.add(mid);
+            });
+            return [...matters];
+        }
+
+        function syncSelectAllState() {
+            const selectAll = document.getElementById("select-all");
+            if (!selectAll) return;
+            const boxes = Array.from(document.querySelectorAll('#rf-table tbody input[type="checkbox"]'));
+            if (!boxes.length) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+                return;
+            }
+            const checkedCount = boxes.filter(cb => cb.checked).length;
+            selectAll.checked = checkedCount === boxes.length;
+            selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+        }
+
+        function updateBulkActionsVisibility() {
+            const bulkActions = document.getElementById("bulk-actions");
+            const countSpan = document.getElementById("selected-count");
+            const statusBtn = document.getElementById("bulk-status-btn");
+            const matterBtn = document.getElementById("bulk-matter-btn");
+            const deleteBtn = document.getElementById("bulk-delete-btn");
+            const hint = document.getElementById("bulk-hint");
+            const enabled = selectedIds.size > 0;
+            const matterCount = getSelectedMatterIds().length;
+            if (countSpan) countSpan.textContent = `${selectedIds.size}items`;
+            if (statusBtn) statusBtn.disabled = !enabled;
+            if (matterBtn) matterBtn.disabled = !enabled || matterCount === 0;
+            if (deleteBtn) deleteBtn.disabled = !enabled;
+            if (hint) {
+                hint.textContent = enabled ? `${matterCount} matter(s) selected` : "Select items to enable bulk actions";
+            }
+            if (bulkActions) bulkActions.classList.toggle("opacity-50", !enabled);
+        }
+
+        function updateLoadMoreVisibility() {
+            const wrap = document.getElementById("load-more-wrap");
+            if (!wrap) return;
+            const rowsCount = document.querySelectorAll("#table-body tr").length;
+            if (rowsCount === 0) {
+                wrap.classList.add("d-none");
+                return;
+            }
+            wrap.classList.remove("d-none");
+            const loadMoreBtn = document.getElementById("rf-load-more");
+            if (loadMoreBtn) loadMoreBtn.disabled = !hasNext;
+        }
+
+        function toggleSelectAll(checked) {
+            document.querySelectorAll('#rf-table tbody input[type="checkbox"]').forEach(cb => {
+                cb.checked = checked;
+                if (checked) selectedIds.add(cb.dataset.id);
+                else selectedIds.delete(cb.dataset.id);
+            });
+            syncSelectAllState();
+            updateBulkActionsVisibility();
+        }
+
+        function toggleRowSelection(id, checked) {
+            if (checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+            syncSelectAllState();
+            updateBulkActionsVisibility();
+        }
+
+        function safeUrl(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "#";
+            if (raw.startsWith("/")) return raw;
+            if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+            return "#";
+        }
+
+        function buildApplicantLinks(raw) {
+            const names = String(raw || "").split(";").map(v => v.trim()).filter(Boolean);
+            const frag = document.createDocumentFragment();
+            if (!names.length) return frag;
+            names.forEach((name, idx) => {
+                if (idx > 0) frag.appendChild(document.createTextNode(", "));
+                const link = document.createElement("a");
+                const helper = window.AppLinks;
+                const url = (helper && typeof helper.buildCrmSearchUrl === "function")
+                    ? helper.buildCrmSearchUrl(name)
+                    : `${crmSearchBase}?q=${encodeURIComponent(name)}`;
+                link.href = url;
+                link.target = "_blank";
+                link.rel = "noopener";
+                link.className = "text-decoration-none";
+                link.textContent = name;
+                frag.appendChild(link);
+            });
+            return frag;
+        }
+
+        function buildCalendarLink(dateText) {
+            const raw = String(dateText || "").trim();
+            if (!raw || raw === "-") return null;
+            const link = document.createElement("a");
+            const helper = window.AppLinks;
+            const url = (helper && typeof helper.buildRenewalCalendarUrl === "function")
+                ? helper.buildRenewalCalendarUrl(raw)
+                : `${calendarBase}?date=${encodeURIComponent(raw)}`;
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.className = "text-decoration-none";
+            link.textContent = raw;
+            return link;
+        }
+
+        function formatAmount(raw) {
+            const n = Number(raw);
+            if (Number.isFinite(n)) return n.toLocaleString();
+            return String(raw || "0");
+        }
+
+        function getDueDiffDays(due) {
+            const target = parseDateYmd(due);
+            if (!target) return null;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        function renderRow(x) {
+            const status = getStatusValue(x);
+            const statusText = statusLabel(status);
+            const due = getEffectiveDue(x) || "-";
+            const yearLabel = formatYearLabel(x);
+            const officialFeeRaw = Number(x.official_fee ?? x.fee_amount ?? 0) || 0;
+            const vatAmountRaw = Number(x.vat_amount || 0) || 0;
+            const serviceFeeRaw = Number(x.service_fee || 0) || 0;
+            const totalFeeRaw = Number(x.total_fee ?? (officialFeeRaw + vatAmountRaw + serviceFeeRaw)) || 0;
+            const fee = formatAmount(totalFeeRaw);
+            const currency = x.currency || "USD";
+                const statusClass = statusText === "Paid" ? "text-success" : statusText === "Overdue" ? "text-danger" : "";
+            const id = String(x.id || "");
+
+            const tr = document.createElement("tr");
+            tr.className = "table-row-hover";
+            tr.dataset.status = status;
+
+            const tdSelect = document.createElement("td");
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.className = "form-check-input";
+            checkbox.dataset.id = id;
+            checkbox.dataset.matterId = String(x.matter_id || "");
+            checkbox.checked = selectedIds.has(id);
+            checkbox.addEventListener("change", () => toggleRowSelection(id, checkbox.checked));
+            tdSelect.appendChild(checkbox);
+            tr.appendChild(tdSelect);
+
+            const tdRef = document.createElement("td");
+            const link = document.createElement("a");
+            link.href = safeUrl(x.url);
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.className = "fw-semibold text-decoration-none text-dark";
+            link.textContent = x.case_ref || "-";
+            tdRef.appendChild(link);
+            tr.appendChild(tdRef);
+
+            const tdTitle = document.createElement("td");
+            const titleDiv = document.createElement("div");
+            titleDiv.className = "text-truncate";
+            titleDiv.style.maxWidth = "240px";
+            titleDiv.title = x.case_title || "";
+            const titleLink = document.createElement("a");
+            titleLink.href = safeUrl(x.url);
+            titleLink.target = "_blank";
+            titleLink.rel = "noopener";
+            titleLink.className = "text-decoration-none text-dark";
+            titleLink.textContent = x.case_title || "-";
+            titleDiv.appendChild(titleLink);
+
+            const applicantsDiv = document.createElement("div");
+            applicantsDiv.className = "small text-muted text-truncate";
+            applicantsDiv.style.maxWidth = "240px";
+            if (x.applicants) {
+                applicantsDiv.appendChild(buildApplicantLinks(x.applicants));
+            } else {
+                applicantsDiv.textContent = "";
+            }
+            tdTitle.appendChild(titleDiv);
+            tdTitle.appendChild(applicantsDiv);
+            tr.appendChild(tdTitle);
+
+            const tdYear = document.createElement("td");
+            const badge = document.createElement("span");
+            badge.className = "badge bg-light text-dark border";
+            badge.textContent = yearLabel;
+            tdYear.appendChild(badge);
+            tr.appendChild(tdYear);
+
+            const tdReg = document.createElement("td");
+            const regInfo = regSourceInfo(x.reg_source);
+            const regBadge = document.createElement("span");
+            regBadge.className = `badge bg-${regInfo.badge || "secondary"}`;
+            regBadge.textContent = regInfo.label || "-";
+            tdReg.appendChild(regBadge);
+            if (x.needs_review || regInfo.needsReview) {
+                const review = document.createElement("a");
+                review.className = "badge bg-danger ms-1 text-decoration-none";
+                review.textContent = " Required";
+                review.href = `${opsAnnuityBase}?q=${encodeURIComponent(x.matter_id || "")}&refresh=1`;
+                review.target = "_blank";
+                review.rel = "noopener";
+                tdReg.appendChild(review);
+            }
+            tr.appendChild(tdReg);
+
+            const tdDue = document.createElement("td");
+            tdDue.className = "fw-medium";
+            const dueLink = buildCalendarLink(due);
+            if (dueLink) {
+                tdDue.appendChild(dueLink);
+            } else {
+                tdDue.textContent = due || "-";
+            }
+            const diff = getDueDiffDays(due);
+            if (diff !== null) {
+                const dueMeta = document.createElement("div");
+                dueMeta.className = "rf-due-meta text-muted";
+                if (diff === 0) {
+                    dueMeta.textContent = "D-Day";
+                    dueMeta.className = "rf-due-meta text-danger";
+                } else if (diff < 0) {
+                    dueMeta.textContent = `D+${Math.abs(diff)}`;
+                    dueMeta.className = "rf-due-meta text-danger";
+                } else {
+                    dueMeta.textContent = `D-${diff}`;
+                }
+                tdDue.appendChild(dueMeta);
+            }
+            tr.appendChild(tdDue);
+
+            const tdFee = document.createElement("td");
+            const feeMain = document.createElement("div");
+            feeMain.className = "fw-medium";
+            feeMain.textContent = `${fee} ${currency}`;
+            tdFee.appendChild(feeMain);
+            if (vatAmountRaw || serviceFeeRaw) {
+                const feeMeta = document.createElement("div");
+                feeMeta.className = "small text-muted";
+                feeMeta.textContent = [
+                    ` ${formatAmount(officialFeeRaw)}`,
+                    vatAmountRaw ? `Sales tax ${formatAmount(vatAmountRaw)}` : "",
+                    serviceFeeRaw ? `Fee ${formatAmount(serviceFeeRaw)}` : "",
+                ].filter(Boolean).join(" / ");
+                tdFee.appendChild(feeMeta);
+            }
+            tr.appendChild(tdFee);
+
+            const tdStatus = document.createElement("td");
+            const select = document.createElement("select");
+            select.className = `form-select form-select-sm border-0 bg-transparent fw-semibold ${statusClass}`;
+            select.style.width = "100px";
+            select.style.cursor = "pointer";
+            select.dataset.committedValue = status;
+            if (status === "overdue") {
+                const overdueOption = document.createElement("option");
+                overdueOption.value = "overdue";
+                overdueOption.textContent = "Overdue (auto)";
+                overdueOption.selected = true;
+                overdueOption.disabled = true;
+                select.appendChild(overdueOption);
+            }
+            [
+                ["pending", "Waiting"],
+                ["paid", "Paid"],
+                ["giveup", "Abandoned"],
+            ].forEach(([value, label]) => {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = label;
+                if (status !== "overdue" && value === status) option.selected = true;
+                if (!status && value === "pending") option.selected = true;
+                select.appendChild(option);
+            });
+            const rememberSelectValue = () => {
+                select.dataset.prevValue = select.value;
+            };
+            select.addEventListener("focus", rememberSelectValue);
+            select.addEventListener("mousedown", rememberSelectValue);
+            select.addEventListener("change", () => updateStatus(id, select.value, select));
+            tdStatus.appendChild(select);
+            tr.appendChild(tdStatus);
+
+            const tdActions = document.createElement("td");
+            tdActions.className = "text-end";
+            const deleteBtn = document.createElement("button");
+            deleteBtn.className = "btn btn-link text-muted p-0 hover-danger";
+            deleteBtn.type = "button";
+            deleteBtn.addEventListener("click", () => deleteFee(id));
+            const icon = document.createElement("i");
+            icon.className = "bi bi-trash";
+            deleteBtn.appendChild(icon);
+            tdActions.appendChild(deleteBtn);
+            tr.appendChild(tdActions);
+
+            return tr;
+        }
+
+        // --- Data Loading ---
+        async function loadFees(reset = true) {
+            const tableBody = document.getElementById("table-body");
+            const emptyState = document.getElementById("empty-state");
+            const selectAll = document.getElementById("select-all");
+
+            if (reset) {
+                currentPage = 1;
+                selectedIds.clear();
+                updateBulkActionsVisibility();
+                if (selectAll) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+                tableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><div class="spinner-border text-success spinner-border-sm"></div></td></tr>';
+            }
+
+            const filters = getCurrentFilters();
+            updateModeHint(filters.mode, filters.next_n);
+            if (reset) syncFiltersToQuery(filters);
+
+            try {
+                const params = new URLSearchParams();
+                if (filters.status) params.set("status", filters.status);
+                if (filters.mode) params.set("mode", filters.mode);
+                if (filters.mode === "next") params.set("next_n", String(filters.next_n));
+                if (filters.reg_source) params.set("reg_source", filters.reg_source);
+                if (filters.start) params.set("start", filters.start);
+                if (filters.end) params.set("end", filters.end);
+                params.set("page", String(currentPage));
+                params.set("per_page", String(perPage));
+                params.set("stats", "1");
+
+                const r = await fetch(`${apiBase}?${params.toString()}`);
+                if (!r.ok) {
+                    const payload = await readJsonSafe(r);
+                    const msg = (payload && (payload.error || payload.message)) || `HTTP ${r.status}`;
+                    throw new Error(msg);
+                }
+
+                const payload = await r.json();
+                const rows = payload.items || payload || [];
+
+                if (reset && (!rows || rows.length === 0)) {
+                    tableBody.innerHTML = "";
+                    tableBody.classList.add("d-none");
+                    emptyState.classList.remove("d-none");
+                    hasNext = false;
+                    updateLoadMoreVisibility();
+                    updateStatusChips(payload.stats, filters.status);
+                    updateFilterSummary(payload.stats, filters);
+                    updatePageInfo(payload.stats);
+                    return;
+                }
+
+                tableBody.classList.remove("d-none");
+                emptyState.classList.add("d-none");
+
+                const fragment = document.createDocumentFragment();
+                rows.forEach(row => fragment.appendChild(renderRow(row)));
+                if (reset) {
+                    tableBody.innerHTML = "";
+                    tableBody.appendChild(fragment);
+                } else {
+                    tableBody.appendChild(fragment);
+                }
+
+                hasNext = Boolean(payload.has_next);
+                updateLoadMoreVisibility();
+                updateStatusChips(payload.stats, filters.status);
+                updateFilterSummary(payload.stats, filters);
+                updatePageInfo(payload.stats);
+                syncSelectAllState();
+                updateBulkActionsVisibility();
+            } catch (e) {
+                console.error(e);
+                tableBody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">Data  Failed</td></tr>';
+                hasNext = false;
+                updateLoadMoreVisibility();
+            }
+        }
+
+        // --- Actions ---
+        async function readJsonSafe(res) {
+            try {
+                return await res.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function assertOk(res, fallbackMessage) {
+            const payload = await readJsonSafe(res);
+            if (res.ok) return payload;
+            const msg = (payload && (payload.error || payload.message)) || fallbackMessage || `Request failed (${res.status})`;
+            throw new Error(msg);
+        }
+
+        function restoreStatusSelect(select, fallbackValue) {
+            if (!select) return;
+            const restoreTo = String(fallbackValue || select.dataset.committedValue || "").trim();
+            if (!restoreTo) return;
+            select.value = restoreTo;
+            select.dataset.prevValue = restoreTo;
+        }
+
+        async function updateStatus(id, val, select) {
+            const previousValue = String(select?.dataset.prevValue || select?.dataset.committedValue || "").trim();
+            if (!await ipmConfirm("Status Change?")) {
+                restoreStatusSelect(select, previousValue);
+                return;
+            }
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(`${apiBase}/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify({ status: val }),
+                });
+                await assertOk(res, "Status Change Failed");
+                if (select) select.dataset.committedValue = val;
+                loadFees(true);
+            } catch (e) {
+                restoreStatusSelect(select, previousValue);
+                await ipmAlert(e.message || "Status Change Failed", { title: "Error" });
+                loadFees(true);
+            }
+        }
+
+        async function bulkUpdateStatus(status) {
+            if (selectedIds.size === 0) return;
+            if (!await ipmConfirm(`Change status for ${selectedIds.size} selected item(s)?`)) return;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(apiBulkBase, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify({ ids: [...selectedIds], status }),
+                });
+                const payload = await assertOk(res, "Bulk status update Failed");
+                if (payload && typeof payload.updated === "number") {
+                    await ipmAlert(`Bulk status update completed: ${payload.updated} item(s)${payload.cascade ? " (cascade)" : ""}`, { title: "Done" });
+                }
+                loadFees(true);
+            } catch (e) {
+                await ipmAlert(e.message || "Bulk status update Failed", { title: "Error" });
+                loadFees(true);
+            }
+        }
+
+        async function bulkMatterAction(action) {
+            const matterIds = getSelectedMatterIds();
+            if (!matterIds.length) return;
+            const labelMap = {
+                ensure: "Renewal updated",
+                workflow_sync: "Task",
+            };
+            const label = labelMap[action] || action;
+            if (!await ipmConfirm(`selected ${matterIds.length}items Matter ${label} row`)) return;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(apiMatterBulkBase, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify({ action, matter_ids: matterIds }),
+                });
+                const payload = await assertOk(res, `${label} Failed`);
+                if (payload) {
+                    const processed = Number(payload.processed || 0);
+                    const failed = Number(payload.failed || 0);
+                    let detail = `${label} Done: ${processed}items Matter Process`;
+                    if (action === "ensure") {
+                        detail += ` / Renewal Change ${Number(payload.changed || 0)}items`;
+                    }
+                    if (failed > 0) detail += ` / Failed ${failed}items`;
+                    await ipmAlert(detail, { title: failed > 0 ? "Failed" : "Done" });
+                }
+                loadFees(true);
+            } catch (e) {
+                await ipmAlert(e.message || `${label} Failed`, { title: "Error" });
+                loadFees(true);
+            }
+        }
+
+        async function bulkDelete() {
+            if (selectedIds.size === 0) return;
+            if (!await ipmConfirm(`Delete ${selectedIds.size} selected item(s)?`)) return;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(apiBulkBase, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify({ ids: [...selectedIds] }),
+                });
+                const payload = await assertOk(res, "Bulk Delete Failed");
+                if (payload && typeof payload.deleted === "number") {
+                    await ipmAlert(`Bulk Delete Done: ${payload.deleted}items`, { title: "Done" });
+                }
+                loadFees(true);
+            } catch (e) {
+                await ipmAlert(e.message || "Bulk Delete Failed", { title: "Error" });
+                loadFees(true);
+            }
+        }
+
+        async function deleteFee(id) {
+            if (!await ipmConfirm("Delete?")) return;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(`${apiBase}/${id}`, {
+                    method: "DELETE",
+                    headers: { "X-CSRFToken": csrfToken },
+                });
+                await assertOk(res, "Delete Failed");
+                loadFees(true);
+            } catch (e) {
+                await ipmAlert(e.message || "Delete Failed", { title: "Error" });
+                loadFees(true);
+            }
+        }
+
+        function initFiltersFromQuery() {
+            try {
+                const qs = new URLSearchParams(window.location.search || "");
+                const assign = (id, key) => {
+                    const el = document.getElementById(id);
+                    const val = (qs.get(key) || "").trim();
+                    if (!el || !val) return;
+                    el.value = val;
+                };
+                assign("rf-filter-status", "status");
+                assign("rf-view-mode", "mode");
+                assign("rf-filter-regsource", "reg_source");
+                assign("rf-next-n", "next_n");
+                assign("rf-start", "start");
+                assign("rf-end", "end");
+            } catch (e) {}
+        }
+
+        function applyDateShortcut(kind) {
+            const startInput = document.getElementById("rf-start");
+            const endInput = document.getElementById("rf-end");
+            if (!startInput || !endInput) return;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (kind === "clear") {
+                startInput.value = "";
+                endInput.value = "";
+                loadFees(true);
+                return;
+            }
+
+            let startDate = new Date(today);
+            let endDate = new Date(today);
+
+            if (kind === "this_month") {
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            } else if (kind === "next_30") {
+                endDate = new Date(today);
+                endDate.setDate(endDate.getDate() + 30);
+            } else if (kind === "this_year") {
+                startDate = new Date(today.getFullYear(), 0, 1);
+                endDate = new Date(today.getFullYear(), 11, 31);
+            }
+
+            startInput.value = formatDateYmd(startDate);
+            endInput.value = formatDateYmd(endDate);
+            loadFees(true);
+        }
+
+        function initStatusChipHandlers() {
+            document.querySelectorAll("[data-status-chip]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    const nextStatus = String(btn.dataset.statusChip || "").trim();
+                    const select = document.getElementById("rf-filter-status");
+                    if (!nextStatus || !select) return;
+                    select.value = nextStatus;
+                    loadFees(true);
+                });
+            });
+        }
+
+        function initDateShortcutHandlers() {
+            document.querySelectorAll("[data-date-shortcut]").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    applyDateShortcut(String(btn.dataset.dateShortcut || "").trim());
+                });
+            });
+        }
+
+        document.getElementById("btn-submit-fee").onclick = async () => {
+            const form = document.getElementById("add-fee-form");
+            if (!form.reportValidity()) return;
+
+            const payload = {
+                case_id: document.getElementById("rf-case").value,
+                year: document.getElementById("rf-year").value,
+                due_date: document.getElementById("rf-due").value,
+                fee_amount: document.getElementById("rf-amt").value,
+            };
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+            try {
+                const res = await fetch(apiBase, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                    body: JSON.stringify(payload),
+                });
+                await assertOk(res, "Add Failed");
+                const modalEl = document.getElementById("addFeeModal");
+                if (window.bootstrap && bootstrap.Modal && modalEl) {
+                    const inst = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                    if (inst) inst.hide();
+                }
+                form.reset();
+                loadFees(true);
+            } catch (e) {
+                await ipmAlert(e.message || "Add Failed", { title: "Error" });
+            }
+        };
+
+        // Init
+        initFiltersFromQuery();
+        initStatusChipHandlers();
+        initDateShortcutHandlers();
+
+        document.getElementById("rf-filter-status").onchange = () => loadFees(true);
+        const modeSelect = document.getElementById("rf-view-mode");
+        if (modeSelect) modeSelect.onchange = () => {
+            updateModeHint(modeSelect.value || "next", getCurrentNextN());
+            loadFees(true);
+        };
+        const nextNSelect = document.getElementById("rf-next-n");
+        if (nextNSelect) nextNSelect.onchange = () => {
+            updateModeHint(modeSelect?.value || "next", getCurrentNextN());
+            loadFees(true);
+        };
+        const regSourceSelect = document.getElementById("rf-filter-regsource");
+        if (regSourceSelect) regSourceSelect.onchange = () => loadFees(true);
+        const startInput = document.getElementById("rf-start");
+        const endInput = document.getElementById("rf-end");
+        if (startInput) startInput.onchange = () => {
+            normalizeDateRangeInputs();
+            loadFees(true);
+        };
+        if (endInput) endInput.onchange = () => {
+            normalizeDateRangeInputs();
+            loadFees(true);
+        };
+        const loadMoreBtn = document.getElementById("rf-load-more");
+        if (loadMoreBtn) {
+            loadMoreBtn.onclick = () => {
+                if (!hasNext) return;
+                currentPage += 1;
+                loadFees(false);
+            };
+        }
+        updateModeHint(modeSelect?.value || "next", getCurrentNextN());
+        loadFees(true);
+        </script>
+
+        <!-- === GIVEUP VIEW === -->
+        {% elif page == 'giveup' %}
+        <div class="app-card p-4">
+            <h5 class="fw-bold mb-3 text-secondary">Abandoned(Giveup) target items</h5>
+            <div class="table-responsive">
+                <table class="table table-custom w-100" id="gu-table">
+                    <thead>
+                        <tr>
+                            <th>Ref No.</th>
+                            <th>Matter / Applicant</th>
+                            <th>Renewal</th>
+                            <th>Deadline</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="gu-empty" class="text-center py-4 text-muted d-none">
+                <small>Abandoned items none.</small>
+            </div>
+            <div id="gu-load-more-wrap" class="text-center pt-3 d-none">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="gu-load-more"> View</button>
+            </div>
+        </div>
+        <script>
+        // NOTE: Giveup page is a separate route and does not load the fees-page helpers.
+        // Keep tiny shared helpers here so the page works when opened directly.
+        const crmSearchBase = "{{ url_for('customers.clients') }}";
+        const calendarBase = "{{ url_for('annuities.calendar_month') }}";
+        const giveupApiBase = "{{ url_for('annuities.api_fees') }}";
+        let giveupPage = 1;
+        const giveupPerPage = 200;
+        let giveupHasNext = false;
+
+        function safeUrl(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "#";
+            if (raw.startsWith("/")) return raw;
+            if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+            return "#";
+        }
+
+        function formatYearLabel(item) {
+            if (item.cycle_label) return item.cycle_label;
+            const yearValue = item.year || item.cycle_no;
+            return yearValue ? `${yearValue}` : 'Renewal';
+        }
+
+        function buildApplicantLinks(raw) {
+            const names = String(raw || "").split(";").map(v => v.trim()).filter(Boolean);
+            const frag = document.createDocumentFragment();
+            if (!names.length) return frag;
+            names.forEach((name, idx) => {
+                if (idx > 0) frag.appendChild(document.createTextNode(", "));
+                const link = document.createElement("a");
+                const helper = window.AppLinks;
+                const url = (helper && typeof helper.buildCrmSearchUrl === "function")
+                    ? helper.buildCrmSearchUrl(name)
+                    : `${crmSearchBase}?q=${encodeURIComponent(name)}`;
+                link.href = url;
+                link.target = "_blank";
+                link.rel = "noopener";
+                link.className = "text-decoration-none";
+                link.textContent = name;
+                frag.appendChild(link);
+            });
+            return frag;
+        }
+
+        function buildCalendarLink(dateText) {
+            const raw = String(dateText || "").trim();
+            if (!raw || raw === "-") return null;
+            const link = document.createElement("a");
+            const helper = window.AppLinks;
+            const url = (helper && typeof helper.buildRenewalCalendarUrl === "function")
+                ? helper.buildRenewalCalendarUrl(raw)
+                : `${calendarBase}?date=${encodeURIComponent(raw)}`;
+            link.href = url;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.className = "text-decoration-none";
+            link.textContent = raw;
+            return link;
+        }
+
+        function updateGiveupLoadMoreVisibility() {
+            const wrap = document.getElementById("gu-load-more-wrap");
+            const btn = document.getElementById("gu-load-more");
+            if (!wrap || !btn) return;
+            wrap.classList.toggle("d-none", !giveupHasNext);
+            btn.disabled = !giveupHasNext;
+        }
+
+        async function loadGiveups(reset = true) {
+            const tb = document.querySelector("#gu-table tbody");
+            const empty = document.getElementById('gu-empty');
+
+            if (reset) {
+                giveupPage = 1;
+                tb.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>';
+            }
+
+            try {
+                const params = new URLSearchParams({
+                    status: "giveup",
+                    page: String(giveupPage),
+                    per_page: String(giveupPerPage),
+                });
+                const r = await fetch(`${giveupApiBase}?${params.toString()}`);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const payload = await r.json();
+                const rows = payload.items || payload || [];
+
+                if (reset && (!rows || rows.length === 0)) {
+                    tb.innerHTML = '';
+                    empty.classList.remove('d-none');
+                    giveupHasNext = false;
+                    updateGiveupLoadMoreVisibility();
+                    return;
+                }
+
+                empty.classList.add('d-none');
+                if (reset) tb.innerHTML = "";
+                const fragment = document.createDocumentFragment();
+                rows.forEach(x => {
+                    const tr = document.createElement("tr");
+                    tr.className = "table-row-hover";
+
+                    const tdRef = document.createElement("td");
+                    const link = document.createElement("a");
+                    link.href = safeUrl(x.url);
+                    link.target = "_blank";
+                    link.rel = "noopener";
+                    link.className = "text-decoration-none fw-semibold text-secondary";
+                    link.textContent = x.case_ref || "-";
+                    tdRef.appendChild(link);
+                    tr.appendChild(tdRef);
+
+                    const tdTitle = document.createElement("td");
+                    const titleDiv = document.createElement("div");
+                    titleDiv.className = "text-truncate";
+                    titleDiv.style.maxWidth = "300px";
+                    const titleLink = document.createElement("a");
+                    titleLink.href = safeUrl(x.url);
+                    titleLink.target = "_blank";
+                    titleLink.rel = "noopener";
+                    titleLink.className = "text-decoration-none text-dark";
+                    titleLink.textContent = x.case_title || "-";
+                    titleDiv.appendChild(titleLink);
+                    const applicantsDiv = document.createElement("div");
+                    applicantsDiv.className = "small text-muted text-truncate";
+                    if (x.applicants) {
+                        applicantsDiv.appendChild(buildApplicantLinks(x.applicants));
+                    } else {
+                        applicantsDiv.textContent = "";
+                    }
+                    tdTitle.appendChild(titleDiv);
+                    tdTitle.appendChild(applicantsDiv);
+                    tr.appendChild(tdTitle);
+
+                    const tdYear = document.createElement("td");
+                    tdYear.textContent = formatYearLabel(x);
+                    tr.appendChild(tdYear);
+
+                    const tdDue = document.createElement("td");
+                    const dueValue = x.effective_due_date || x.due_date || "-";
+                    const dueLink = buildCalendarLink(dueValue);
+                    if (dueLink) {
+                        tdDue.appendChild(dueLink);
+                    } else {
+                        tdDue.textContent = dueValue || "-";
+                    }
+                    tr.appendChild(tdDue);
+
+                    const tdStatus = document.createElement("td");
+                    const badge = document.createElement("span");
+                    badge.className = "badge bg-secondary";
+                    badge.textContent = "GIVEUP";
+                    tdStatus.appendChild(badge);
+                    tr.appendChild(tdStatus);
+
+                    fragment.appendChild(tr);
+                });
+                tb.appendChild(fragment);
+                giveupHasNext = Boolean(payload.has_next);
+                updateGiveupLoadMoreVisibility();
+            } catch(e) {
+                if (reset) tb.innerHTML = '';
+                giveupHasNext = false;
+                updateGiveupLoadMoreVisibility();
+            }
+        }
+        const giveupLoadMoreBtn = document.getElementById("gu-load-more");
+        if (giveupLoadMoreBtn) {
+            giveupLoadMoreBtn.addEventListener("click", () => {
+                if (!giveupHasNext) return;
+                giveupPage += 1;
+                loadGiveups(false);
+            });
+        }
+        loadGiveups(true);
+        </script>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

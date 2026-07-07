@@ -1,0 +1,2349 @@
+{% extends 'invoice_base.html' %}
+{% set invoice_wrapper_class = 'invoice-list' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ <link rel="stylesheet" href="{{ static_asset_url('vendor/flatpickr/flatpickr.min.css') }}">
+
+ {% set new_invoice_url = url_for('billing_invoices.invoices.new_invoice', outgoing=request.args.get('outgoing','0'), business_profile_id=request.args.get('business_profile_id',''), basis=basis, q=request.args.get('q',''), status=request.args.get('status',''), sort=request.args.get('sort','number'), date_from=request.args.get('date_from',''), date_to=request.args.get('date_to',''), min_amount=request.args.get('min_amount',''), max_amount=request.args.get('max_amount',''), per_page=request.args.get('per_page',''), ipm_case_id=request.args.get('ipm_case_id',''), ipm_case_ref=request.args.get('ipm_case_ref','')) %}
+ <div class="page-header invoice-list-page-header">
+  <h2 style="margin:0;">{{ t('invoices') }}</h2>
+  <div class="page-actions">
+   <a class="btn btn-primary" href="{{ new_invoice_url }}"><i class="bi bi-plus-lg" aria-hidden="true"></i> {{ t('new_invoice') }}</a>
+  </div>
+ </div>
+
+ {% set view_module = "invoice_list" %}
+ {% include "_saved_views_bar.html" %}
+
+ {% set invoice_filter_open = request.args.get('business_profile_id') or request.args.get('q') or request.args.get('status') or request.args.get('outgoing') or request.args.get('date_from') or request.args.get('date_to') or request.args.get('min_amount') or request.args.get('max_amount') or request.args.get('ipm_case_id') or request.args.get('ipm_case_ref') %}
+ <div class="card invoice-filter-card">
+  <details class="invoice-filter-details app-filter-details" {% if invoice_filter_open %}open{% endif %}>
+   <summary class="invoice-filter-summary">
+    <span class="app-filter-details__title">
+     <i class="bi bi-funnel"></i>
+     <span>Search Filters</span>
+    </span>
+    <span class="app-filter-details__meta">Filter invoices by client, status, date, matter, or amount.</span>
+    <i class="bi bi-chevron-down app-filter-details__chevron"></i>
+   </summary>
+   <div class="invoice-filter-body app-filter-details__body">
+  <form id="filtersForm" class="row g-2 align-items-end" method="get">
+   <div class="col-12 col-md-6 col-lg-3">
+    <label id="bpBasisLabel" class="cursor-pointer"
+        onclick="setBasis('{{ 'issued' if basis=='settlement' else 'settlement' }}'); return false;">
+     {{ t('business') }}
+     <span class="muted text-xs ms-1">
+      ({% if basis == 'settlement' %}Cash basis{% else %}Issued basis{% endif %})
+     </span>
+    </label>
+
+    <select name="business_profile_id">
+     <option value="">{{ t('all') }}</option>
+     {% if currencies %}
+      <optgroup label="Currency">
+       {% for cur in currencies %}
+        <option value="C:{{ cur }}" {% if request.args.get('business_profile_id') == ('C:' ~ cur) %}selected{% endif %}>{{ cur }} businesses</option>
+       {% endfor %}
+      </optgroup>
+     {% endif %}
+     <optgroup label="Business profiles">
+     {% for profile in all_profiles %}
+      <option value="{{ profile['id'] }}" {% if request.args.get('business_profile_id')==profile['id']|string %}selected{% endif %}>{{ profile['name'] }}</option>
+     {% endfor %}
+     </optgroup>
+    </select>
+
+    <input type="hidden" name="basis" id="basisInput" value="{{ basis or 'issued' }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('keyword_search') }}</label>
+    <input name="q" value="{{ request.args.get('q','') }}" placeholder="{{ t('keyword_placeholder') }}" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('status') }}</label>
+    <select name="status">
+     <option value="">{{ t('all') }}</option>
+     <optgroup label="Billing status">
+      <option value="draft" {% if request.args.get('status')=='draft' %}selected{% endif %}>{{ t('status_draft') }}</option>
+      <option value="sent" {% if request.args.get('status')=='sent' %}selected{% endif %}>{{ t('status_sent') }}</option>
+      <option value="tax_issued" {% if request.args.get('status')=='tax_issued' %}selected{% endif %}>{{ t('status_tax_issued') }}</option>
+      <option value="pre_overdue" {% if request.args.get('status')=='pre_overdue' %}selected{% endif %}>{{ t('status_pre_overdue') }}</option>
+      <option value="void" {% if request.args.get('status')=='void' %}selected{% endif %}>{{ t('status_void') }}</option>
+     </optgroup>
+     <optgroup label="Payment status">
+      <option value="sent_unpaid" {% if request.args.get('status')=='sent_unpaid' %}selected{% endif %}>Issued - unpaid</option>
+      <option value="payment_pending" {% if request.args.get('status')=='payment_pending' %}selected{% endif %}>Issued - payment pending</option>
+      <option value="sent_unpaid_or_pending" {% if request.args.get('status')=='sent_unpaid_or_pending' %}selected{% endif %}>Issued - unpaid or pending</option>
+      <option value="paid" {% if request.args.get('status')=='paid' %}selected{% endif %}>Paid</option>
+      <option value="paid_no_tax" {% if request.args.get('status')=='paid_no_tax' %}selected{% endif %}>Paid - tax not recorded</option>
+     </optgroup>
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Matter Type</label>
+    <select name="outgoing">
+     <option value="" {% if request.args.get('outgoing','') == '' %}selected{% endif %}>All</option>
+     <option value="1" {% if request.args.get('outgoing') == '1' %}selected{% endif %}>Foreign matter</option>
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('sort_by') }}</label>
+    <select name="sort">
+     <option value="issue_date_desc" {% if request.args.get('sort')=='issue_date_desc' %}selected{% endif %}>{{ t('sort_newest') }}</option>
+     <option value="issue_date_asc" {% if request.args.get('sort')=='issue_date_asc' %}selected{% endif %}>{{ t('sort_oldest') }}</option>
+     <option value="amount_desc" {% if request.args.get('sort')=='amount_desc' %}selected{% endif %}>{{ t('sort_amount_high') }}</option>
+     <option value="amount_asc" {% if request.args.get('sort')=='amount_asc' %}selected{% endif %}>{{ t('sort_amount_low') }}</option>
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('date_from') }}</label>
+    <input type="date" id="date_from" name="date_from" value="{{ request.args.get('date_from','') }}" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('date_to') }}</label>
+    <input type="date" id="date_to" name="date_to" value="{{ request.args.get('date_to','') }}" />
+   </div>
+   <div class="col-12 d-flex gap-2 flex-wrap align-items-center">
+    <span class="muted text-xs">Date presets:</span>
+    <div class="date-preset-group" role="group" aria-label="Quick date-range presets">
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('Q1')">Q1</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('Q2')">Q2</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('Q3')">Q3</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('Q4')">Q4</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('H1')">H1</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('H2')">H2</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('M0')">This month</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('M-1')">Last month</button>
+     <button type="button" class="btn date-preset-btn" onclick="applyRange('Y')">This year</button>
+    </div>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('min_amount') }}</label>
+    <input type="number" name="min_amount" value="{{ request.args.get('min_amount','') }}" placeholder="0" />
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>{{ t('max_amount') }}</label>
+    <input type="number" name="max_amount" value="{{ request.args.get('max_amount','') }}" placeholder="{{ t('all') if get_locale() == 'en' else '' }}" />
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">{{ t('search') }}</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.invoices.list_invoices') }}" onclick="try{sessionStorage.setItem('invoice_skip_beforeunload_once','1');localStorage.removeItem('invoice_desired_list_url');}catch(e){}">{{ t('reset') }}</a>
+    </div>
+   </div>
+  </form>
+   </div>
+  </details>
+ </div>
+
+ <div class="card mt-3 invoice-list-toolbar">
+  <div class="invoice-list-toolbar__inner">
+   <div class="invoice-list-toolbar__bulk">
+   <form id="bulkStatusForm" method="post" action="{{ url_for('billing_invoices.invoices.bulk_update_status') }}" class="d-flex gap-3 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div class="min-w-260">
+     <label>Bulk status</label>
+     <select id="bulkStatusCombined">
+      <option value="">{{ t('select_status') }}</option>
+      <optgroup label="Billing status">
+       <option value="billing:draft">{{ t('status_draft') }}</option>
+       <option value="billing:sent">{{ t('status_sent') }}</option>
+       <option value="billing:tax_issued">{{ t('status_tax_issued') }}</option>
+       <option value="billing:void">{{ t('status_void') }}</option>
+       <option value="billing:pre_overdue">{{ t('status_pre_overdue') }}</option>
+      </optgroup>
+      <optgroup label="Payment status">
+       <option value="payment:unpaid">Unpaid</option>
+       <option value="payment:pending">Payment pending</option>
+       <option value="payment:paid">Paid</option>
+      </optgroup>
+     </select>
+    </div>
+    <input type="hidden" name="mode" id="bulkMode" value="">
+    <input type="hidden" name="new_status" id="bulkNewStatus" value="">
+    <button type="button" onclick="submitBulkUpdate()" class="btn btn-primary">{{ t('change_status') }}</button>
+   </form>
+
+   <form id="bulkDeleteForm" method="post" action="{{ url_for('billing_invoices.invoices.bulk_delete') }}" class="d-flex gap-3 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <button type="button" onclick="submitBulkDelete()" class="btn btn-danger">{{ t('bulk_delete') }}</button>
+   </form>
+
+   <span id="selectedCount" class="muted ms-2">0{{ t('selected_count') }}</span>
+   </div>
+
+   <form method="get" class="invoice-list-toolbar__pager d-flex gap-2 align-items-center flex-wrap">
+    <input type="hidden" name="business_profile_id" value="{{ request.args.get('business_profile_id', '') }}" />
+    <input type="hidden" name="basis" value="{{ basis }}" />
+    <input type="hidden" name="q" value="{{ request.args.get('q', '') }}" />
+    <input type="hidden" name="status" value="{{ request.args.get('status', '') }}" />
+    <input type="hidden" name="sort" value="{{ request.args.get('sort', '') }}" />
+    <input type="hidden" name="date_from" value="{{ request.args.get('date_from', '') }}" />
+    <input type="hidden" name="date_to" value="{{ request.args.get('date_to', '') }}" />
+    <input type="hidden" name="min_amount" value="{{ request.args.get('min_amount', '') }}" />
+    <input type="hidden" name="max_amount" value="{{ request.args.get('max_amount', '') }}" />
+    <input type="hidden" name="outgoing" value="{{ request.args.get('outgoing', '') }}" />
+    <input type="hidden" name="ipm_case_id" value="{{ request.args.get('ipm_case_id', '') }}" />
+    <input type="hidden" name="ipm_case_ref" value="{{ request.args.get('ipm_case_ref', '') }}" />
+    <label class="mb-0 text-sm text-soft">Rows per page:</label>
+    <select name="per_page" onchange="this.form.submit()" class="input-inline input-inline-auto">
+     <option value="20" {% if per_page==20 %}selected{% endif %}>20 rows</option>
+     <option value="50" {% if per_page==50 %}selected{% endif %}>50 rows</option>
+     <option value="100" {% if per_page==100 %}selected{% endif %}>100 rows</option>
+     <option value="200" {% if per_page==200 %}selected{% endif %}>200 rows</option>
+    </select>
+   </form>
+
+   <div class="page-actions invoice-list-toolbar__actions">
+    <div class="filter-actions">
+     <a class="btn btn-sm btn-outline-secondary desktop-preferred-action" href="{{ url_for('billing_invoices.invoices.export_invoices', business_profile_id=request.args.get('business_profile_id',''), basis=basis, q=request.args.get('q',''), status=request.args.get('status',''), outgoing=request.args.get('outgoing',''), sort=request.args.get('sort','issue_date'), date_from=request.args.get('date_from',''), date_to=request.args.get('date_to',''), min_amount=request.args.get('min_amount',''), max_amount=request.args.get('max_amount',''), format='xlsx') }}" title="Export to Excel"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+     <a class="btn btn-sm btn-outline-primary" href="{{ url_for('billing_invoices.aging.aging_report') }}" title="Aging report (Aging Report)"><i class="bi bi-bar-chart-line"></i> Aging</a>
+     <button class="btn btn-sm btn-outline-primary desktop-preferred-action" type="button" onclick="openTaxInvoiceImportModal()" title="Import tax-document spreadsheet">Import tax-document XLS</button>
+     <a class="btn btn-sm btn-primary" href="{{ url_for('billing_invoices.invoices.tax_issue') }}" title="Tax documentation queue">Tax queue</a>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ {% set invoice_total_count = total_count|default(invoices|length) %}
+ <div class="card mt-3 invoice-results-card">
+  <div class="invoice-list-summary">
+   <div class="invoice-list-summary__count">
+    Total {{ invoice_total_count }} invoices
+    {% if request.args.get('q') %}
+     <span class="invoice-list-summary__query">(Search: "{{ request.args.get('q') }}")</span>
+    {% endif %}
+   </div>
+   <div class="invoice-list-summary__range">
+    {% if invoice_total_count %}
+     {{ (page - 1) * per_page + 1 }} - {{ [page * per_page, invoice_total_count]|min }} Display
+    {% else %}
+     0 - 0 Display
+    {% endif %}
+   </div>
+  </div>
+  <div class="table-card table-card-scroll invoice-list-table-card">
+   <table class="responsive invoices-table table-compact">
+    <thead>
+     <tr>
+      <th class="w-40 a_c"><input type="checkbox" id="selectAll" onchange="toggleAll(this)" /></th>
+      <th>{{ t('invoice_number') }}</th>
+      <th id="bp-toggle-header" class="cursor-pointer" title="Toggle issuing business and settlement business">
+       <span class="bp-label-issued">{{ t('business') }}</span>
+       <span class="bp-label-settlement is-hidden">Settlement business</span>
+      </th>
+      <th class="hide-sm col-ref">{{ t('internal_reference') }}</th>
+      <th>{{ t('client') }}</th>
+      <th class="a_c nowrap">{{ t('issue_date') }}</th>
+      <th class="hide-sm col-memo">{{ t('notes') }}</th>
+      <th class="a_r">{{ t('total') }}</th>
+      <th class="col-status a_c">{{ t('status') }}</th>
+      <th></th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for inv in invoices %}
+     {% set billing_status = inv['billing_status'] or inv['status'] or 'draft' %}
+     {% set billing_status_display = inv.get('billing_status_display') or ('tax_issued' if billing_status in ('tax_issued', 'cash_issued', 'processed') else billing_status) %}
+     {% set payment_complete = inv.get('payment_effectively_complete') or inv['payment_verified'] or inv['payment_status'] == 'paid' or inv['status'] == 'paid' %}
+     {% set inv_out = (inv['is_outgoing'] if 'is_outgoing' in inv.keys() else 0) %}
+     {% set remittance_attached = inv.get('foreign_remittance_proof_attached') %}
+     {% set case_links = inv.get('matched_case_links') or [] %}
+     {% set needs_case_link = payment_complete and not case_links %}
+     <tr id="inv-row-{{ inv['id'] }}"
+       class="{{ 'invoice-row-needs-case-link' if needs_case_link else '' }}"
+       data-invoice-row="1"
+       data-invoice-id="{{ inv['id'] }}"
+       data-status="{{ inv['status'] }}"
+       data-billing-status="{{ billing_status }}"
+       data-payment-status="{{ inv['payment_status'] }}"
+       data-payment-verified="{{ 1 if payment_complete else 0 }}"
+       data-needs-case-link="{{ 1 if needs_case_link else 0 }}">
+      <td class="a_c" data-label="Select"><input type="checkbox" class="invoice-checkbox" data-id="{{ inv['id'] }}" data-number="{{ inv['number'] }}" onchange="syncInvoiceCheckboxes(this); updateCount()" /></td>
+      <td class="nowrap text-md" data-label="{{ t('invoice_number') }}">
+       {% if billing_status not in ('tax_issued', 'cash_issued', 'processed') %}
+        <a href="{{ url_for('billing_invoices.invoices.edit_invoice', invoice_id=inv['id'], outgoing='1' if inv_out else '0') }}" onclick="rememberListPositionAndChange({{ inv['id'] }})" class="invoice-number-link">{{ inv['number'] }}</a>
+       {% else %}
+        {% set warn_key = 'tax_issued_warning' %}
+        <a href="#" class="invoice-number-disabled" title="{{ t(warn_key) }}" onclick="try{ if(window.AppAlert) window.AppAlert('{{ t(warn_key) }}', { title: 'Confirm' }); }catch(e){}; return false;">{{ inv['number'] }}</a>
+       {% endif %}
+      </td>
+      <td class="muted text-sm bp-cell" data-label="{{ t('business') }}">
+       <span class="bp-value-issued">{{ (inv['business_name'] or '-') | replace('ExamplePatent_', '') }}</span>
+       <span class="bp-value-settlement is-hidden">{{ inv['settlement_summary'] or '-' }}</span>
+      </td>
+      <td class="hide-sm col-ref" data-label="{{ t('internal_reference') }}">
+       {% if case_links %}
+        <div class="invoice-case-links" title="Linked matters: {{ case_links|length }}">
+         {% for c in case_links %}
+          <a
+           href="{{ url_for('case_work.case_detail', case_id=c['matter_id'], invoice_id=inv['id'], _anchor='sec-cost') }}"
+           class="invoice-case-link"
+           title="{{ c['right_name'] or c['matter_id'] }}"
+         >
+           {{ c['our_ref'] or c['matter_id'] }}
+          </a>
+         {% endfor %}
+        </div>
+       {% else %}
+        {% if needs_case_link %}
+         <div class="invoice-case-missing-alert" title="Payment received, but no matter reference is linked.">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+          <span>Matter reference required</span>
+         </div>
+        {% endif %}
+        <input type="text"
+            value="{{ inv['internal_reference'] or '' }}"
+            placeholder="-"
+            data-invoice-id="{{ inv['id'] }}"
+            onblur="updateInternalRef(this)"
+            class="input-inline input-inline-ref {{ 'input-inline-case-missing' if needs_case_link else '' }}" />
+       {% endif %}
+      </td>
+      <td data-label="{{ t('client') }}"><a href="{{ url_for('billing_invoices.clients.view_client', client_id=inv['client_id']) }}" class="link-strong">{{ inv['client_name'] }}</a></td>
+      <td class="a_c text-sm nowrap" data-label="{{ t('issue_date') }}">{{ inv['issue_date'] }}</td>
+      <td class="hide-sm col-memo" data-label="{{ t('notes') }}">
+       <input type="text"
+           value="{{ inv['admin_memo'] or '' }}"
+           placeholder="-"
+           data-invoice-id="{{ inv['id'] }}"
+           onblur="updateAdminMemo(this)"
+           class="input-inline input-inline-memo" />
+      </td>
+      <td class="a_r text-sm lh-sm" data-label="{{ t('total') }}">
+       <strong class="amount amount-{{ (inv['currency'] or 'USD')|lower }}">{{ currency(inv['total'], inv['currency']) }}</strong><br>
+       {% set cur = (inv['currency'] or 'USD')|upper %}
+       {% if cur in ['USD', 'JPY'] %}
+        <span class="muted text-xs">(Svc+tax {{ "{:,.0f}".format(inv['service_total'] + inv['tax']) }}, fees {{ "{:,.0f}".format(inv['admin_total']) }}{% if inv['foreign_total']> 0 %}, foreign {{ "{:,.0f}".format(inv['foreign_total']) }}{% endif %})</span>
+       {% else %}
+        <span class="muted text-xs">(Svc+tax {{ "{:,.2f}".format(inv['service_total'] + inv['tax']) }}, fees {{ "{:,.2f}".format(inv['admin_total']) }}{% if inv['foreign_total']> 0 %}, foreign {{ "{:,.2f}".format(inv['foreign_total']) }}{% endif %})</span>
+       {% endif %}
+      </td>
+      <td class="col-status a_c" data-label="{{ t('status') }}">
+       <form method="post"
+          action="{{ url_for('billing_invoices.invoices.bulk_update_status') }}"
+          class="inline-status-form d-inline"
+          data-invoice-id="{{ inv['id'] }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <input type="hidden" name="invoice_ids[]" value="{{ inv['id'] }}"/>
+        <input type="hidden" name="mode" value=""/>
+        <input type="hidden" name="new_status" value=""/>
+
+        <div>
+         {% set is_finalized_billing = billing_status in ('tax_issued', 'cash_issued', 'processed') %}
+         <select onchange="submitInlineStatus(this,'billing')"
+             class="pill pill-sm pill-select {{ billing_status_display }}"
+             {% if is_finalized_billing %}disabled title="Finalized invoices can be changed only through bulk status update."{% endif %}>
+          <option value="draft" {% if billing_status_display=='draft' %}selected{% endif %}>{{ t('status_draft') }}</option>
+          <option value="sent" {% if billing_status_display=='sent' %}selected{% endif %}>{{ t('status_sent') }}</option>
+          {% if is_finalized_billing or billing_status in ('sent', 'pre_overdue') %}
+          <option value="tax_issued" {% if billing_status_display=='tax_issued' %}selected{% endif %}>{{ t('status_tax_issued') }}</option>
+          {% endif %}
+          <option value="pre_overdue" {% if billing_status_display=='pre_overdue' %}selected{% endif %}>{{ t('status_pre_overdue') }}</option>
+          <option value="void" {% if billing_status_display=='void' %}selected{% endif %}>{{ t('status_void') }}</option>
+         </select>
+         {% if is_finalized_billing %}
+          <div class="muted text-xs mt-1">{{ inv.get('tax_issue_type_label') or 'Uncategorized' }}</div>
+         {% endif %}
+        </div>
+       </form>
+      </td>
+      <td class="right nowrap" data-label="Actions">
+       <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv['id']) }}" onclick="rememberListPositionAndChange({{ inv['id'] }})">{{ t('view') }}</a>
+       {% if inv_out %}
+        <button
+         class="btn btn-sm btn-remittance-proof {{ 'is-uploaded' if remittance_attached else '' }}"
+         type="button"
+         data-invoice-id="{{ inv['id'] }}"
+         data-has-remittance-proof="{{ 1 if remittance_attached else 0 }}"
+         onclick="openRemittanceProofUpload({{ inv['id'] }}, this)"
+         title="{{ 'Foreign remittance proof attached' if remittance_attached else 'Attach foreign remittance proof' }}"
+         aria-label="{{ inv['number'] }} {{ 'Foreign remittance proof attached' if remittance_attached else 'Attach foreign remittance proof' }}"
+         {% if remittance_attached %}disabled aria-disabled="true"{% endif %}
+       ><i class="bi bi-currency-exchange" aria-hidden="true"></i></button>
+       {% endif %}
+       {% if inv['currency'] in ('USD', 'USD') and inv['payment_status'] != 'paid' %}
+        {% set payment_check_label = 'Verify payment' %}
+        <button class="btn btn-sm app-icon-btn {{ 'btn-llm-unpaid' if inv['payment_status']=='unpaid' else 'btn-llm-pending' }}" type="button" title="{{ payment_check_label }}" aria-label="{{ inv['number'] }} {{ payment_check_label }}" onclick="openQuickPaymentLLM({{ inv['id'] }}, '{{ inv['number'] }}', '{{ inv['issue_date'] }}', '{{ inv['client_name'] }}', '{{ currency(inv['total'], inv['currency']) }}', '{{ inv['currency'] }}')">
+         <i class="bi bi-bank" aria-hidden="true"></i>
+        </button>
+       {% else %}
+        <button class="btn btn-sm app-icon-btn btn-llm-disabled" type="button" title="Payment verification unavailable" aria-label="{{ inv['number'] }} Payment verification unavailable" disabled>
+         <i class="bi bi-bank" aria-hidden="true"></i>
+        </button>
+       {% endif %}
+      </td>
+     </tr>
+     {% else %}
+      <tr><td colspan="10" class="muted">{{ t('no_results') }}</td></tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+  <div class="invoice-mobile-cards" aria-label="Invoice card list">
+   {% for inv in invoices %}
+   {% set billing_status = inv['billing_status'] or inv['status'] or 'draft' %}
+   {% set billing_status_display = inv.get('billing_status_display') or ('tax_issued' if billing_status in ('tax_issued', 'cash_issued', 'processed') else billing_status) %}
+   {% set payment_complete = inv.get('payment_effectively_complete') or inv['payment_verified'] or inv['payment_status'] == 'paid' or inv['status'] == 'paid' %}
+   {% set inv_out = (inv['is_outgoing'] if 'is_outgoing' in inv.keys() else 0) %}
+   {% set remittance_attached = inv.get('foreign_remittance_proof_attached') %}
+   {% set cur = (inv['currency'] or 'USD')|upper %}
+   {% set case_links = inv.get('matched_case_links') or [] %}
+   {% set needs_case_link = payment_complete and not case_links %}
+   <article
+    class="invoice-mobile-card {{ 'is-needs-case-link' if needs_case_link else '' }}"
+    id="inv-card-{{ inv['id'] }}"
+    data-invoice-row="1"
+    data-invoice-id="{{ inv['id'] }}"
+    data-status="{{ inv['status'] }}"
+    data-billing-status="{{ billing_status }}"
+    data-payment-status="{{ inv['payment_status'] }}"
+    data-payment-verified="{{ 1 if payment_complete else 0 }}"
+    data-needs-case-link="{{ 1 if needs_case_link else 0 }}"
+  >
+    <div class="invoice-mobile-card__head">
+     <label class="invoice-mobile-card__check">
+      <input type="checkbox" class="invoice-checkbox" data-id="{{ inv['id'] }}" data-number="{{ inv['number'] }}" onchange="syncInvoiceCheckboxes(this); updateCount()" />
+      <span class="visually-hidden">Select invoice</span>
+     </label>
+     <div class="invoice-mobile-card__title">
+      {% if billing_status not in ('tax_issued', 'cash_issued', 'processed') %}
+       <a href="{{ url_for('billing_invoices.invoices.edit_invoice', invoice_id=inv['id'], outgoing='1' if inv_out else '0') }}" onclick="rememberListPositionAndChange({{ inv['id'] }})" class="invoice-number-link">{{ inv['number'] }}</a>
+      {% else %}
+       {% set warn_key = 'tax_issued_warning' %}
+       <a href="#" class="invoice-number-disabled" title="{{ t(warn_key) }}" onclick="try{ if(window.AppAlert) window.AppAlert('{{ t(warn_key) }}', { title: 'Confirm' }); }catch(e){}; return false;">{{ inv['number'] }}</a>
+      {% endif %}
+      <div class="text-soft text-xs">{{ inv['issue_date'] }}</div>
+     </div>
+     <strong class="amount amount-{{ (inv['currency'] or 'USD')|lower }}">{{ currency(inv['total'], inv['currency']) }}</strong>
+    </div>
+
+    <div class="invoice-mobile-card__body">
+     <div>
+      <div class="text-soft text-xs">Client</div>
+      <a href="{{ url_for('billing_invoices.clients.view_client', client_id=inv['client_id']) }}" class="link-strong">{{ inv['client_name'] }}</a>
+     </div>
+     <div>
+      <div class="text-soft text-xs">
+       <span class="bp-label-issued">{{ t('business') }}</span>
+       <span class="bp-label-settlement is-hidden">Settlement business</span>
+      </div>
+      <div class="text-sm">
+       <span class="bp-value-issued">{{ (inv['business_name'] or '-') | replace('ExamplePatent_', '') }}</span>
+       <span class="bp-value-settlement is-hidden">{{ inv['settlement_summary'] or '-' }}</span>
+      </div>
+     </div>
+     <div>
+      <div class="text-soft text-xs">Internal reference</div>
+      {% if case_links %}
+       <div class="invoice-case-links" title="Linked matters: {{ case_links|length }}">
+        {% for c in case_links[:2] %}
+         <a href="{{ url_for('case_work.case_detail', case_id=c['matter_id'], invoice_id=inv['id'], _anchor='sec-cost') }}" class="invoice-case-link" title="{{ c['right_name'] or c['matter_id'] }}">{{ c['our_ref'] or c['matter_id'] }}</a>
+        {% endfor %}
+        {% if case_links|length> 2 %}<span class="text-xs text-soft"> {{ case_links|length - 2 }}</span>{% endif %}
+       </div>
+      {% else %}
+       {% if needs_case_link %}
+        <div class="invoice-case-missing-alert" title="Payment received, but no matter reference is linked.">
+         <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+         <span>Matter reference required</span>
+        </div>
+       {% endif %}
+       <span class="text-sm">{{ inv['internal_reference'] or '-' }}</span>
+      {% endif %}
+     </div>
+     <div>
+      <div class="text-soft text-xs">{{ t('notes') }}</div>
+      <span class="text-sm">{{ inv['admin_memo'] or '-' }}</span>
+     </div>
+    </div>
+
+    <div class="invoice-mobile-card__status">
+     <form method="post"
+        action="{{ url_for('billing_invoices.invoices.bulk_update_status') }}"
+        class="inline-status-form"
+        data-invoice-id="{{ inv['id'] }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="invoice_ids[]" value="{{ inv['id'] }}"/>
+      <input type="hidden" name="mode" value=""/>
+      <input type="hidden" name="new_status" value=""/>
+      {% set is_finalized_billing = billing_status in ('tax_issued', 'cash_issued', 'processed') %}
+      <select onchange="submitInlineStatus(this,'billing')"
+          class="pill pill-sm pill-select {{ billing_status_display }}"
+          {% if is_finalized_billing %}disabled title="Finalized invoices can be changed only through bulk status update."{% endif %}>
+       <option value="draft" {% if billing_status_display=='draft' %}selected{% endif %}>{{ t('status_draft') }}</option>
+       <option value="sent" {% if billing_status_display=='sent' %}selected{% endif %}>{{ t('status_sent') }}</option>
+       {% if is_finalized_billing or billing_status in ('sent', 'pre_overdue') %}
+       <option value="tax_issued" {% if billing_status_display=='tax_issued' %}selected{% endif %}>{{ t('status_tax_issued') }}</option>
+       {% endif %}
+       <option value="pre_overdue" {% if billing_status_display=='pre_overdue' %}selected{% endif %}>{{ t('status_pre_overdue') }}</option>
+       <option value="void" {% if billing_status_display=='void' %}selected{% endif %}>{{ t('status_void') }}</option>
+      </select>
+     </form>
+     <div class="invoice-mobile-card__actions">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=inv['id']) }}" onclick="rememberListPositionAndChange({{ inv['id'] }})">{{ t('view') }}</a>
+      {% if inv_out %}
+       <button
+        class="btn btn-sm btn-remittance-proof {{ 'is-uploaded' if remittance_attached else '' }}"
+        type="button"
+        data-invoice-id="{{ inv['id'] }}"
+        data-has-remittance-proof="{{ 1 if remittance_attached else 0 }}"
+        onclick="openRemittanceProofUpload({{ inv['id'] }}, this)"
+        title="{{ 'Foreign remittance proof attached' if remittance_attached else 'Attach foreign remittance proof' }}"
+        aria-label="{{ inv['number'] }} {{ 'Foreign remittance proof attached' if remittance_attached else 'Attach foreign remittance proof' }}"
+        {% if remittance_attached %}disabled aria-disabled="true"{% endif %}
+      ><i class="bi bi-currency-exchange" aria-hidden="true"></i> Remittance proof</button>
+      {% endif %}
+      {% if inv['currency'] in ('USD', 'USD') and inv['payment_status'] != 'paid' %}
+       <button class="btn btn-sm {{ 'btn-llm-unpaid' if inv['payment_status']=='unpaid' else 'btn-llm-pending' }}" type="button" onclick="openQuickPaymentLLM({{ inv['id'] }}, '{{ inv['number'] }}', '{{ inv['issue_date'] }}', '{{ inv['client_name'] }}', '{{ currency(inv['total'], inv['currency']) }}', '{{ inv['currency'] }}')">
+        <i class="bi bi-bank" aria-hidden="true"></i>
+        Verify payment
+       </button>
+      {% endif %}
+     </div>
+    </div>
+   </article>
+   {% else %}
+   <div class="invoice-mobile-empty">{{ t('no_results') }}</div>
+   {% endfor %}
+  </div>
+ </div>
+
+ {% set invoice_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = invoice_pagination_args.update({'per_page': per_page, 'basis': basis}) %}
+ {{ ui.pagination('billing_invoices.invoices.list_invoices', page, total_pages, invoice_pagination_args, 'Invoice pagination') }}
+
+ <script src="{{ static_asset_url('vendor/flatpickr/flatpickr.min.js') }}"></script>
+ <script>
+  const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+
+  function getInvoiceRoot() {
+   return document.querySelector('.invoice-theme') || document.body;
+  }
+
+  function showInvoiceBusy(message) {
+   try {
+    const existing = document.getElementById('invoiceBusyOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'invoiceBusyOverlay';
+    overlay.className = 'modal-overlay show busy-overlay';
+
+    const panel = document.createElement('div');
+    panel.className = 'modal-card busy-panel';
+    panel.innerHTML = `
+     <div class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></div>
+     <div>${message || 'Processing. Please wait...'}</div>
+    `;
+
+    overlay.appendChild(panel);
+    getInvoiceRoot().appendChild(overlay);
+   } catch (e) {}
+  }
+
+  let remittanceProofInput = null;
+  let remittanceProofTarget = null;
+  let remittanceProofModal = null;
+  let remittanceProofDropzone = null;
+  let remittanceProofModalAlert = null;
+  let remittanceProofLastFocus = null;
+
+  function getCsrfToken() {
+   const meta = document.querySelector('meta[name="csrf-token"]');
+   return meta ? (meta.getAttribute('content') || '') : '';
+  }
+
+  function showRemittanceProofMessage(message, title) {
+   if (window.AppAlert) return window.AppAlert(message, { title: title || 'Confirm' });
+   window.alert(message);
+   return Promise.resolve();
+  }
+
+  function getRemittanceProofButtons(invoiceId) {
+   const id = escapeDataId(invoiceId);
+   return Array.from(document.querySelectorAll(`.btn-remittance-proof[data-invoice-id="${id}"]`));
+  }
+
+  function isRemittanceProofDone(button) {
+   return !!button && (button.disabled || button.dataset.hasRemittanceProof === '1');
+  }
+
+  function setRemittanceProofBusy(invoiceId, busy) {
+   getRemittanceProofButtons(invoiceId).forEach((button) => {
+    if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+    const alreadyDone = button.dataset.hasRemittanceProof === '1';
+    button.disabled = busy || alreadyDone;
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+    button.innerHTML = busy ? '...' : button.dataset.originalHtml;
+   });
+  }
+
+  function markRemittanceProofUploaded(invoiceId) {
+   getRemittanceProofButtons(invoiceId).forEach((button) => {
+    button.classList.add('is-uploaded');
+    button.dataset.hasRemittanceProof = '1';
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+    button.title = 'Foreign remittance proof attached';
+    button.setAttribute('aria-label', 'Foreign remittance proof attached');
+   });
+  }
+
+  function setRemittanceProofModalAlert(message, kind) {
+   if (!remittanceProofModalAlert) return;
+   remittanceProofModalAlert.textContent = message || '';
+   remittanceProofModalAlert.className = `remittance-proof-modal__alert ${kind ? 'is-' + kind : ''}`;
+   remittanceProofModalAlert.hidden = !message;
+  }
+
+  function setRemittanceProofModalBusy(busy) {
+   if (!remittanceProofDropzone) return;
+   remittanceProofDropzone.classList.toggle('is-loading', busy);
+   remittanceProofDropzone.setAttribute('aria-busy', busy ? 'true' : 'false');
+  }
+
+  function closeRemittanceProofModal() {
+   if (!remittanceProofModal) return;
+   remittanceProofModal.classList.remove('show');
+   remittanceProofModal.setAttribute('hidden', '');
+   setRemittanceProofModalBusy(false);
+   setRemittanceProofModalAlert('', '');
+   const focusTarget = remittanceProofLastFocus;
+   remittanceProofLastFocus = null;
+   if (focusTarget && typeof focusTarget.focus === 'function') {
+    try { focusTarget.focus(); } catch (e) {}
+   }
+  }
+
+  function ensureRemittanceProofModal() {
+   if (remittanceProofModal) return remittanceProofModal;
+
+   const overlay = document.createElement('div');
+   overlay.id = 'remittanceProofUploadModal';
+   overlay.className = 'modal-overlay remittance-proof-modal';
+   overlay.setAttribute('hidden', '');
+
+   const panel = document.createElement('div');
+   panel.className = 'modal-card is-wide remittance-proof-modal__panel';
+   panel.setAttribute('role', 'dialog');
+   panel.setAttribute('aria-modal', 'true');
+   panel.setAttribute('aria-labelledby', 'remittanceProofUploadTitle');
+   panel.innerHTML = `
+    <div class="remittance-proof-modal__head">
+     <div>
+      <h3 class="modal-title" id="remittanceProofUploadTitle">Attach foreign remittance proof</h3>
+      <p class="modal-help">Upload a PDF or image. The file can be analyzed for remittance details.</p>
+     </div>
+     <button type="button" class="btn btn-ghost btn-sm" data-remittance-close="1" aria-label="Close">Close</button>
+    </div>
+    <div class="remittance-proof-dropzone" role="button" tabindex="0" aria-label="Foreign remittance proof file upload">
+     <div class="remittance-proof-dropzone__icon"></div>
+     <div class="remittance-proof-dropzone__title">Drop a file here or click to select one</div>
+     <div class="remittance-proof-dropzone__hint">PDF, PNG, JPG, or JPEG. Paste an image with Ctrl+V.</div>
+    </div>
+    <div class="remittance-proof-modal__alert" role="alert" hidden></div>
+   `;
+   overlay.appendChild(panel);
+   getInvoiceRoot().appendChild(overlay);
+
+   remittanceProofModal = overlay;
+   remittanceProofDropzone = panel.querySelector('.remittance-proof-dropzone');
+   remittanceProofModalAlert = panel.querySelector('.remittance-proof-modal__alert');
+
+   overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) closeRemittanceProofModal();
+   });
+   panel.querySelector('[data-remittance-close="1"]')?.addEventListener('click', closeRemittanceProofModal);
+   overlay.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeRemittanceProofModal();
+   });
+
+   remittanceProofDropzone.addEventListener('click', () => {
+    if (remittanceProofDropzone.classList.contains('is-loading')) return;
+    const input = getRemittanceProofInput();
+    input.value = '';
+    input.click();
+   });
+   remittanceProofDropzone.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !remittanceProofDropzone.classList.contains('is-loading')) {
+     event.preventDefault();
+     const input = getRemittanceProofInput();
+     input.value = '';
+     input.click();
+    }
+   });
+   ['dragenter', 'dragover'].forEach((eventName) => {
+    remittanceProofDropzone.addEventListener(eventName, (event) => {
+     event.preventDefault();
+     event.stopPropagation();
+     if (remittanceProofDropzone.classList.contains('is-loading')) return;
+     if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+     remittanceProofDropzone.classList.add('is-dragover');
+    });
+   });
+   ['dragleave', 'dragend'].forEach((eventName) => {
+    remittanceProofDropzone.addEventListener(eventName, () => {
+     remittanceProofDropzone.classList.remove('is-dragover');
+    });
+   });
+   remittanceProofDropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    remittanceProofDropzone.classList.remove('is-dragover');
+    if (remittanceProofDropzone.classList.contains('is-loading')) return;
+    const target = remittanceProofTarget || {};
+    const files = event.dataTransfer && event.dataTransfer.files
+     ? Array.from(event.dataTransfer.files)
+     : [];
+    if (!target.invoiceId || !files.length) return;
+    uploadRemittanceProofFiles(target.invoiceId, files);
+   });
+   remittanceProofDropzone.addEventListener('paste', handleRemittanceProofPaste);
+   document.addEventListener('paste', handleRemittanceProofPaste, true);
+
+   return overlay;
+  }
+
+  function isRemittanceProofModalOpen() {
+   return !!remittanceProofModal && remittanceProofModal.classList.contains('show') && !remittanceProofModal.hasAttribute('hidden');
+  }
+
+  function shouldHandleRemittanceProofPaste(event) {
+   if (!event || event.defaultPrevented || event.remittanceProofPasteHandled) return false;
+   if (!isRemittanceProofModalOpen() || !remittanceProofModal) return false;
+   if (remittanceProofDropzone && remittanceProofDropzone.classList.contains('is-loading')) return false;
+
+   const active = document.activeElement;
+   const eventTarget = event.target && event.target.nodeType === 1 ? event.target : null;
+   const activeInsideModal = !!(active && remittanceProofModal.contains(active));
+   const targetInsideModal = !!(eventTarget && remittanceProofModal.contains(eventTarget));
+   if (!activeInsideModal && !targetInsideModal) return false;
+
+   const editable = eventTarget && eventTarget.closest('input, textarea, select, [contenteditable="true"]');
+   return !editable;
+  }
+
+  function clipboardFilesFromEvent(event) {
+   const data = event.clipboardData || window.clipboardData;
+   if (!data) return [];
+   const files = [];
+   const seen = new Set();
+   const now = new Date();
+   const ts = now.toISOString().replace(/[:.]/g, '').replace('T', '-').slice(0, 15);
+   const addFile = (file, index) => {
+    if (!file) return;
+    const type = file.type || 'image/png';
+    if (!type.startsWith('image/') && type !== 'application/pdf') return;
+    const key = `${file.name || ''}:${type}:${file.size || 0}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    if (file.name) {
+     files.push(file);
+     return;
+    }
+    let ext = 'png';
+    if (type.includes('jpeg') || type.includes('jpg')) ext = 'jpg';
+    else if (type.includes('gif')) ext = 'gif';
+    else if (type.includes('webp')) ext = 'webp';
+    else if (type.includes('pdf')) ext = 'pdf';
+    try {
+     files.push(new File([file], `clipboard-${ts}-${index}.${ext}`, { type }));
+    } catch (e) {
+     files.push(file);
+    }
+   };
+
+   Array.from(data.files || []).forEach(addFile);
+   Array.from(data.items || []).forEach((item, index) => {
+    if (!item || item.kind !== 'file') return;
+    addFile(item.getAsFile(), index);
+   });
+   return files;
+  }
+
+  function handleRemittanceProofPaste(event) {
+   if (!shouldHandleRemittanceProofPaste(event)) return;
+   const target = remittanceProofTarget || {};
+   if (!target.invoiceId) return;
+
+   const files = clipboardFilesFromEvent(event);
+   if (!files.length) return;
+   event.remittanceProofPasteHandled = true;
+   event.preventDefault();
+   event.stopPropagation();
+   if (typeof event.stopImmediatePropagation === 'function') {
+    event.stopImmediatePropagation();
+   }
+   setRemittanceProofModalAlert('Uploading pasted image...', 'info');
+   uploadRemittanceProofFiles(target.invoiceId, files);
+  }
+
+  function getRemittanceProofInput() {
+   if (remittanceProofInput) return remittanceProofInput;
+   const input = document.createElement('input');
+   input.type = 'file';
+   input.multiple = true;
+   input.accept = '.pdf,image/*';
+   input.style.display = 'none';
+   input.setAttribute('aria-hidden', 'true');
+   input.addEventListener('change', function() {
+    const target = remittanceProofTarget || {};
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!target.invoiceId || !files.length) return;
+    uploadRemittanceProofFiles(target.invoiceId, files);
+   });
+   document.body.appendChild(input);
+   remittanceProofInput = input;
+   return input;
+  }
+
+  function openRemittanceProofUpload(invoiceId, trigger) {
+   const id = parseInt(invoiceId, 10);
+   if (!id) return;
+   if (isRemittanceProofDone(trigger)) return;
+   remittanceProofTarget = { invoiceId: id, trigger: trigger || null };
+   remittanceProofLastFocus = trigger || document.activeElement;
+   const modal = ensureRemittanceProofModal();
+   setRemittanceProofModalAlert('', '');
+   setRemittanceProofModalBusy(false);
+   modal.removeAttribute('hidden');
+   modal.classList.add('show');
+   setTimeout(() => {
+    if (remittanceProofDropzone) remittanceProofDropzone.focus();
+   }, 0);
+  }
+
+  async function uploadRemittanceProofFiles(invoiceId, files) {
+   const selectedFiles = Array.from(files || []).filter(Boolean);
+   if (!selectedFiles.length) return;
+
+   const fd = new FormData();
+   selectedFiles.forEach((file) => fd.append('files[]', file));
+   fd.append('role', 'foreign_remittance_proof');
+
+   const headers = {};
+   const csrf = getCsrfToken();
+   if (csrf) headers['X-CSRFToken'] = csrf;
+
+   setRemittanceProofBusy(invoiceId, true);
+   setRemittanceProofModalBusy(true);
+   setRemittanceProofModalAlert('Uploading and analyzing foreign remittance proof...', 'info');
+   try {
+    const resp = await fetch(`${scriptRoot}/invoices/${invoiceId}/attachments/upload`, {
+     method: 'POST',
+     headers,
+     body: fd,
+     credentials: 'same-origin'
+    });
+    let data = {};
+    try { data = await resp.json(); } catch (e) {}
+    if (!resp.ok || !data.success) {
+     throw new Error(data.error || 'Foreign remittance proof upload failed.');
+    }
+    markRemittanceProofUploaded(invoiceId);
+    const attachments = Array.isArray(data.attachments) ? data.attachments : [];
+    const parsed = attachments.map((item) => item && item.analysis).find(Boolean);
+    const detail = parsed && parsed.summary ? `\n${parsed.summary}` : '';
+    closeRemittanceProofModal();
+    await showRemittanceProofMessage(`Foreign remittance proof attached.${detail}`, 'Done');
+  } catch (err) {
+    const message = err && err.message ? err.message : 'Foreign remittance proof upload failed.';
+    setRemittanceProofModalAlert(message, 'error');
+    await showRemittanceProofMessage(message, 'Error');
+   } finally {
+    setRemittanceProofBusy(invoiceId, false);
+    setRemittanceProofModalBusy(false);
+   }
+  }
+
+  function setupRemittanceProofDropTargets() {
+   document.querySelectorAll('.btn-remittance-proof').forEach((button) => {
+    if (button.dataset.dropReady === '1') return;
+    button.dataset.dropReady = '1';
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+     button.addEventListener(eventName, (event) => {
+      if (isRemittanceProofDone(button)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      button.classList.add('is-dragover');
+     });
+    });
+
+    ['dragleave', 'dragend'].forEach((eventName) => {
+     button.addEventListener(eventName, () => {
+      button.classList.remove('is-dragover');
+     });
+    });
+
+    button.addEventListener('drop', (event) => {
+     if (isRemittanceProofDone(button)) return;
+     event.preventDefault();
+     event.stopPropagation();
+     button.classList.remove('is-dragover');
+     const files = event.dataTransfer && event.dataTransfer.files
+      ? Array.from(event.dataTransfer.files)
+      : [];
+     const invoiceId = parseInt(button.dataset.invoiceId || '', 10);
+     if (!invoiceId || !files.length) return;
+     uploadRemittanceProofFiles(invoiceId, files);
+    });
+   });
+  }
+
+  if (document.readyState === 'loading') {
+   document.addEventListener('DOMContentLoaded', setupRemittanceProofDropTargets);
+  } else {
+   setupRemittanceProofDropTargets();
+  }
+
+  function getInvoiceRow(el) {
+   return el ? el.closest('[data-invoice-row="1"]') : null;
+  }
+
+  function getInvoiceRowCheckbox(row) {
+   return row ? row.querySelector('.invoice-checkbox') : null;
+  }
+
+  function getCheckedInvoiceBoxes() {
+   const selected = new Map();
+   document.querySelectorAll('.invoice-checkbox:checked').forEach(cb => {
+    const id = cb.dataset.id || '';
+    if (id && !selected.has(id)) selected.set(id, cb);
+   });
+   return Array.from(selected.values());
+  }
+
+  function escapeDataId(value) {
+   const raw = String(value || '');
+   if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(raw);
+   return raw.replace(/["\\]/g, '\\$&');
+  }
+
+  function syncInvoiceCheckboxes(source) {
+   if (!source || !source.dataset) return;
+   const id = source.dataset.id || '';
+   if (!id) return;
+   document.querySelectorAll(`.invoice-checkbox[data-id="${escapeDataId(id)}"]`).forEach(cb => {
+    if (cb !== source && !cb.disabled) cb.checked = source.checked;
+   });
+  }
+
+  const TAX_ISSUE_TYPE_OPTIONS = [
+   {
+    value: 'tax_invoice',
+    label: 'Tax documentation',
+    desc: 'Sales tax or other tax documentation recorded'
+   },
+   {
+    value: 'cash_receipt',
+    label: 'Payment receipt',
+    desc: 'Payment receipt recorded'
+   },
+   {
+    value: 'card',
+    label: 'Card payment',
+    desc: 'Card receipt recorded'
+   },
+   {
+    value: 'non_taxable',
+    label: 'Non-taxable',
+    desc: 'No tax documentation required'
+   }
+  ];
+
+  function ensureHiddenInput(form, name, value) {
+   let input = form.querySelector(`input[name="${name}"]`);
+   if (!input) {
+    input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    form.appendChild(input);
+   }
+   input.value = value || '';
+   return input;
+  }
+
+  function chooseTaxIssueType(title, helpText) {
+   return new Promise(function(resolve) {
+    try {
+     const existing = document.getElementById('taxIssueTypeOverlay');
+     if (existing) existing.remove();
+
+     const overlay = document.createElement('div');
+     overlay.id = 'taxIssueTypeOverlay';
+     overlay.className = 'modal-overlay show';
+
+     const panel = document.createElement('div');
+     panel.className = 'modal-card is-wide tax-issue-type-modal';
+     panel.setAttribute('role', 'dialog');
+     panel.setAttribute('aria-modal', 'true');
+     panel.setAttribute('aria-labelledby', 'taxIssueTypeTitle');
+     const optionsHtml = TAX_ISSUE_TYPE_OPTIONS.map((opt, idx) => `
+      <label class="tax-issue-type-option">
+       <input type="radio" name="taxIssueTypeChoice" value="${opt.value}" ${idx === 0 ? 'checked' : ''}>
+       <span class="tax-issue-type-marker" aria-hidden="true"></span>
+       <span class="tax-issue-type-copy">
+        <strong>${opt.label}</strong>
+        <span>${opt.desc}</span>
+       </span>
+      </label>
+     `).join('');
+     panel.innerHTML = `
+      <div class="tax-issue-type-head">
+       <h3 class="modal-title" id="taxIssueTypeTitle">${title || 'Mark tax recorded'}</h3>
+       <p class="modal-help">${helpText || 'Select how tax documentation was recorded.'}</p>
+      </div>
+      <div class="tax-issue-type-options">${optionsHtml}</div>
+      <div class="confirm-actions">
+       <button type="button" id="taxIssueTypeCancelBtn" class="btn btn-ghost">Cancel</button>
+       <button type="button" id="taxIssueTypeOkBtn" class="btn btn-primary">Mark tax recorded</button>
+      </div>
+     `;
+
+     overlay.appendChild(panel);
+     getInvoiceRoot().appendChild(overlay);
+
+     const cleanup = function(value) {
+      document.removeEventListener('keydown', onKeydown);
+      try { overlay.remove(); } catch (e) {}
+      resolve(value);
+     };
+     const syncSelected = function() {
+      panel.querySelectorAll('.tax-issue-type-option').forEach(function(option) {
+       const input = option.querySelector('input[name="taxIssueTypeChoice"]');
+       option.classList.toggle('is-selected', !!(input && input.checked));
+      });
+     };
+     panel.querySelectorAll('input[name="taxIssueTypeChoice"]').forEach(function(input) {
+      input.addEventListener('change', syncSelected);
+     });
+     syncSelected();
+     const onKeydown = function(ev) {
+      if (ev.key === 'Escape') {
+       ev.preventDefault();
+       cleanup(null);
+      }
+     };
+     document.addEventListener('keydown', onKeydown);
+     panel.querySelectorAll('.tax-issue-type-option').forEach(function(option) {
+      option.addEventListener('dblclick', function(ev) {
+       ev.preventDefault();
+       const input = option.querySelector('input[name="taxIssueTypeChoice"]');
+       cleanup(input ? input.value : null);
+      });
+     });
+     document.getElementById('taxIssueTypeCancelBtn').addEventListener('click', function(ev) {
+      ev.preventDefault();
+      cleanup(null);
+     });
+     document.getElementById('taxIssueTypeOkBtn').addEventListener('click', function(ev) {
+      ev.preventDefault();
+      const checked = panel.querySelector('input[name="taxIssueTypeChoice"]:checked');
+      cleanup(checked ? checked.value : null);
+     });
+     overlay.addEventListener('click', function(ev) {
+      if (ev.target === overlay) cleanup(null);
+     });
+    } catch (e) {
+     resolve(null);
+    }
+   });
+  }
+
+  // Initialize date picker
+  flatpickr("#date_from", {
+   dateFormat: "Y-m-d",
+   altInput: true,
+   altFormat: "m/d/Y",
+   locale: "en",
+   allowInput: true
+  });
+  flatpickr("#date_to", {
+   dateFormat: "Y-m-d",
+   altInput: true,
+   altFormat: "m/d/Y",
+   locale: "en",
+   allowInput: true
+  });
+
+  function setBasis(mode){
+   try {
+    const input = document.getElementById('basisInput');
+    if (input) { input.value = (mode === 'settlement' ? 'settlement' : 'issued'); }
+    const ff = document.getElementById('filtersForm');
+    if (ff) {
+     if (ff.requestSubmit) ff.requestSubmit(); else ff.submit();
+    }
+   } catch(e) {}
+  }
+
+  // Quick date-range presets (Current )
+  function lastDayOfMonth(y, m) { // m: 1-12
+   return new Date(y, m, 0).getDate();
+  }
+  function applyRange(kind) {
+   const now = new Date();
+   const y = now.getFullYear();
+   let fromY=y, fromM=1, fromD=1, toY=y, toM=12, toD=31;
+   if (kind === 'Q1') { fromM=1; toM=3; }
+   if (kind === 'Q2') { fromM=4; toM=6; }
+   if (kind === 'Q3') { fromM=7; toM=9; }
+   if (kind === 'Q4') { fromM=10; toM=12; }
+   if (kind === 'H1') { fromM=1; toM=6; }
+   if (kind === 'H2') { fromM=7; toM=12; }
+   if (kind === 'M0') {
+    fromY = now.getFullYear();
+    toY = fromY;
+    fromM = now.getMonth() + 1;
+    toM = fromM;
+   }
+   if (kind === 'M-1') {
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    fromY = prev.getFullYear();
+    toY = fromY;
+    fromM = prev.getMonth() + 1;
+    toM = fromM;
+   }
+   if (kind === 'Y') { fromM=1; toM=12; }
+   fromD = 1;
+   toD = lastDayOfMonth(toY, toM);
+   const pad = n => String(n).padStart(2,'0');
+   document.getElementById('date_from').value = `${fromY}-${pad(fromM)}-${pad(fromD)}`;
+   document.getElementById('date_to').value  = `${toY}-${pad(toM)}-${pad(toD)}`;
+   document.getElementById('filtersForm').submit();
+  }
+  // Filters /Displayitems Change Previous List URL Restore disabled Filters 
+  (function(){
+   try {
+    const ff = document.getElementById('filtersForm');
+    if (ff) {
+     ff.addEventListener('submit', function(){
+      try { sessionStorage.setItem('invoice_skip_beforeunload_once','1'); } catch (e) {}
+      try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+     });
+    }
+    const perPageSelect = document.querySelector('select[name="per_page"]');
+    if (perPageSelect) {
+     perPageSelect.addEventListener('change', function(){
+      try { sessionStorage.setItem('invoice_skip_beforeunload_once','1'); } catch (e) {}
+      try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+     });
+    }
+
+    // Auto : days Filters Change Immediate Apply (Status/Sort//Period)
+    const autoSelectors = [
+     "select[name='business_profile_id']",
+     "select[name='status']",
+     "select[name='sort']",
+     "#date_from",
+     "#date_to"
+    ];
+    autoSelectors.forEach(sel => {
+     if (!ff) return;
+     ff.querySelectorAll(sel).forEach(el => {
+      el.addEventListener('change', function(){
+       try { sessionStorage.setItem('invoice_skip_beforeunload_once','1'); } catch (e) {}
+       try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+       if (ff) {
+        if (ff.requestSubmit) ff.requestSubmit(); else ff.submit();
+       }
+      });
+     });
+    });
+
+    // Amount/ Input: Enter blur  (  )
+    const onCommitSubmit = (el, events=['blur']) => {
+     events.forEach(ev => el.addEventListener(ev, function(e){
+      if (ev === 'keydown' && e.key !== 'Enter') return;
+      if (ff) {
+       try { sessionStorage.setItem('invoice_skip_beforeunload_once','1'); } catch (e) {}
+       try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+       if (ff.requestSubmit) ff.requestSubmit(); else ff.submit();
+      }
+     }));
+    };
+    if (ff) {
+     ff.querySelectorAll("input[name='min_amount'], input[name='max_amount']").forEach(el => onCommitSubmit(el, ['blur','keydown']));
+     const qInput = ff.querySelector("input[name='q']");
+     if (qInput) onCommitSubmit(qInput, ['keydown']);
+    }
+   } catch (e) {}
+  })();
+
+  // Business profile column (Issuing business profile  Internal Settlement business profile)
+  (function(){
+   try {
+    const header = document.getElementById('bp-toggle-header');
+    if (!header) return;
+    const applyMode = function(mode){
+     const isSettlement = (mode === 'settlement');
+     header.setAttribute('data-mode', isSettlement ? 'settlement' : 'issued');
+     const setHidden = (el, hidden) => el.classList.toggle('is-hidden', hidden);
+     document.querySelectorAll('.bp-label-issued').forEach(el => { setHidden(el, isSettlement); });
+     document.querySelectorAll('.bp-label-settlement').forEach(el => { setHidden(el, !isSettlement); });
+     document.querySelectorAll('.bp-value-issued').forEach(el => { setHidden(el, isSettlement); });
+     document.querySelectorAll('.bp-value-settlement').forEach(el => { setHidden(el, !isSettlement); });
+    };
+    let initial = 'issued';
+    try { initial = localStorage.getItem('invoice_bp_view_mode') || 'issued'; } catch (e) {}
+    applyMode(initial);
+    header.addEventListener('click', function(ev){
+     ev.preventDefault();
+     const current = header.getAttribute('data-mode') || 'issued';
+     const next = (current === 'settlement') ? 'issued' : 'settlement';
+     try { localStorage.setItem('invoice_bp_view_mode', next); } catch (e) {}
+     applyMode(next);
+    });
+   } catch (e) {}
+  })();
+
+  // (items) status change: bulk_update_status(2) days
+  async function submitInlineStatus(selectElement, mode) {
+   try {
+    const form = selectElement.closest('form.inline-status-form');
+    if (!form) return;
+    const modeInput = form.querySelector('input[name="mode"]');
+    const newStatusInput = form.querySelector('input[name="new_status"]');
+    if (!modeInput || !newStatusInput) return;
+
+    const normalizedMode = (mode === 'payment') ? 'payment' : 'billing';
+    const newStatus = (selectElement.value || '').trim();
+    if (!newStatus) return;
+
+    const row = getInvoiceRow(form);
+    const currentBilling = row && row.dataset ? (row.dataset.billingStatus || row.dataset.status || '') : '';
+    const currentPayment = row && row.dataset ? (row.dataset.paymentStatus || '') : '';
+    const paymentVerifiedRaw = row && row.dataset ? (row.dataset.paymentVerified || '') : '';
+    const isPaymentVerified = (paymentVerifiedRaw === '1' || paymentVerifiedRaw === 'true');
+    const revertValue = (normalizedMode === 'payment')
+     ? (currentPayment || '')
+     : (currentBilling || (row && row.dataset ? (row.dataset.status || '') : '') || 'sent');
+
+    // Paid or issued invoices require an invoice number before draft/void transitions.
+    if (
+     normalizedMode === 'billing'
+     && (newStatus === 'draft' || newStatus === 'void')
+     && currentBilling === 'sent'
+     && currentPayment === 'paid'
+    ) {
+     const rowCheckbox = getInvoiceRowCheckbox(row);
+     const invNumber = (rowCheckbox && rowCheckbox.dataset.number) || '';
+     const label = (newStatus === 'draft') ? 'Draft' : 'Void';
+     const ok = await confirmByTypingNumbers(
+      `Change a paid issued invoice to ${label}`,
+      invNumber
+     );
+     if (!ok) {
+      selectElement.value = revertValue;
+      return;
+     }
+    }
+
+    if (
+     normalizedMode === 'billing'
+     && currentBilling
+     && currentBilling !== newStatus
+     && (currentBilling === 'tax_issued' || currentBilling === 'cash_issued' || currentBilling === 'processed')
+    ) {
+     const rowCheckbox = getInvoiceRowCheckbox(row);
+     const invNumber = (rowCheckbox && rowCheckbox.dataset.number) || '';
+     const ok = await confirmByTypingNumbers(
+      'Change the billing status for this tax-recorded invoice',
+      invNumber
+     );
+     if (!ok) {
+      selectElement.value = revertValue;
+      return;
+     }
+    }
+
+    if (normalizedMode === 'billing' && newStatus === 'tax_issued') {
+     const taxIssueType = await chooseTaxIssueType(
+      'Tax record type',
+      'Select how this invoice was tax-recorded.'
+     );
+     if (!taxIssueType) {
+      selectElement.value = revertValue;
+      return;
+     }
+     if (!isPaymentVerified) {
+      const confirmed = await window.AppConfirm(`Mark this invoice as tax recorded before payment is verified?\n\nPayment verification will remain open.`);
+      if (!confirmed) {
+       selectElement.value = revertValue;
+       return;
+      }
+     }
+     let confirmInput = form.querySelector('input[name="confirm_unverified_tax"]');
+     if (!confirmInput) {
+      confirmInput = document.createElement('input');
+      confirmInput.type = 'hidden';
+      confirmInput.name = 'confirm_unverified_tax';
+      form.appendChild(confirmInput);
+     }
+     confirmInput.value = 'yes';
+     ensureHiddenInput(form, 'tax_issue_type', taxIssueType);
+     ensureHiddenInput(form, 'tax_issue_source', 'manual_status');
+    }
+
+	    modeInput.value = normalizedMode;
+	    newStatusInput.value = newStatus;
+
+    // Location Change Invoice ID Save
+    const invoiceId = (form.dataset && form.dataset.invoiceId) || (row && row.dataset ? row.dataset.invoiceId : null);
+    rememberListPositionAndChange(invoiceId);
+
+    showInvoiceBusy('Updating invoice status...');
+
+    //  (  localStorage Save Done )
+    setTimeout(() => {
+     if (form) {
+      if (form.requestSubmit) {
+       form.requestSubmit();
+      } else {
+       form.submit();
+      }
+     }
+    }, 10);
+   } catch (e) {
+    try { const f = selectElement.closest('form'); if (f) f.submit(); } catch (e2) {}
+   }
+  }
+
+  // Bulk status update 
+  function toggleAll(checkbox) {
+   const checkboxes = document.querySelectorAll('.invoice-checkbox');
+   checkboxes.forEach(cb => { if (!cb.disabled) { cb.checked = checkbox.checked; } });
+   updateCount();
+  }
+
+  function updateCount() {
+   const checked = getCheckedInvoiceBoxes();
+   document.getElementById('selectedCount').textContent = checked.length + ' selected';
+  }
+
+  // Prevent native scroll restoration; we handle it ourselves
+  if ('scrollRestoration' in history) {
+   history.scrollRestoration = 'manual';
+  }
+
+  // Remember scroll position (both container and window) and last changed rows before navigation
+  function rememberListPositionAndChange(ids) {
+   try {
+    const container = document.querySelector('.table-card');
+    const containerY = container ? container.scrollTop : 0;
+    const windowY = window.scrollY || document.documentElement.scrollTop || 0;
+
+    console.log('[ Save] Current Location Save:', {
+     containerY: containerY,
+     windowY: windowY,
+     containerScrollable: container ? (container.scrollHeight> container.clientHeight) : false,
+     ids: ids
+    });
+
+    // Save both; legacy key kept for backward-compat
+    localStorage.setItem('invoice_list_scroll_container', String(containerY));
+    localStorage.setItem('invoice_list_scroll_window', String(windowY));
+    localStorage.setItem('invoice_list_scroll', String(containerY));
+    // Remember the exact list URL (filters/page) to restore after server redirect
+    localStorage.setItem('invoice_desired_list_url', window.location.href);
+    if (Array.isArray(ids)) {
+     localStorage.setItem('invoice_highlight_ids', ids.join(','));
+    } else if (ids) {
+     localStorage.setItem('invoice_highlight_ids', String(ids));
+    }
+
+    console.log('[ Save] localStorage Saved');
+   } catch (e) {
+    console.error('[ Save] Error:', e);
+   }
+  }
+
+  // Restore scroll and highlight changed rows on load (robust)
+  function restoreListPositionAndHighlight() {
+   const cStr = localStorage.getItem('invoice_list_scroll_container');
+   const wStr = localStorage.getItem('invoice_list_scroll_window');
+   const legacyStr = localStorage.getItem('invoice_list_scroll');
+   const idsStr = localStorage.getItem('invoice_highlight_ids') || '';
+   const desiredUrl = localStorage.getItem('invoice_desired_list_url');
+
+   // Check if we have any data to restore
+   const hasScrollData = cStr || wStr || legacyStr || idsStr || desiredUrl;
+   if (!hasScrollData) return; // Nothing to restore
+
+   // If we did not come from an invoices page, reset saved list state
+   const referrerOk = (function () {
+    try {
+     if (!document.referrer) return false;
+     const refUrl = new URL(document.referrer);
+     if (refUrl.origin !== window.location.origin) return false;
+     const refPath = refUrl.pathname || "";
+     const invoicePrefix = (scriptRoot || "") + "/invoices";
+     if (refPath.startsWith(invoicePrefix)) return true;
+     if (refPath.startsWith("/invoices")) return true;
+     return false;
+    } catch (e) {
+     return false;
+    }
+   })();
+   if (!referrerOk) {
+    try { localStorage.removeItem('invoice_highlight_ids'); } catch (e) {}
+    try { localStorage.removeItem('invoice_list_scroll'); } catch (e) {}
+    try { localStorage.removeItem('invoice_list_scroll_container'); } catch (e) {}
+    try { localStorage.removeItem('invoice_list_scroll_window'); } catch (e) {}
+    try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+    return;
+   }
+
+   // URL : pathname search (fragment )
+   const currentUrl = new URL(window.location.href);
+   const currentPath = currentUrl.pathname + currentUrl.search;
+   // Current URL active Filters Confirm: Filters Save URL Current URL 
+   const filterKeys = ['q','status','date_from','date_to','min_amount','max_amount','business_profile_id','sort','page','per_page'];
+   const hasActiveFilters = filterKeys.some(k => {
+    const v = currentUrl.searchParams.get(k);
+    return v !== null && String(v).trim() !== '';
+   });
+
+   if (desiredUrl) {
+    try {
+     const desiredUrlObj = new URL(desiredUrl, window.location.origin);
+     const desiredPath = desiredUrlObj.pathname + desiredUrlObj.search;
+
+     // : value + Sort  (required )
+     const normalizePath = (pathLike) => {
+      try {
+       const u = new URL(pathLike, window.location.origin);
+       const params = new URLSearchParams(u.search);
+       // value 
+       Array.from(params.keys()).forEach((k) => {
+        const v = params.get(k);
+        if (v === '' || v === null) params.delete(k);
+       });
+       // Sort
+       const sorted = new URLSearchParams();
+       Array.from(params.keys()).sort().forEach((k) => sorted.append(k, params.get(k)));
+       const qs = sorted.toString();
+       return u.pathname + (qs ? ('?' + qs) : '');
+      } catch (_) {
+       return String(pathLike || '');
+      }
+     };
+
+     const normCurrent = normalizePath(currentPath);
+     const normDesired = normalizePath(desiredPath);
+
+     // days required
+     if (
+      !hasActiveFilters &&
+      normCurrent !== normDesired &&
+      (
+       desiredUrlObj.pathname.startsWith('/invoices') ||
+       (scriptRoot && desiredUrlObj.pathname.startsWith(scriptRoot + '/invoices'))
+      )
+     ) {
+      // :  Save URL + beforeunload  
+      try { localStorage.removeItem('invoice_desired_list_url'); } catch (e) {}
+      try { sessionStorage.setItem('invoice_skip_beforeunload_once', '1'); } catch (e) {}
+      window.location.replace(desiredUrl);
+      return; // apply after navigation
+     }
+    } catch (e) {
+     // URL  
+    }
+   }
+
+   const ids = idsStr ? idsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+   function applyRestore() {
+    try {
+     const container = document.querySelector('.table-card');
+     if (!container) return false;
+
+     //   
+     if (container.scrollHeight === 0) return false;
+
+     console.log('[ Restore] ...', {
+      containerScrollable: container.scrollHeight> container.clientHeight,
+      scrollHeight: container.scrollHeight,
+      clientHeight: container.clientHeight,
+      savedContainerY: cStr,
+      savedWindowY: wStr
+     });
+
+     // 1) Restore:   
+     const containerScrollable = container.scrollHeight> (container.clientHeight + 1);
+
+     //  Restore ()
+     const containerY = parseInt((cStr || legacyStr || '0'), 10);
+     if (!isNaN(containerY) && containerScrollable) {
+      // requestAnimationFrame Next from Restore
+      requestAnimationFrame(() => {
+       container.scrollTop = containerY;
+       console.log('[ Restore]  Restore:', containerY, ' :', container.scrollTop);
+
+       //  Confirm Apply
+       requestAnimationFrame(() => {
+        if (container.scrollTop !== containerY) {
+         container.scrollTop = containerY;
+         console.log('[ Restore]  :', containerY, ' :', container.scrollTop);
+        }
+       });
+      });
+     }
+
+     //  Restore
+     const windowY = parseInt((wStr || '0'), 10);
+     if (!isNaN(windowY) && windowY> 0) {
+      requestAnimationFrame(() => {
+       window.scrollTo(0, windowY);
+       console.log('[ Restore]  Restore:', windowY);
+      });
+     }
+
+     // 2) Highlight changed rows ( Change )
+     if (ids.length) {
+      ids.forEach(id => {
+       const row = document.getElementById('inv-row-' + id);
+       if (row) {
+        row.classList.add('row-highlight');
+        setTimeout(() => row.classList.remove('row-highlight'), 2500);
+       }
+      });
+
+      // row   
+      // (, Save Location )
+      if (!cStr && !legacyStr) {
+       const firstRow = document.getElementById('inv-row-' + ids[0]);
+       if (firstRow && container) {
+        const rowTop = firstRow.offsetTop - container.offsetTop;
+        const rowBottom = rowTop + firstRow.offsetHeight;
+        if (rowTop < container.scrollTop || rowBottom> container.scrollTop + container.clientHeight) {
+         container.scrollTop = Math.max(0, rowTop - Math.floor(container.clientHeight / 2));
+         console.log('[ Restore] row Sort');
+        }
+       }
+      }
+     }
+
+     // 3) Clear keys once applied
+     localStorage.removeItem('invoice_highlight_ids');
+     localStorage.removeItem('invoice_list_scroll');
+     localStorage.removeItem('invoice_list_scroll_container');
+     localStorage.removeItem('invoice_list_scroll_window');
+     localStorage.removeItem('invoice_desired_list_url');
+     console.log('[ Restore] complete and localStorage ');
+     return true;
+    } catch (e) {
+     console.error('[ Restore] Error:', e);
+     return true;
+    }
+   }
+
+   // Try immediately and retry if needed
+   if (!applyRestore()) {
+    // Retry with longer intervals for slower page loads
+    let tries = 15;
+    const t = setInterval(() => {
+     if (applyRestore() || --tries <= 0) {
+      clearInterval(t);
+      if (tries <= 0) {
+       console.warn(' Restore  - .table-card not found');
+      }
+     }
+    }, 100);
+   }
+  }
+
+  // DOMContentLoadedfrom ( Restore)
+  document.addEventListener('DOMContentLoaded', restoreListPositionAndHighlight);
+  window.addEventListener('load', restoreListPositionAndHighlight);
+  window.addEventListener('pageshow', restoreListPositionAndHighlight);
+  // Save scroll on any navigation as a safety net
+  window.addEventListener('beforeunload', function(){
+   try {
+    //  Save ( )
+    if (sessionStorage.getItem('invoice_skip_beforeunload_once') === '1') {
+     sessionStorage.removeItem('invoice_skip_beforeunload_once');
+     return;
+    }
+    rememberListPositionAndChange(null);
+   } catch (e) {}
+  });
+
+  async function submitBulkUpdate() {
+   const checked = getCheckedInvoiceBoxes();
+   if (checked.length === 0) {
+    try { await window.AppAlert('Select an invoice.', { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+
+   const combined = document.getElementById('bulkStatusCombined').value;
+   if (!combined) {
+    try { await window.AppAlert('Select the status to apply.', { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+   const parts = combined.split(':');
+   if (parts.length !== 2) {
+    try { await window.AppAlert('The selected value is invalid. Select again.', { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+   const mode = parts[0];
+   const newStatus = parts[1];
+   document.getElementById('bulkMode').value = mode;
+   document.getElementById('bulkNewStatus').value = newStatus;
+   let selectedTaxIssueType = null;
+
+   // tax-recorded statusfrom Change Confirm 
+   if (mode === 'billing') {
+    if (newStatus === 'tax_issued') {
+     selectedTaxIssueType = await chooseTaxIssueType(
+      'Mark invoices as tax recorded',
+      `Select the tax record type for ${checked.length} selected invoice(s).`
+     );
+     if (!selectedTaxIssueType) {
+      return;
+     }
+    }
+    // Paid or issued invoices require an invoice number before draft/void transitions.
+    if (newStatus === 'draft' || newStatus === 'void') {
+     const hardInvoices = [];
+     checked.forEach(cb => {
+      const row = getInvoiceRow(cb);
+      if (!row) return;
+      const billingStatus = row.dataset.billingStatus;
+      const paymentStatus = row.dataset.paymentStatus;
+      if (billingStatus === 'sent' && paymentStatus === 'paid') {
+       hardInvoices.push(cb.dataset.number);
+      }
+     });
+     if (hardInvoices.length> 0) {
+      const invoiceNumbers = hardInvoices.join(', ');
+      const label = (newStatus === 'draft') ? 'Draft' : 'Void';
+      const ok = await confirmByTypingNumbers(
+       `Change paid issued invoice(s) to ${label}`,
+       invoiceNumbers
+      );
+      if (!ok) {
+       return;
+      }
+     }
+    }
+    const taxIssuedInvoices = [];
+		    checked.forEach(cb => {
+		     const row = getInvoiceRow(cb);
+		     if (!row) return;
+		     const billingStatus = row.dataset.billingStatus;
+	     if (billingStatus === 'tax_issued' || billingStatus === 'cash_issued' || billingStatus === 'processed') {
+	      taxIssuedInvoices.push(cb.dataset.number);
+	     }
+	    });
+	    if (taxIssuedInvoices.length> 0) {
+	     const invoiceNumbers = taxIssuedInvoices.join(', ');
+	     const ok2 = await confirmByTypingNumbers(
+	      'Change the billing status for tax-recorded invoice(s)',
+	      invoiceNumbers
+	     );
+     if (!ok2) {
+      return;
+     }
+    } else {
+     if (!await window.AppConfirm(`Change billing status for ${checked.length} selected invoice(s)?`)) {
+      return;
+     }
+    }
+   } else {
+    // Payment mode: confirm status changes away from paid.
+    const paidInvoices = [];
+    checked.forEach(cb => {
+     const row = getInvoiceRow(cb);
+     if (!row) return;
+     const paymentStatus = row.dataset.paymentStatus;
+     if (paymentStatus === 'paid' && newStatus !== 'paid') {
+      paidInvoices.push(cb.dataset.number);
+     }
+    });
+    if (paidInvoices.length> 0) {
+     const invoiceNumbers = paidInvoices.join(', ');
+     if (!await window.AppConfirm(`Change payment status for already-paid invoice(s)?\n\nInvoice: ${invoiceNumbers}`)) {
+      return;
+     }
+    } else {
+     if (!await window.AppConfirm(`Change payment status for ${checked.length} selected invoice(s)?`)) {
+      return;
+     }
+    }
+   }
+
+   //  / 
+   rememberListPositionAndChange(Array.from(checked).map(cb => cb.dataset.id));
+   showInvoiceBusy('Updating invoice status...');
+   // 
+   const form = document.getElementById('bulkStatusForm');
+   if (mode === 'billing' && newStatus === 'tax_issued') {
+    ensureHiddenInput(form, 'tax_issue_type', selectedTaxIssueType);
+    ensureHiddenInput(form, 'tax_issue_source', 'bulk_update');
+   }
+   checked.forEach(cb => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'invoice_ids[]';
+    input.value = cb.dataset.id;
+    form.appendChild(input);
+   });
+   form.submit();
+  }
+
+  // GitHub Delete : to Confirm, below input field Input/Paste  
+  function confirmByTypingNumbers(title, invoiceNumbersText) {
+   return new Promise(function(resolve) {
+    try {
+     const existing = document.getElementById('invoiceConfirmOverlay');
+     if (existing) {
+      existing.remove();
+     }
+
+     const overlay = document.createElement('div');
+     overlay.id = 'invoiceConfirmOverlay';
+     overlay.className = 'modal-overlay show';
+
+     const panel = document.createElement('div');
+     panel.className = 'modal-card is-wide confirm-panel';
+
+     panel.innerHTML = `
+      <h3 class="modal-title">${title}</h3>
+      <p class="modal-help">below Invoice number All  , below input field  .</p>
+      <div id="invoiceConfirmNumbersBox" class="confirm-box"></div>
+      <input type="text" id="invoiceConfirmInput" class="confirm-input input-inline" placeholder="  Paste" />
+      <div id="invoiceConfirmError" style="display:none; color:#b91c1c; font-size:13px; margin-top:6px;"></div>
+      <div class="confirm-actions">
+       <button type="button" id="invoiceConfirmCancelBtn" class="btn btn-ghost">Cancel</button>
+       <button type="button" id="invoiceConfirmOkBtn" class="btn btn-primary">Confirm</button>
+      </div>
+     `;
+
+     overlay.appendChild(panel);
+     getInvoiceRoot().appendChild(overlay);
+
+     const box = document.getElementById('invoiceConfirmNumbersBox');
+     if (box) {
+      box.textContent = invoiceNumbersText;
+     }
+     const input = document.getElementById('invoiceConfirmInput');
+     if (input) {
+      input.value = '';
+      input.focus();
+      input.addEventListener('input', function() {
+       const errEl = document.getElementById('invoiceConfirmError');
+       if (errEl) errEl.style.display = 'none';
+      });
+     }
+
+     const cleanup = function(result) {
+      try {
+       overlay.remove();
+      } catch (e) {}
+      resolve(result);
+     };
+
+     document.getElementById('invoiceConfirmCancelBtn').addEventListener('click', function(ev) {
+      ev.preventDefault();
+      cleanup(false);
+     });
+     document.getElementById('invoiceConfirmOkBtn').addEventListener('click', function(ev) {
+      ev.preventDefault();
+      const v = (input && input.value ? input.value : '').trim();
+      if (v !== invoiceNumbersText) {
+       const errEl = document.getElementById('invoiceConfirmError');
+       if (errEl) {
+        errEl.textContent = 'Invoice number does not match. Confirm and try again.';
+        errEl.style.display = 'block';
+       }
+       if (input) {
+        input.focus();
+        input.select();
+       }
+       return;
+      }
+      cleanup(true);
+     });
+
+     //   Cancel
+     overlay.addEventListener('click', function(ev) {
+      if (ev.target === overlay) {
+       cleanup(false);
+      }
+     });
+    } catch (e) {
+     //  to Cancel Process
+     resolve(false);
+    }
+   });
+  }
+
+  async function submitBulkDelete() {
+   const checked = getCheckedInvoiceBoxes();
+   if (checked.length === 0) {
+    try { await window.AppAlert('Select at least one invoice to delete.', { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+
+   // Paid tax-recorded status Delete 
+   const blocked = [];
+   checked.forEach(cb => {
+    const row = getInvoiceRow(cb);
+    if (!row) return;
+    const billingStatus = row.dataset.billingStatus;
+    const paymentStatus = row.dataset.paymentStatus;
+    if (
+     billingStatus === 'tax_issued'
+     || billingStatus === 'cash_issued'
+     || billingStatus === 'processed'
+     || paymentStatus === 'paid'
+    ) {
+     blocked.push(cb.dataset.number);
+    }
+   });
+
+   if (blocked.length> 0) {
+    try { await window.AppAlert('Paid Tax recorded Invoice cannot be deleted:\n' + blocked.join(', '), { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+
+   // Bulk Delete Invoice number Confirm Required
+   const invoiceNumbers = Array.from(checked).map(cb => cb.dataset.number).join(', ');
+   const ok = await confirmByTypingNumbers(
+    'Delete selected invoice(s)',
+    invoiceNumbers
+   );
+
+   if (!ok) return;
+
+   //  / 
+   rememberListPositionAndChange(Array.from(checked).map(cb => cb.dataset.id));
+   showInvoiceBusy('Deleting invoice(s)...');
+   // 
+   const form = document.getElementById('bulkDeleteForm');
+   checked.forEach(cb => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'invoice_ids[]';
+    input.value = cb.dataset.id;
+    form.appendChild(input);
+   });
+   form.submit();
+  }
+
+  // Internal  Edit
+  async function updateInternalRef(input) {
+   const invoiceId = input.getAttribute('data-invoice-id');
+   const newValue = input.value.trim();
+   const originalValue = input.defaultValue;
+
+   if (newValue === originalValue) {
+    return; // Change 
+   }
+
+   try {
+    const response = await fetch(`${scriptRoot}/invoices/${invoiceId}/update_internal_ref`, {
+     method: 'POST',
+     headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+     },
+     body: JSON.stringify({ internal_reference: newValue })
+    });
+
+    if (response.ok) {
+     input.defaultValue = newValue;
+     input.classList.add('input-flash'); // success Display
+     setTimeout(() => {
+      input.classList.remove('input-flash');
+     }, 1000);
+    } else {
+     try { await window.AppAlert('Internal  ', { title: "Error" }); } catch (e2) {}
+     input.value = originalValue;
+    }
+   } catch (error) {
+    console.error('Error:', error);
+    try { await window.AppAlert('Internal  Error ', { title: "Error" }); } catch (e2) {}
+    input.value = originalValue;
+   }
+  }
+
+  // Notes Edit
+  async function updateAdminMemo(input) {
+   const invoiceId = input.getAttribute('data-invoice-id');
+   const newValue = input.value.trim();
+   const originalValue = input.defaultValue;
+
+   if (newValue === originalValue) {
+    return; // Change 
+   }
+
+   try {
+    const response = await fetch(`${scriptRoot}/invoices/${invoiceId}/update_admin_memo`, {
+     method: 'POST',
+     headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+     },
+     body: JSON.stringify({ admin_memo: newValue })
+    });
+
+    if (response.ok) {
+     input.defaultValue = newValue;
+     input.classList.add('input-flash'); // success Display
+     setTimeout(() => {
+      input.classList.remove('input-flash');
+     }, 1000);
+    } else {
+     try { await window.AppAlert(' Notes ', { title: "Error" }); } catch (e2) {}
+     input.value = originalValue;
+    }
+   } catch (error) {
+    console.error('Error:', error);
+    try { await window.AppAlert(' Notes  Error ', { title: "Error" }); } catch (e2) {}
+    input.value = originalValue;
+   }
+  }
+
+  // Payment LLM Input
+  let currentInvoiceId = null;
+  let currentInvoiceCurrency = null;
+  let quickPaymentParsed = null;
+  function openQuickPaymentLLM(invoiceId, invoiceNumber, issueDate, clientName, invoiceTotal, currency) {
+   currentInvoiceId = invoiceId;
+   currentInvoiceCurrency = currency;
+
+   // Update title
+   const emoji = '';
+   document.getElementById('quickPaymentLLMTitle').innerHTML = `${currency} payment verification`;
+
+   // Populate summary
+   document.getElementById('quickInvNumber').textContent = invoiceNumber;
+   document.getElementById('quickInvDate').textContent = issueDate;
+   document.getElementById('quickInvClient').textContent = clientName;
+   document.getElementById('quickInvTotal').textContent = invoiceTotal;
+   const summary = document.getElementById('quickInvoiceSummary');
+   if (summary) summary.classList.remove('is-hidden');
+
+   const modal = document.getElementById('quickPaymentLLMModal');
+   if (modal) modal.classList.add('show');
+   document.getElementById('quickPaymentLLMText').value = '';
+   const err = document.getElementById('quickPaymentLLMError');
+   if (err) err.classList.add('is-hidden');
+   const fieldWrap = document.getElementById('quickPaymentFieldWrap');
+   const fieldList = document.getElementById('quickPaymentFieldList');
+   if (fieldWrap) fieldWrap.classList.add('is-hidden');
+   if (fieldList) fieldList.innerHTML = '';
+   quickPaymentParsed = null;
+  }
+  function closeQuickPaymentLLM() {
+   const modal = document.getElementById('quickPaymentLLMModal');
+   if (modal) modal.classList.remove('show');
+   currentInvoiceId = null;
+   currentInvoiceCurrency = null;
+   quickPaymentParsed = null;
+  }
+
+  function renderQuickPaymentFields(meta) {
+   const fieldWrap = document.getElementById('quickPaymentFieldWrap');
+   const fieldList = document.getElementById('quickPaymentFieldList');
+   if (!fieldWrap || !fieldList) return;
+   quickPaymentParsed = meta || null;
+   fieldList.innerHTML = '';
+   Object.entries(meta || {}).forEach(([key, rawValue]) => {
+    const value = rawValue === null || typeof rawValue === 'undefined' ? '' : String(rawValue);
+    const id = `quick-payment-${key}`;
+
+    const row = document.createElement('div');
+    row.className = 'form-check d-flex align-items-center gap-2';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'form-check-input';
+    checkbox.id = id;
+    checkbox.dataset.key = key;
+    checkbox.checked = Boolean(value);
+    checkbox.disabled = !value;
+
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.setAttribute('for', id);
+    label.textContent = key.replace(/_/g, ' ');
+
+    const valueSpan = document.createElement('span');
+    valueSpan.className = 'ms-auto text-muted small';
+    valueSpan.textContent = value || '-';
+
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    row.appendChild(valueSpan);
+    fieldList.appendChild(row);
+   });
+   fieldWrap.classList.remove('is-hidden');
+  }
+
+  function getSelectedQuickPaymentKeys() {
+   const fieldList = document.getElementById('quickPaymentFieldList');
+   if (!fieldList) return [];
+   return Array.from(fieldList.querySelectorAll('input[type="checkbox"][data-key]'))
+    .filter((cb) => cb.checked && !cb.disabled)
+    .map((cb) => cb.dataset.key);
+  }
+
+  function selectAllQuickPaymentFields() {
+   const fieldList = document.getElementById('quickPaymentFieldList');
+   if (!fieldList) return;
+   fieldList.querySelectorAll('input[type="checkbox"][data-key]').forEach((cb) => {
+    if (!cb.disabled) cb.checked = true;
+   });
+  }
+
+  async function saveSelectedPayment() {
+   const err = document.getElementById('quickPaymentLLMError');
+   if (err) err.classList.add('is-hidden');
+
+   if (!currentInvoiceId || !quickPaymentParsed) {
+    if (err) {
+     err.textContent = 'Analyze payment text before saving.';
+     err.classList.remove('is-hidden');
+    }
+    return;
+   }
+
+   const keys = getSelectedQuickPaymentKeys();
+   if (!keys.length) {
+    if (err) {
+     err.textContent = 'Select at least one field to save.';
+     err.classList.remove('is-hidden');
+    }
+    return;
+   }
+
+   const meta = {};
+   keys.forEach((k) => {
+    const value = quickPaymentParsed[k];
+    if (value === null || typeof value === 'undefined' || value === '') return;
+    meta[k] = value;
+   });
+   if (!Object.keys(meta).length) {
+    if (err) {
+     err.textContent = 'No values are available to save.';
+     err.classList.remove('is-hidden');
+    }
+    return;
+   }
+
+   const btn = document.getElementById('quickPaymentApplyBtn');
+   if (btn) { btn.disabled = true; btn.textContent = 'Saving...'; }
+
+   const invoiceId = currentInvoiceId;
+   try {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // 1. Save
+    const saveResp = await fetch(`${scriptRoot}/invoices/${invoiceId}/save_payment_meta`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+     body: JSON.stringify({ payment_meta: meta })
+    });
+    const saveData = await saveResp.json();
+    if (!saveData.success) { throw new Error('Save failed'); }
+
+    // 2. 
+    const verifyResp = await fetch(`${scriptRoot}/invoices/${invoiceId}/verify_payment`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+     body: JSON.stringify({})
+    });
+    if (!verifyResp.ok) {
+     throw new Error(` Request failed (HTTP ${verifyResp.status})`);
+    }
+    const verifyData = await verifyResp.json();
+
+    rememberListPositionAndChange(invoiceId);
+    closeQuickPaymentLLM();
+
+    if (verifyData.ok) {
+     window.location.href = window.location.href;
+    } else {
+     window.location.href = `${scriptRoot}/invoices/${invoiceId}`;
+    }
+   } catch (e) {
+    if (err) {
+     err.textContent = ' ' + e.message;
+     err.classList.remove('is-hidden');
+    }
+   } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Save selected'; }
+   }
+  }
+  async function parseAndSavePayment() {
+   const text = document.getElementById('quickPaymentLLMText').value.trim();
+   if (!text) { try { await window.AppAlert('Enter payment text to analyze.', { title: "Confirm" }); } catch (e2) {} return; }
+
+   if (!currentInvoiceId) {
+    try { await window.AppAlert('Invoice ID is invalid. Refresh the page and try again.', { title: "Error" }); } catch (e2) {}
+    return;
+   }
+
+   const btn = document.getElementById('quickPaymentLLMBtn');
+   const err = document.getElementById('quickPaymentLLMError');
+   const fieldWrap = document.getElementById('quickPaymentFieldWrap');
+   btn.disabled = true; btn.textContent = 'Analyzing...';
+   if (err) err.classList.add('is-hidden');
+   if (fieldWrap) fieldWrap.classList.add('is-hidden');
+
+   // invoiceId Save
+   const invoiceId = currentInvoiceId;
+   console.log('Starting parse and save for invoice:', invoiceId);
+
+   try {
+    const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // 1. LLM 
+    console.log('Step 1: Parsing...');
+    const parseUrl = `${scriptRoot}/invoices/${invoiceId}/parse_payment_llm${currentInvoiceCurrency ? '?currency=' + currentInvoiceCurrency : ''}`;
+    const parseResp = await fetch(parseUrl, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+     body: JSON.stringify({ text })
+    });
+    const parseData = await parseResp.json();
+    if (!parseData.success) { throw new Error(parseData.error || 'Payment analysis failed.'); }
+    console.log('Step 1: Parsing complete');
+
+    renderQuickPaymentFields(parseData.payment_meta || {});
+   } catch (e) {
+    console.error('Error:', e);
+    if (err) {
+     err.textContent = 'Error: ' + e.message;
+     err.classList.remove('is-hidden');
+    }
+   }
+   btn.disabled = false;
+   btn.textContent = 'Analyze';
+  }
+
+  function setTaxInvoiceImportFile(file, shouldBindToInput = false) {
+   const input = document.getElementById('taxInvoiceFile');
+   const fileName = document.getElementById('taxInvoiceFileName');
+   const submitBtn = document.getElementById('taxInvoiceImportSubmit');
+   const drop = document.getElementById('taxInvoiceDrop');
+   if (!input || !fileName || !submitBtn || !drop) return;
+
+   if (!file) {
+    input.value = '';
+    fileName.textContent = 'No file selected.';
+    submitBtn.disabled = true;
+    drop.classList.remove('has-file');
+    return;
+   }
+
+   const loweredName = (file.name || '').toLowerCase();
+   if (!(loweredName.endsWith('.xls') || loweredName.endsWith('.xlsx'))) {
+    try { window.AppAlert('Upload an .xls or .xlsx file.', { title: 'Confirm' }); } catch (e) {}
+    input.value = '';
+    fileName.textContent = 'No file selected.';
+    submitBtn.disabled = true;
+    drop.classList.remove('has-file');
+    return;
+   }
+
+   if (shouldBindToInput) {
+    try {
+     const dt = new DataTransfer();
+     dt.items.add(file);
+     input.files = dt.files;
+    } catch (e) {
+     fileName.textContent = 'Could not attach this file. Select it again.';
+     submitBtn.disabled = true;
+     drop.classList.remove('has-file');
+     return;
+    }
+   }
+
+   fileName.textContent = `${file.name} (${Math.max(1, Math.round((file.size || 0) / 1024))} KB)`;
+   submitBtn.disabled = false;
+   drop.classList.add('has-file');
+  }
+
+  function openTaxInvoiceImportModal() {
+   const modal = document.getElementById('taxInvoiceImportModal');
+   if (!modal) return;
+   modal.hidden = false;
+   modal.classList.add('show');
+   try {
+    const drop = document.getElementById('taxInvoiceDrop');
+    if (drop) drop.focus();
+   } catch (e) {}
+  }
+
+  function closeTaxInvoiceImportModal(options = {}) {
+   const modal = document.getElementById('taxInvoiceImportModal');
+   if (!modal) return;
+   modal.classList.remove('show');
+   modal.hidden = true;
+
+   if (options.reset) {
+    setTaxInvoiceImportFile(null, false);
+   }
+  }
+
+  function bindTaxInvoiceImportDropzone() {
+   const modal = document.getElementById('taxInvoiceImportModal');
+   const form = document.getElementById('taxInvoiceImportForm');
+   const drop = document.getElementById('taxInvoiceDrop');
+   const input = document.getElementById('taxInvoiceFile');
+   const closeButtons = document.querySelectorAll('[data-close-tax-import-modal]');
+   if (!modal || !form || !drop || !input) return;
+
+   closeButtons.forEach(function(button) {
+    button.addEventListener('click', function() {
+     closeTaxInvoiceImportModal({ reset: false });
+    });
+   });
+   modal.addEventListener('click', function(e) {
+    if (e.target === modal) {
+     closeTaxInvoiceImportModal({ reset: false });
+    }
+   });
+   document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && modal.classList.contains('show')) {
+     closeTaxInvoiceImportModal({ reset: false });
+    }
+   });
+
+   drop.addEventListener('click', function() {
+    input.click();
+   });
+   drop.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    input.click();
+   });
+   input.addEventListener('change', function(e) {
+    const file = e.target.files && e.target.files.length ? e.target.files[0] : null;
+    setTaxInvoiceImportFile(file, false);
+   });
+   drop.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    drop.classList.add('is-dragover');
+   });
+   drop.addEventListener('dragleave', function() {
+    drop.classList.remove('is-dragover');
+   });
+   drop.addEventListener('drop', function(e) {
+    e.preventDefault();
+    drop.classList.remove('is-dragover');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length
+     ? e.dataTransfer.files[0]
+     : null;
+    setTaxInvoiceImportFile(file, true);
+   });
+   form.addEventListener('submit', async function(e) {
+    const file = input.files && input.files.length ? input.files[0] : null;
+    if (!file) {
+     e.preventDefault();
+     try { await window.AppAlert('Select a tax-document spreadsheet.', { title: 'Confirm' }); } catch (e2) {}
+     return;
+    }
+    closeTaxInvoiceImportModal({ reset: false });
+    showInvoiceBusy('Analyzing tax-document spreadsheet...');
+   });
+  }
+
+  if (document.readyState === 'loading') {
+   document.addEventListener('DOMContentLoaded', bindTaxInvoiceImportDropzone, { once: true });
+  } else {
+   bindTaxInvoiceImportDropzone();
+  }
+ </script>
+
+ <div id="taxInvoiceImportModal" class="modal-overlay" hidden>
+  <div class="modal-card is-wide">
+   <h3 class="modal-title">Import tax-document spreadsheet</h3>
+   <p class="modal-help">
+     Upload a revenue tax-document list. The importer matches internal invoice numbers and taxable amounts in bulk.
+   </p>
+
+   <form
+    id="taxInvoiceImportForm"
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.import_tax_invoice_status_file') }}"
+    enctype="multipart/form-data"
+    class="invoice-tax-import-form"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <div
+     id="taxInvoiceDrop"
+     class="invoice-tax-import-dropzone"
+     role="button"
+     tabindex="0"
+     aria-label="Tax documentation file upload"
+   >
+     <div class="invoice-tax-import-title">Select spreadsheet</div>
+     <div class="invoice-tax-import-hint">Spreadsheet import: <code>.xls</code>, <code>.xlsx</code></div>
+     <input
+      id="taxInvoiceFile"
+      type="file"
+      name="tax_invoice_file"
+      accept=".xls,.xlsx"
+      class="is-hidden"
+     />
+    </div>
+
+    <div class="invoice-tax-import-actions">
+     <div id="taxInvoiceFileName" class="muted text-sm">No file selected.</div>
+     <div class="invoice-tax-import-footer">
+      <button class="btn btn-ghost" type="button" data-close-tax-import-modal>Close</button>
+      <button
+       type="submit"
+       id="taxInvoiceImportSubmit"
+       class="btn btn-primary"
+       disabled
+     >
+       Import
+      </button>
+     </div>
+    </div>
+   </form>
+  </div>
+ </div>
+
+ <!-- Quick Payment LLM Modal -->
+ <div id="quickPaymentLLMModal" class="modal-overlay">
+  <div class="modal-card is-xl">
+   <h3 id="quickPaymentLLMTitle" class="modal-title">Payment verification</h3>
+
+   <!-- Invoice (to ) -->
+   <div id="quickInvoiceSummary" class="panel-info is-hidden mb-3">
+    <div class="summary-grid">
+     <div><strong>Invoice:</strong> <span id="quickInvNumber"></span></div>
+     <div><strong>Issue date:</strong> <span id="quickInvDate"></span></div>
+     <div><strong>Client:</strong> <span id="quickInvClient"></span></div>
+     <div><strong>Total billed:</strong> <span id="quickInvTotal" class="text-success-strong text-strong"></span></div>
+    </div>
+   </div>
+
+   <p class="muted text-sm mb-3 mt-0">Paste bank or deposit text, then select parsed fields to save.</p>
+   <textarea id="quickPaymentLLMText" rows="6" placeholder="Example:\nOperating account\n2025-09-30 10:18:18\n3,800.00\nUSD\n\nBank reference 088771" class="textarea-mono textarea-lg"></textarea>
+   <div id="quickPaymentLLMError" class="panel-danger is-hidden mt-2"></div>
+   <div id="quickPaymentFieldWrap" class="panel-info is-hidden mt-2">
+    <div class="muted text-sm mb-2">Choose fields to apply.</div>
+    <div id="quickPaymentFieldList" class="d-grid gap-2"></div>
+    <div class="d-flex gap-2 mt-2 flex-wrap">
+     <button id="quickPaymentApplyBtn" class="btn btn-primary" type="button" onclick="saveSelectedPayment()">Save selected</button>
+     <button class="btn btn-ghost" type="button" onclick="selectAllQuickPaymentFields()">Select all</button>
+    </div>
+   </div>
+   <div class="d-flex gap-2 mt-3 flex-wrap">
+    <button id="quickPaymentLLMBtn" class="btn btn-primary" type="button" onclick="parseAndSavePayment()">Analyze</button>
+    <button class="btn btn-ghost" type="button" onclick="closeQuickPaymentLLM()">Cancel</button>
+   </div>
+  </div>
+ </div>
+{% endblock %}

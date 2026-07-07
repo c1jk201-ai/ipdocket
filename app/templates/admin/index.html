@@ -1,0 +1,43 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block admin_description %}
+Manage system settings, users, roles, security, and error reports.
+{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-primary btn-sm" href="{{ url_for('admin.config_page') }}"><i class="bi bi-sliders"></i> System Settings</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin.users_page') }}"><i class="bi bi-people"></i> Staff & Users</a>
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-tool-grid" id="adminToolGrid">
+  <section class="admin-tool-group" data-admin-tool-group>
+    <div class="admin-tool-group-header">
+      <span class="admin-quick-link-icon"><i class="bi bi-person-gear"></i></span>
+      <div>
+        <h2 class="admin-tool-group-title">Core Admin</h2>
+        <div class="admin-tool-group-desc">Only the controls needed for account and system administration</div>
+      </div>
+    </div>
+    <div class="admin-quick-list">
+      <a class="admin-quick-link" href="{{ url_for('admin.config_page') }}">
+        <span><span class="admin-quick-link-title">System Settings</span><span class="admin-quick-link-desc">Login, security, billing, and raw settings</span></span>
+      </a>
+      <a class="admin-quick-link" href="{{ url_for('admin.users_page') }}">
+        <span><span class="admin-quick-link-title">Staff & Users</span><span class="admin-quick-link-desc">Create accounts, link staff, and manage active status</span></span>
+      </a>
+      <a class="admin-quick-link" href="{{ url_for('admin.list_roles') }}">
+        <span><span class="admin-quick-link-title">Roles & Permissions</span><span class="admin-quick-link-desc">Assign access by role</span></span>
+      </a>
+      <a class="admin-quick-link" href="{{ url_for('admin_security_health.security_health_page') }}">
+        <span><span class="admin-quick-link-title">Security Settings</span><span class="admin-quick-link-desc">Check security health and required actions</span></span>
+      </a>
+      <a class="admin-quick-link" href="{{ url_for('admin.error_reports_page') }}">
+        <span><span class="admin-quick-link-title">Error Reports</span><span class="admin-quick-link-desc">Review captured application errors</span></span>
+      </a>
+    </div>
+  </section>
+</div>
+{% endblock %}

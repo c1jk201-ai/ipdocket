@@ -1,0 +1,103 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="m-0">table</h2>
+  <div class="page-actions">
+   <a class="btn btn-primary" href="{{ url_for('business.accounting_journal_new') }}">+ table Registration</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_general_ledger') }}">TotalAccountLedger</a>
+   <a class="btn btn-ghost" href="{{ url_for('business.accounting_reports_home') }}"> </a>
+  </div>
+ </div>
+
+ <div class="card mt-12">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period start</label>
+    <input type="date" name="start_date" value="{{ start_date }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period end</label>
+    <input type="date" name="end_date" value="{{ end_date }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All</option>
+     {% for bp in business_profiles %}
+      <option value="{{ bp.id }}" {% if business_profile_id and business_profile_id|string == bp.id|string %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Status</label>
+    <select name="status">
+     <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+     <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+     <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}></option>
+     <option value="posted" {% if status_filter == 'posted' %}selected{% endif %}></option>
+     <option value="reversed" {% if status_filter == 'reversed' %}selected{% endif %}>items</option>
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('business.accounting_journal') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card mt-12">
+  <div class="overflow-auto">
+   <table class="table">
+    <thead>
+     <tr>
+      <th>days</th>
+      <th>Status</th>
+      <th>Business profile</th>
+      <th>Notes</th>
+      <th class="right"> Total</th>
+      <th class="right"> Total</th>
+      <th>deadline</th>
+      <th class="w-120"></th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for entry in entries %}
+     <tr>
+      <td>
+       <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=entry.id) }}">{{ entry.entry_date }}</a>
+      </td>
+      <td>
+       <span class="badge text-bg-{% if entry.status_code == 'posted' %}success{% elif entry.status_code == 'approved' %}primary{% elif entry.status_code == 'reversed' %}secondary{% else %}warning{% endif %}">
+        {{ entry.status_label }}
+       </span>
+      </td>
+      <td>{{ entry.business_profile_name or '-' }}</td>
+      <td>
+       <a class="text-decoration-none" href="{{ url_for('business.accounting_journal_view', entry_id=entry.id) }}">{{ entry.memo or '-' }}</a>
+      </td>
+      <td class="right">{{ entry.debit_total|currency('USD') }}</td>
+      <td class="right">{{ entry.credit_total|currency('USD') }}</td>
+      <td>
+       {% if entry.locked_period %}
+        <span class="badge text-bg-dark">deadline</span>
+       {% else %}
+        <span class="muted">column</span>
+       {% endif %}
+      </td>
+      <td>
+       <a class="btn btn-ghost btn-sm" href="{{ url_for('business.accounting_journal_view', entry_id=entry.id) }}">Details</a>
+      </td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="8" class="muted">Registration table none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+{% endblock %}

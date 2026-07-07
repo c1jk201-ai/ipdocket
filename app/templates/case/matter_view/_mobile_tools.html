@@ -1,0 +1,86 @@
+<nav class="case-mobile-bar" id="caseMobileBar" aria-label="Matter  ">
+  {# desktop-preferred-action entries are provided by the desktop header/summary. #}
+  <button
+    type="button"
+    class="btn btn-light border"
+    id="caseMobileBarSheetBtn"
+    data-bs-toggle="offcanvas"
+    data-bs-target="#caseMobileSheet"
+    aria-controls="caseMobileSheet"
+  ><i class="bi bi-grid-3x3-gap"></i><span></span></button>
+  <button
+    type="button"
+    class="btn btn-light border"
+    data-case-mobile-jump="sec-workflow"
+  ><i class="bi bi-kanban"></i><span>Task</span></button>
+  {% if can_edit_case %}
+    <button type="button" class="btn btn-primary" id="caseMobileBarMemoBtn">
+      <i class="bi bi-journal-text"></i><span>Notes</span>
+    </button>
+  {% else %}
+    <button type="button" class="btn btn-light border" id="caseMobileBarTopBtn">
+      <i class="bi bi-arrow-up"></i><span>top</span>
+    </button>
+  {% endif %}
+</nav>
+
+<div
+  class="offcanvas offcanvas-bottom case-mobile-sheet"
+  tabindex="-1"
+  id="caseMobileSheet"
+  aria-labelledby="caseMobileSheetLabel"
+  data-bs-scroll="true"
+>
+  <div class="offcanvas-header pb-2">
+    <div class="min-w-0">
+      <div class="small text-muted" id="caseMobileSheetLabel">Matter </div>
+      <div class="fw-semibold text-truncate">
+        {{ matter.our_ref }}
+        {% if case_title %}<span class="text-muted fw-normal">· {{ case_title }}</span>{% endif %}
+      </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body pt-0">
+    <div class="case-mobile-sheet-actions" id="caseMobileSheetActions">
+      <button type="button" class="btn btn-outline-secondary" data-case-mobile-action="top">
+        <i class="bi bi-arrow-up"></i> 
+      </button>
+      {% if can_edit_case or can_invoice %}
+        <button type="button" class="btn btn-outline-secondary" data-case-mobile-action="edit">
+          <i class="bi bi-pencil-square"></i>  
+        </button>
+      {% endif %}
+      {% if can_edit_case %}
+        <button type="button" class="btn btn-outline-secondary" data-case-mobile-action="upload">
+          <i class="bi bi-cloud-upload"></i> Upload
+        </button>
+        <button type="button" class="btn btn-outline-secondary" data-case-mobile-action="memo">
+          <i class="bi bi-journal-text"></i> Notes
+        </button>
+      {% endif %}
+      {% if can_invoice %}
+        <button type="button" class="btn btn-outline-secondary" data-case-mobile-action="invoice">
+          <i class="bi bi-receipt"></i> Invoice
+        </button>
+      {% endif %}
+    </div>
+
+    <div class="input-group input-group-sm mt-2">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input
+        type="search"
+        class="form-control"
+        id="caseMobileSheetFilter"
+        placeholder="Section Search"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn btn-outline-secondary" type="button" id="caseMobileSheetFilterClear"></button>
+    </div>
+
+    <div class="list-group mt-2" id="caseMobileSheetSectionList" aria-label="Section List">
+      <div class="text-muted small p-2">Loading…</div>
+    </div>
+  </div>
+</div>

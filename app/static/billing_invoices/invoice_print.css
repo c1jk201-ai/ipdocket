@@ -1,0 +1,376 @@
+/* ---------- Legal-firm professional styling ---------- */
+#invoice-print-container {
+  --ink: var(--app-text);
+  --muted: #5f706c;
+  --line: var(--app-border);
+  --accent: var(--app-legal-blue);
+  --accent-soft: var(--app-legal-blue-soft);
+  --success: #166534;        /* green-800 */
+  --warning: var(--app-primary-navy);        /* amber-800 */
+  --danger: #7f1d1d;         /* red-900 */
+  color: var(--ink);
+  font-family: "Noto Sans", "Segoe UI", Arial, Helvetica, sans-serif;
+}
+#invoice-print-container * { box-sizing: border-box; }
+
+/* Fit-to-page preview (screen). Printing uses zoom instead (see @media print). */
+@media screen {
+  /* Screen preview should resemble the printable page width.
+     @page margin is 0.6cm -> content width is 210mm - 12mm = 198mm. */
+  body.invoice-print #invoice-print-container {
+    max-width: 198mm;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  body.invoice-print .invoice-theme .sheet.no-print {
+    max-width: 198mm;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* USD certificate pages: keep the same page width when screen-previewed. */
+  body.invoice-print .invoice-theme .cert-print {
+    max-width: 198mm;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  body.invoice-print .invoice-theme .cert-print .sheet {
+    background: #fff;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  body.invoice-print .invoice-theme .cert-print .sheet + .sheet {
+    margin-top: 14px;
+  }
+
+  #invoice-print-container[data-fitted="true"] {
+    transform: scale(var(--invoice-print-scale, 1));
+    transform-origin: top center;
+  }
+
+  /* Prefer zoom for screen preview to avoid the "big blank space" effect
+     (transform doesn't affect layout height). Keep transform as fallback. */
+  @supports (zoom: 1) {
+    #invoice-print-container[data-fitted="true"] {
+      zoom: var(--invoice-print-scale, 1);
+      transform: none;
+      transform-origin: initial;
+    }
+  }
+}
+
+/* Container cards */
+#invoice-print-container .sheet { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+#invoice-print-container .sheet + .sheet { margin-top: 14px; }
+
+/* Header */
+#invoice-print-container .hdr { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+#invoice-print-container .firm { display: grid; gap: 4px; }
+#invoice-print-container .firm-name { font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; color: var(--ink); }
+#invoice-print-container .firm-sub { color: var(--muted); font-size: .85rem; line-height: 1.5; }
+#invoice-print-container .logo-img { max-height: 48px; width: auto; object-fit: contain; }
+
+#invoice-print-container .inv-head { display: grid; gap: 3px; justify-items: end; }
+#invoice-print-container .inv-label { color: var(--muted); font-weight: 600; letter-spacing: .06em; font-size: .8rem; text-transform: uppercase; }
+#invoice-print-container .inv-no { font-family: Georgia, "Times New Roman", serif; font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+#invoice-print-container .status-badge { border:1px solid var(--line); padding: 5px 9px; border-radius: 999px; font-weight: 600; font-size: .82rem; }
+#invoice-print-container .status-badge.paid { color: var(--success); border-color: #bbf7d0; background: #f0fdf4; }
+#invoice-print-container .status-badge.overdue { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
+#invoice-print-container .status-badge.draft { color: var(--muted); background: #f8fafc; }
+#invoice-print-container .status-badge.tax_issued { color: var(--app-deep-blue); border-color: var(--app-legal-blue-border); background: var(--app-legal-blue-soft); }
+#invoice-print-container .status-badge.processed { color: var(--app-deep-blue); border-color: var(--app-legal-blue-border); background: var(--app-legal-blue-soft); }
+#invoice-print-container .status-badge.payment_pending { color: var(--app-primary-navy); border-color: var(--app-gold-border); background: var(--app-gold-soft); }
+
+/* Meta rows */
+#invoice-print-container .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+#invoice-print-container .meta .box { border:1px solid var(--line); border-radius: 8px; padding: 12px; }
+#invoice-print-container .box-title { font-weight: 700; color: var(--ink); margin-bottom: 8px; font-size: .85rem; }
+#invoice-print-container .pair { display: grid; grid-template-columns: 100px 1fr; gap: 6px; margin: 5px 0; }
+#invoice-print-container .pair .k { color: var(--muted); font-size: .75rem; }
+#invoice-print-container .pair .v { color: var(--ink); font-weight: 600; font-size: .8rem; }
+
+/* Outgoing mode compact header */
+#invoice-print-container.is-outgoing .sheet { padding: 16px; }
+#invoice-print-container.is-outgoing .sheet + .sheet { margin-top: 12px; }
+#invoice-print-container.is-outgoing .hdr { grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+#invoice-print-container.is-outgoing .firm { gap: 3px; }
+#invoice-print-container.is-outgoing .firm-name { font-size: 1rem; }
+#invoice-print-container.is-outgoing .firm-sub { font-size: .8rem; line-height: 1.4; }
+#invoice-print-container.is-outgoing .logo-img { max-height: 40px; }
+#invoice-print-container.is-outgoing .client-box { display: grid; gap: 2px; justify-items: center; text-align: center; }
+#invoice-print-container.is-outgoing .client-box .box-title { margin-bottom: 6px; font-size: .8rem; }
+#invoice-print-container.is-outgoing .client-box .pair { grid-template-columns: auto 1fr; gap: 4px; margin: 3px 0; justify-content: center; display: inline-grid; }
+#invoice-print-container.is-outgoing .client-box .pair .k { font-size: .72rem; }
+#invoice-print-container.is-outgoing .client-box .pair .v { font-size: .75rem; }
+#invoice-print-container.is-outgoing .inv-head { gap: 2px; justify-items: end; }
+#invoice-print-container.is-outgoing .inv-label { font-size: .82rem; font-weight: 600; color: var(--muted); }
+#invoice-print-container.is-outgoing .inv-no { font-size: 1.2rem; }
+#invoice-print-container.is-outgoing .inv-meta-row { display: flex; gap: 10px; font-size: .85rem; color: var(--muted); margin: 4px 0; justify-content: flex-end; flex-wrap: wrap; }
+#invoice-print-container.is-outgoing .fx-status-row { display: flex; gap: 10px; align-items: center; font-size: .8rem; margin: 4px 0; padding: 4px 0; border-top: 1px solid var(--line); justify-content: flex-end; flex-wrap: wrap; }
+#invoice-print-container.is-outgoing .status-badge { padding: 4px 8px; font-size: .75rem; }
+/* Footer alignment consistency for outgoing invoice tables */
+#invoice-print-container.is-outgoing .table-card tfoot td:first-child { text-align: right !important; padding-right: 8px; }
+#invoice-print-container.is-outgoing .table-card tfoot td:last-child { text-align: right; }
+/* Outgoing table visual tweaks */
+#invoice-print-container.is-outgoing .table-card table { font-size: .92rem; }
+#invoice-print-container.is-outgoing .table-card thead th { background:#f7faf8; color:#5f706c; }
+#invoice-print-container.is-outgoing .table-card tbody td { padding: 8px 10px; }
+#invoice-print-container.is-outgoing .table-card tbody tr:nth-child(even) td { background: #fcfcfd; }
+#invoice-print-container.is-outgoing .table-card tbody tr:hover td { background: #f8fafc; }
+#invoice-print-container.is-outgoing .table-card td,
+#invoice-print-container.is-outgoing .table-card th { vertical-align: middle; }
+#invoice-print-container.is-outgoing .table-card .num { white-space: nowrap; }
+#invoice-print-container.is-outgoing .table-card tfoot tr { background: #f8fafc; }
+#invoice-print-container.is-outgoing .table-card tfoot td { border-top: 1px solid var(--line); }
+/* Estimated phase styling - gray tones */
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .table-card thead th { color: #71717a; background:#f5f5f6; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .table-card tbody td { color: #71717a; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .table-card tfoot td { color: #71717a; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .table-card .num { color: #52525b; font-weight: 600; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .sheet .summary .row { color: #52525b; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .sheet .summary .row.total { color: #52525b; border-color: #e5e7eb; }
+#invoice-print-container.is-outgoing [style*="background:#fcfcfd; color:#71717a"] .sheet .summary .row.total .num { color: #52525b; }
+
+#invoice-print-container .dates { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+#invoice-print-container .dates .item { display: grid; gap: 4px; }
+#invoice-print-container .dates .k { color: var(--muted); font-size: .9rem; }
+#invoice-print-container .dates .v { font-weight: 700; }
+
+/* Section titles */
+#invoice-print-container .sheet .section { margin-top: 14px; }
+#invoice-print-container .sheet .section-title { font-weight: 700; color: var(--ink); border-bottom: 2px solid var(--line); padding-bottom: 6px; margin-bottom: 8px; font-size: .92rem; }
+#invoice-print-container .sheet .note-strip { font-size: .85rem; color: var(--muted); background: var(--accent-soft); border-left: 3px solid var(--accent); padding: 9px 11px; border-radius: 6px; }
+
+/* Table */
+#invoice-print-container .sheet .table-card { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+#invoice-print-container .sheet table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+#invoice-print-container .sheet thead th { text-align: left; font-size: .82rem; color: var(--muted); font-weight: 700; padding: 9px 11px; border-bottom: 1px solid var(--line); background: #f7faf8; }
+#invoice-print-container .sheet tbody td { padding: 9px 11px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: .92rem; }
+#invoice-print-container .sheet tfoot td { padding: 9px 11px; font-size: .92rem; font-weight: 600; }
+#invoice-print-container .sheet .right { text-align: right; }
+#invoice-print-container .sheet .num { font-variant-numeric: tabular-nums; }
+
+/* Summary */
+#invoice-print-container .sheet .summary { border:1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: .88rem; }
+#invoice-print-container .sheet .summary .row { display:flex; justify-content:space-between; padding: 10px 12px; border-bottom:1px solid var(--line); }
+#invoice-print-container .sheet .summary .row.muted span { color: var(--muted); }
+#invoice-print-container .sheet .summary .row.total { background: #f8fafc; font-weight: 800; font-size: 1.05rem; color: var(--accent); }
+#invoice-print-container .sheet .summary .row.total .num { margin-left: auto; text-align: right; white-space: nowrap; }
+
+/* Bank & notes */
+#invoice-print-container .sheet .bank { background: transparent; border: 2px solid var(--accent); border-radius: 8px; padding: 14px 16px; font-size: .88rem; }
+
+/* Print */
+@page { size: A4; margin: 0.6cm; }
+@media print {
+  /* [RESET] Global Constraints for Printing */
+  body.invoice-print {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    display: block !important;
+  }
+  body.invoice-print .main-pane,
+  body.invoice-print .main-pane--plain,
+  body.invoice-print .main-pane--admin,
+  body.invoice-print .main-pane--app {
+    margin-left: 0 !important;
+  }
+  body.invoice-print .mobile-nav-backdrop {
+    display: none !important;
+  }
+
+  /* ============================================================
+     Print whitelist: only render the invoice print area
+     - Avoids "surprise" UI (floating buttons/panels) affecting print.
+     - Much more robust than maintaining a growing hide list.
+     ============================================================ */
+  body.invoice-print > *:not(.app-shell) {
+    display: none !important;
+  }
+  body.invoice-print .app-shell > *:not(.flex-grow-1) {
+    display: none !important;
+  }
+  body.invoice-print .flex-grow-1 > *:not(#main) {
+    display: none !important;
+  }
+  body.invoice-print #main > *:not(.invoice-theme) {
+    display: none !important;
+  }
+  body.invoice-print .invoice-theme > *:not(#invoice-print-container):not(.cert-print) {
+    display: none !important;
+  }
+
+  body.invoice-print #invoice-print-container {
+    display: block !important;
+  }
+  body.print-with-cert .invoice-theme .cert-print {
+    display: block !important;
+    margin-top: 0 !important;
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+  body.print-with-cert .invoice-theme .cert-print .sheet {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  body.print-with-cert .invoice-theme .cert-print .sheet + .sheet {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+  body.print-with-cert .invoice-theme .cert-print img {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Invoice wrapper should not add screen padding in print */
+  body.invoice-print .invoice-theme {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* [RESET] Layout Containers - Override any 100vh or flex restrictions */
+  body.invoice-print .app-shell,
+  body.invoice-print .main-content,
+  body.invoice-print .container,
+  body.invoice-print .wrapper,
+  body.invoice-print #main,
+  body.invoice-print #app,
+  body.invoice-print .flex-grow-1,
+  body.invoice-print .container-fluid {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    position: static !important;
+  }
+
+  /* Reset grid layouts that might interfere */
+  body.invoice-print #invoice-print-container .row {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Ensure print container visibility and flow */
+  body.invoice-print #invoice-print-container {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  body.invoice-print #invoice-print-container[data-fitted="true"] {
+    zoom: var(--invoice-print-scale, 1) !important;
+    transform: none !important;
+    transform-origin: initial !important;
+    margin: 0 auto !important;
+  }
+  body.invoice-print #invoice-print-container:not([data-fitted="true"]) {
+    margin: 0 auto !important;
+    max-width: calc(100% - 8mm) !important;
+  }
+
+  /* Styles for sheets */
+  body.invoice-print #invoice-print-container .sheet {
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 10px 14px !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  body.invoice-print #invoice-print-container .sheet + .sheet {
+    margin-top: 0 !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e5e7eb !important;
+    page-break-before: avoid !important;
+  }
+
+  /* Typography adjustments for print */
+  body.invoice-print #invoice-print-container .summary .row.total { color: var(--app-legal-blue) !important; }
+
+  /* Estimated phase styling - keep muted colors */
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .sheet .summary .row.total { color: #52525b !important; }
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .sheet .summary .row.total .num { color: #52525b !important; }
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .table-card thead th { color: #71717a !important; background:#f5f5f6 !important; }
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .table-card tbody td { color: #71717a !important; }
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .table-card tfoot td { color: #71717a !important; }
+  body.invoice-print #invoice-print-container [style*="background:#fcfcfd; color:#71717a"] .table-card .num { color: #52525b !important; }
+
+  /* Avoid page breaks inside critical sections */
+  body.invoice-print #invoice-print-container .section.summary-section,
+  body.invoice-print #invoice-print-container .summary,
+  body.invoice-print #invoice-print-container .bank {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Margins & Paddings for Print Density */
+  body.invoice-print #invoice-print-container .section { margin-top: 8px !important; }
+  body.invoice-print #invoice-print-container .table-card {
+    margin-bottom: 6px !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+  }
+  body.invoice-print #invoice-print-container .invoice-print-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+  body.invoice-print #invoice-print-container .invoice-print-table th,
+  body.invoice-print #invoice-print-container .invoice-print-table td {
+    min-width: 0 !important;
+  }
+  body.invoice-print #invoice-print-container .invoice-print-table .cell-description,
+  body.invoice-print #invoice-print-container .invoice-print-table th:first-child {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  body.invoice-print #invoice-print-container .invoice-print-table .num,
+  body.invoice-print #invoice-print-container .invoice-print-table .right.num {
+    white-space: nowrap !important;
+  }
+  body.invoice-print #invoice-print-container .invoice-print-table tfoot .num,
+  body.invoice-print #invoice-print-container .invoice-print-table tfoot .right.num {
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    line-height: 1.25 !important;
+  }
+  body.invoice-print #invoice-print-container thead th,
+  body.invoice-print #invoice-print-container tbody td,
+  body.invoice-print #invoice-print-container tfoot td { padding: 4px 8px !important; }
+  body.invoice-print #invoice-print-container .summary .row { padding: 6px 10px !important; }
+}

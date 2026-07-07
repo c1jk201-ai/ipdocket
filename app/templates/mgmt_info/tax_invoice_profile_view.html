@@ -1,0 +1,53 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 style="margin:0;">View provider</h2>
+  <div class="page-actions">
+   {% if is_admin() %}
+    <a class="btn" href="{{ url_for('mgmt_info.edit_tax_invoice_profile', profile_id=profile['id']) }}">Edit</a>
+   {% endif %}
+   <a class="btn btn-ghost" href="{{ url_for('mgmt_info.list_tax_invoice_profiles') }}">List</a>
+  </div>
+ </div>
+
+ <div class="card" style="margin-top:12px;">
+  <div class="grid grid-2">
+   <div>
+    <div class="muted">Business name</div>
+    <div style="font-weight:600;">{{ profile['name'] }}</div>
+   </div>
+   <div>
+    <div class="muted">Default</div>
+    <div>{{ 'Default' if profile.get('is_default') else '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Tax ID / EIN</div>
+    <div>{{ profile['tax_id'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Representative</div>
+    <div>{{ profile['ceo_name'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Email</div>
+    <div>{{ profile['email'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Phone</div>
+    <div>{{ profile['phone'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Business category</div>
+    <div>{{ profile['biz_type'] or '-' }}</div>
+   </div>
+   <div>
+    <div class="muted">Business activity</div>
+    <div>{{ profile['biz_class'] or '-' }}</div>
+   </div>
+   <div class="grid-2" style="grid-column: 1 / -1;">
+    <div class="muted">Address</div>
+    <div>{{ profile['address'] or '-' }}</div>
+   </div>
+  </div>
+ </div>
+{% endblock %}

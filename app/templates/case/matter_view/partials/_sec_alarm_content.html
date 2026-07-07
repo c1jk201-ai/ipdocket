@@ -1,0 +1,92 @@
+    <div id="alarm" class="top-panel">
+      {% set _can_view_alarm_private = ((current_user.role or '')|lower == 'admin' or current_user.is_mgmt_role()) %}
+      <div class="case-panel-header mb-2">
+        <div class="fw-bold">
+           
+          <span class="badge bg-light text-secondary">Total {{ alarm_total_count or 0 }}items</span>
+        </div>
+        <div class="case-section-actions case-section-meta-actions">
+          <span class="small text-muted">Deadline/Renewal Notice Send</span>
+        </div>
+      </div>
+
+      <div class="legacy-section-header mb-2">
+        <div class="legacy-title">
+          Deadline/Renewal Notice Send 
+          <span class="badge bg-light text-secondary">Total {{ alarm_deadline_total_count or 0 }}items</span>
+        </div>
+      </div>
+      <div class="legacy-grid-wrap mb-4">
+        <table class="legacy-grid small">
+          <thead>
+            <tr>
+              <th style="width: 160px;"></th>
+              <th style="width: 80px;">Type</th>
+              <th>target</th>
+              <th style="width: 120px;">Due date</th>
+              <th style="width: 70px;">D-n</th>
+              <th style="width: 80px;"></th>
+              <th style="width: 80px;"></th>
+              {% if _can_view_alarm_private %}
+                <th style="width: 220px;">Receive</th>
+              {% endif %}
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in (alarm_deadline_logs or []) %}
+              {% set _etype = (r.entity_type or '') %}
+              {% set _is_docket = _etype == 'docket_item' %}
+              {% set _is_annuity = _etype == 'annuity_item' %}
+              {% set _status = (r.status or '')|lower %}
+              <tr class="legacy-row-hover">
+                <td align="center" title="{{ r.sent_at|local_dt if r.sent_at else '' }}">
+                  {{ r.sent_at|local_dt_min if r.sent_at else '' }}
+                </td>
+                <td align="center">
+                  {% if _is_docket %}Deadline{% elif _is_annuity %}Renewal{% else %}-{% endif %}
+                </td>
+                <td style="text-align:left;">
+                  {% if _is_docket and r.docket_id %}
+                    <a href="{{ url_for('deadlines.docket_detail', docket_id=r.docket_id) }}" class="text-decoration-none">
+                      {{ r.title or r.docket_id }}
+                    </a>
+                  {% else %}
+                    {{ r.title or r.entity_id or '-' }}
+                  {% endif %}
+                </td>
+                <td align="center">{{ (r.due_date or '')|us_date }}</td>
+                <td align="center">
+                  {% if r.days_before == -999 %}
+                    LIST
+                  {% elif r.days_before is not none %}
+                    D-{{ r.days_before }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td align="center">{{ r.channel or '-' }}</td>
+                <td align="center" class="{% if _status == 'failed' %}text-danger fw-bold{% endif %}">
+                  {{ r.status or '-' }}
+                </td>
+                {% if _can_view_alarm_private %}
+                  <td style="text-align:left;">{{ r.recipient or '-' }}</td>
+                {% endif %}
+                <td style="text-align:left;">
+                  {% if r.error_message %}
+                    <span class="text-danger small">{{ r.error_message }}</span>
+                  {% else %}
+                    <span class="text-muted small">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr data-empty="1">
+                <td colspan="{% if _can_view_alarm_private %}9{% else %}8{% endif %}" class="text-center py-4"><div class="app-empty-state"><i class="bi bi-bell-slash"></i><span>Notice Send  none.</span></div></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>

@@ -1,0 +1,190 @@
+{% extends "layouts/base.html" %}
+{% from "_entity_links.html" import case_detail, file_asset_open %}
+{% block content %}
+{% set _comm_label = "Response" if (comm_type or '') == 'R' else "Call" if (comm_type or '') == 'T' else "Correspondence" %}
+{% set _direction_label = "Uploaded" if (direction or "") == "" else "Sent" if (direction or "") == "Send" else (direction or "-") %}
+<div class="container py-4" style="max-width: 980px;">
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <div class="small text-muted">Matter &gt; History &gt; {{ _comm_label }}</div>
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <h4 class="fw-bold mb-0">{{ subject or _comm_label }}</h4>
+        <span class="badge bg-primary-subtle text-primary border">{{ _direction_label }}</span>
+      </div>
+      <div class="small text-muted">
+        {{ case_detail(case_id, label=(matter.our_ref or case_id), classes="text-decoration-none") }}
+        <span class="mx-1">&middot;</span>
+        <span>COMM ID: {{ comm_id }}</span>
+      </div>
+      {% if matter and matter.right_name %}
+      <div class="small text-muted">{{ matter.right_name }}</div>
+      {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-primary" href="{{ url_for('case_work.history_letter_edit', case_id=case_id, comm_id=comm_id, popup=popup) }}">Edit</a>
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.history_letter_attachments', case_id=case_id, comm_id=comm_id) }}">All files</a>
+      {% if popup %}
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.close()">Close</button>
+      {% else %}
+      <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=case_id) }}">Back to matter</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="text-muted small">Subject / Notes</div>
+            <div class="fw-semibold">{{ subject or "-" }}</div>
+          </div>
+          {% if (comm_type or '') != 'R' %}
+          <div>
+            <div class="text-muted small">Recipient / Target</div>
+            <div>{{ to_text or "-" }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Owner</span>
+            <span>{{ manager_label or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Uploaded</span>
+            <span>{{ (received_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Sent</span>
+            <span>{{ (sent_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted small">Due</span>
+            <span class="fw-semibold">{{ (due_date or "")|us_date or "-" }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted small">Done</span>
+            <span>{{ (done_date or "")|us_date or "-" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if (comm_type or '') != 'R' %}
+  <div class="card shadow-sm mt-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">{% if (comm_type or '') == 'T' %}Call Record{% else %}Email Content{% endif %}</div>
+      <div class="small text-muted">
+        {% if (comm_type or '') == 'T' %}
+          Call
+        {% else %}
+          {{ email_source or "No email metadata" }}
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      {% set _has_email = email_preview or email_file_asset_id or email_error %}
+      {% if _has_email %}
+      {% if email_preview %}
+      <div class="row g-2 small mb-3">
+        <div class="col-md-6"><span class="text-muted">Subject</span> <span class="ms-1 fw-semibold">{{ email_preview.subject }}</span></div>
+        <div class="col-md-6"><span class="text-muted">From</span> <span class="ms-1">{{ email_preview.from_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted">To</span> <span class="ms-1">{{ email_preview.to_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted">Cc</span> <span class="ms-1">{{ email_preview.cc_addr }}</span></div>
+        <div class="col-md-6"><span class="text-muted">Date</span> <span class="ms-1">{{ email_preview.date_str }}</span></div>
+      </div>
+      {% endif %}
+
+      <div class="d-flex flex-wrap gap-2 mb-2">
+        {% if email_file_asset_id %}
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=email_file_asset_id) }}">Download original</a>
+          {% if (email_file_ext or '') == '.eml' %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_eml_file_asset', case_id=case_id, file_asset_id=email_file_asset_id) }}" target="_blank">Open EML</a>
+          {% elif (email_file_ext or '') == '.msg' %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_msg_file_asset', case_id=case_id, file_asset_id=email_file_asset_id) }}" target="_blank">Open MSG</a>
+          {% endif %}
+        {% endif %}
+
+        {% if not email_body_loaded and can_load_email_preview %}
+          <a class="btn btn-sm btn-primary"
+             href="{{ url_for('case_work.history_letter_view', case_id=case_id, comm_id=comm_id, popup=popup, load_email=1) }}">
+            Load email preview
+          </a>
+        {% endif %}
+      </div>
+
+      {% if not email_body_loaded %}
+        <div class="text-muted small">{{ email_hint or "Email preview has not been loaded yet." }}</div>
+      {% else %}
+        {% if email_preview and email_preview.body_html %}
+      <iframe
+        title="Email HTML Preview"
+        sandbox=""
+        style="width:100%; height:55vh; border:1px solid #e2e6ef; border-radius:8px; background:#fff;"
+        srcdoc="{{ email_preview.body_html|e }}">
+      </iframe>
+        {% elif email_preview and email_preview.body_text %}
+      <pre class="small mb-0" style="white-space:pre-wrap;">{{ email_preview.body_text }}</pre>
+        {% elif email_error %}
+      <div class="text-muted small">{{ email_error }}</div>
+        {% else %}
+      <div class="text-muted small">No body content.</div>
+        {% endif %}
+      {% endif %}
+      {% else %}
+      <div class="text-muted small">No linked email metadata.</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card shadow-sm mt-3">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Files</div>
+      <span class="text-muted small">{{ (existing_files or [])|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>File</th>
+            <th style="width: 120px;">Size</th>
+            <th style="width: 240px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in (existing_files or []) %}
+          <tr>
+            <td class="text-break">
+              {{ file_asset_open(case_id, f.file_asset_id, label=(f.original_name or f.file_asset_id), inline=1, classes="text-decoration-none") }}
+              <div class="text-muted small">{{ f.mime_type or "" }}</div>
+            </td>
+            <td class="text-muted">{{ (f.byte_size or 0)|filesizeformat }}</td>
+            <td>
+              <a class="btn btn-sm btn-primary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}">Download</a>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.download_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}?inline=1" target="_blank">Open</a>
+              {% set name_lower = (f.original_name or "")|lower %}
+              {% if (f.mime_type or "") == "message/rfc822" or name_lower[-4:] == ".eml" %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_eml_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}" target="_blank">Preview</a>
+              {% elif (f.mime_type or "") == "application/vnd.ms-outlook" or name_lower[-4:] == ".msg" %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.view_msg_file_asset', case_id=case_id, file_asset_id=f.file_asset_id) }}" target="_blank">Preview</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="text-center text-muted py-4">No files attached.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

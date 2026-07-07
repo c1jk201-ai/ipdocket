@@ -1,0 +1,123 @@
+{% extends "layouts/base.html" %}
+{% import "components/_macros.html" as ui with context %}
+
+{% block title %}Correspondence{% endblock %}
+
+{% block content %}
+{% from "_entity_links.html" import history_letter_edit, history_letter_view %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-envelope me-2"></i>Correspondence</h4>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <form
+              method="GET"
+              class="row g-2 align-items-center"
+              data-show-loading="true"
+              data-loading-text="Loading correspondence list..."
+              data-loading-detail="Refreshing the list with your search criteria."
+            >
+                <div class="col-auto">
+                    <input type="text" class="form-control form-control-sm" name="q"
+                           value="{{ search }}" placeholder="Search docket no. or title...">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Search</button>
+                    {% if search %}
+                    <a href="{{ url_for('doc.all_letters') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                    {% endif %}
+                </div>
+                <div class="col-auto ms-auto">
+                    <span class="badge bg-secondary">{{ total }} total</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th style="width: 120px;">Docket No.</th>
+                        <th>Title</th>
+                        <th style="width: 80px;">Type</th>
+                        <th style="width: 100px;">Uploaded</th>
+                        <th style="width: 100px;">Sent</th>
+                        <th style="width: 60px;">Files</th>
+                        <th style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td class="text-center text-muted">{{ (page - 1) * per_page + loop.index }}</td>
+                        <td>
+                            <a href="{{ url_for('case_work.case_detail', case_id=r.matter_id) }}#sec-history" class="text-decoration-none">
+                                {{ r.our_ref }}
+                            </a>
+                        </td>
+                        <td class="text-truncate" style="max-width: 400px;" title="{{ r.note or '' }}">
+                            {% if r.comm_id %}
+                              {{ history_letter_view(r.matter_id, r.comm_id, label=(r.note or '-'), popup=1, classes='text-decoration-none text-dark text-truncate d-block') }}
+                            {% else %}
+                              {{ r.note or '-' }}
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if r.sent_date %}
+                                <span class="badge bg-primary">Sent</span>
+                            {% else %}
+                                <span class="badge bg-success">Uploaded</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                          {% set _recv = (r.received_date or '')|date_only %}
+                          {% if _recv %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_recv) }}" class="text-decoration-none">{{ _recv|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td>
+                          {% set _sent = (r.sent_date or '')|date_only %}
+                          {% if _sent %}
+                            <a href="{{ url_for('deadlines.calendar_month', date=_sent) }}" class="text-decoration-none">{{ _sent|us_date }}</a>
+                          {% else %}
+                            -
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if r.attach_count > 0 %}
+                                <a href="{{ url_for('case_work.history_letter_attachments', case_id=r.matter_id, comm_id=r.comm_id) }}"
+                                   class="badge bg-info text-decoration-none">{{ r.attach_count }}</a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('case_work.history_letter_edit', case_id=r.matter_id, comm_id=r.comm_id, popup=1) }}"
+                               onclick="window.open(this.href,'letterEdit','width=1100,height=800'); return false;"
+                               class="btn btn-sm btn-outline-secondary">Edit</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">No correspondence data.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% set letter_pagination_args = request.args.to_dict(flat=True) %}
+    {% set _ = letter_pagination_args.update({'q': search or '', 'per_page': per_page}) %}
+    {{ ui.pagination(request.endpoint, page, total_pages, letter_pagination_args, 'Correspondence pagination') }}
+</div>
+{% endblock %}

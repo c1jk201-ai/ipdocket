@@ -1,0 +1,167 @@
+{% extends 'invoice_base.html' %} {% block invoice_content %}
+<div
+ class="row wrap"
+ style="margin-bottom: 16px; align-items: center; gap: 8px"
+>
+ <h2 style="margin: 0">📄 overdue (Per-Invoice)</h2>
+ {% if client_name %}
+ <div class="muted">
+  Client:
+  <strong>
+   <a class="text-decoration-none" href="{{ url_for('billing_invoices.clients.view_client', client_id=request.args.get('client_id')) }}">{{ client_name }}</a>
+  </strong>
+  <span class="mx-1">·</span>
+  <a class="text-decoration-none" href="{{ url_for('customers.clients', q=client_name) }}">CRM</a>
+  <span class="mx-1">·</span>
+  <a class="text-decoration-none" href="{{ url_for('billing_invoices.invoices.list_invoices', q=client_name, business_profile_id=request.args.get('business_profile_id','')) }}">Invoice</a>
+ </div>
+ {% endif %} {% if currency %}
+ <div class="muted">Currency: <strong>{{ currency }}</strong></div>
+ {% endif %}
+ <div class="spacer"></div>
+ <a
+  class="btn"
+  href="{{ url_for('billing_invoices.aging.aging_report', business_profile_id=request.args.get('business_profile_id',''), as_of=request.args.get('as_of',''), overdue_only=request.args.get('overdue_only',''), case_linked=request.args.get('case_linked','')) }}"
+ >← Aging </a
+>
+</div>
+
+<div class="card">
+ <div style="overflow-x: auto">
+  <table class="striped" style="min-width: 1200px">
+   <thead>
+    <tr>
+     <th>Client name</th>
+     <th>Invoice number</th>
+     <th class="right">Revenue</th>
+     <th class="right">Sales tax</th>
+     <th class="right">
+      Revenue外 Client Billing "" Official fee/Foreign/
+     </th>
+     <th class="right">Billable amount</th>
+     <th class="right">Deposit amount</th>
+     <th>Deposit days</th>
+     <th class="right">Revenue + official fee outstanding balance</th>
+     <th>Tax documentation date</th>
+     <th>Status</th>
+     <th class="right">Actions</th>
+    </tr>
+   </thead>
+   <tbody>
+    {% for r in rows %} {% set cur = (r['currency'] or 'USD')|upper %}
+    <tr>
+     <td>{{ r['client_name'] }}</td>
+     <td class="nowrap">
+      {% if r['number'] %}
+      <a
+       href="{{ url_for('billing_invoices.invoices.view_invoice', invoice_id=r['id']) }}"
+       class="btn btn-ghost"
+       style="padding: 4px 8px"
+      >{{ r['number'] }}</a
+     >
+      <a
+       href="{{ url_for('billing_invoices.invoices.invoice_logs', invoice_id=r['id']) }}"
+       class="text-decoration-none text-muted"
+       style="margin-left:6px; font-size:0.8rem;"
+      ></a
+     >
+      {% else %} - {% endif %}
+     </td>
+     {% if cur in ['USD','JPY'] %}
+     <td class="right">{{ '{:,.0f}'.format(r['service_total'] or 0) }}</td>
+     <td class="right">{{ '{:,.0f}'.format(r['tax'] or 0) }}</td>
+     <td class="right">
+      {{ '{:,.0f}'.format(r['additional_charges'] or 0) }}
+     </td>
+     <td class="right">
+      <strong>{{ '{:,.0f}'.format(r['total'] or 0) }}</strong>
+     </td>
+     <td class="right">
+      {{ '{:,.0f}'.format(r['deposit_amount'] or 0) }}
+     </td>
+     <td class="nowrap">{{ r['deposit_date'] or '' }}</td>
+     <td class="right">
+      <strong>{{ '{:,.0f}'.format(r['outstanding'] or 0) }}</strong>
+     </td>
+     {% else %}
+     <td class="right">{{ '{:,.2f}'.format(r['service_total'] or 0) }}</td>
+     <td class="right">{{ '{:,.2f}'.format(r['tax'] or 0) }}</td>
+     <td class="right">
+      {{ '{:,.2f}'.format(r['additional_charges'] or 0) }}
+     </td>
+     <td class="right">
+      <strong>{{ '{:,.2f}'.format(r['total'] or 0) }}</strong>
+     </td>
+     <td class="right">
+      {{ '{:,.2f}'.format(r['deposit_amount'] or 0) }}
+     </td>
+     <td class="nowrap">{{ r['deposit_date'] or '' }}</td>
+     <td class="right">
+      <strong>{{ '{:,.2f}'.format(r['outstanding'] or 0) }}</strong>
+     </td>
+     {% endif %}
+     <td class="nowrap">
+      {% if r['tax_issued_at'] %} {{
+      r['tax_issued_at']|local_date }} {% else %} {%
+      endif %}
+     </td>
+     <td>
+      <span class="pill {{ r['status'] }}"
+      >{{ status_label(r['status']) }}</span
+     >
+     </td>
+     <td class="right nowrap">
+      {% if r['status'] not in ['paid','void','pre_overdue'] %}
+      <form
+       method="post"
+       action="{{ url_for('billing_invoices.aging.aging_mark_pre_overdue', invoice_id=r['id']) }}"
+       style="display: inline"
+     >
+       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+       <input
+        type="hidden"
+        name="client_id"
+        value="{{ request.args.get('client_id') }}"
+       />
+       <input
+        type="hidden"
+        name="currency"
+        value="{{ request.args.get('currency','') }}"
+       />
+       <input
+        type="hidden"
+        name="business_profile_id"
+        value="{{ request.args.get('business_profile_id','') }}"
+       />
+       <input
+        type="hidden"
+        name="as_of"
+        value="{{ request.args.get('as_of','') }}"
+       />
+       <input
+        type="hidden"
+        name="overdue_only"
+        value="{{ request.args.get('overdue_only','') }}"
+       />
+       <input
+        type="hidden"
+        name="case_linked"
+        value="{{ request.args.get('case_linked','') }}"
+       />
+       <button class="btn" type="submit">Advanced costto Display</button>
+      </form>
+      {% else %}
+      <span class="muted">-</span>
+      {% endif %}
+     </td>
+    </tr>
+    {% else %}
+    <tr>
+     <td colspan="12" class="muted">No data.</td>
+    </tr>
+    {% endfor %}
+   </tbody>
+  </table>
+ </div>
+</div>
+{% endblock %}

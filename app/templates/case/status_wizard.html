@@ -1,0 +1,82 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-1">Status  </h4>
+      <div class="text-muted small">
+        Matter:
+        <a class="text-decoration-none" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">
+          <b>{{ matter.matter_id }}</b>
+        </a>
+        {% if matter.title %} · {{ matter.title }}{% endif %}
+      </div>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}"></a>
+  </div>
+
+  <div class="card p-3">
+    <div class="alert alert-light border small mb-3">
+      Current Status: <b>{{ current_status or "-" }}</b>
+      <span class="mx-2">/</span>
+        <b>P2</b> to, Status Change  Deadline/Task Template Create.
+    </div>
+
+    <form method="post" class="row g-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="col-md-4">
+        <label class="form-label"> Status</label>
+        <select name="new_status" class="form-select" required>
+          <option value="">Select...</option>
+          {% for s in status_options %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label"></label>
+        <select name="preset" class="form-select">
+          {% for p in presets %}
+            <option value="{{ p.key }}">{{ p.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Due date(Select)</label>
+        <input type="date" name="legal_due" class="form-control"
+               value="{{ legal_due_default|local_dt('%Y-%m-%d') if legal_due_default else '' }}">
+        <div class="form-text">Missing ,   Existing Deadline Auto ( )</div>
+      </div>
+
+      <div class="col-12">
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="create_dockets" value="y" id="cd" checked>
+          <label class="form-check-label" for="cd">Deadline Auto Create(Statutory/Draft/)</label>
+        </div>
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="create_workflows" value="y" id="cw" checked>
+          <label class="form-check-label" for="cw">Task Auto Create( )</label>
+        </div>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-outline-secondary" href="{{ url_for('case_work.case_detail', case_id=matter.matter_id) }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card p-3 mt-3">
+    <div class="small text-muted">
+       Add(Select): Matter view below link   .
+      <div class="mt-2">
+        <code>/case/matter/{{ matter.matter_id }}/status-wizard</code><br/>
+        <code>/case/matter/{{ matter.matter_id }}/dockets.ics</code><br/>
+        <code>/case/matter/{{ matter.matter_id }}/tc/to-invoice</code>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

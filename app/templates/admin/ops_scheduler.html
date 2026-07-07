@@ -1,0 +1,77 @@
+{% extends "admin/base.html" %}
+{% block title %}Scheduler Status{% endblock %}
+{% block admin_description %}Review scheduler heartbeats, job runs, successes, and failures.{% endblock %}
+
+{% block admin_header_actions %}
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.ops_overview') }}">Operations Monitoring</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.service_health') }}">Service Health</a>
+<a class="btn btn-outline-secondary btn-sm" href="{{ url_for('ops_admin.queue_home', status='failed') }}">Failed Actions</a>
+{% endblock %}
+
+{% block admin_page_content %}
+<div class="card mb-3">
+  <div class="card-body">
+  <div><b>Scheduler Alive</b>: {{ "YES" if alive else "NO" }}</div>
+  <div class="small text-muted">
+    Last heartbeat: {{ heartbeat_time or "-" }} &middot; Stale threshold: {{ stale_threshold }}s &middot; Now: {{ now }}
+  </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Last Run</th>
+            <th>Last Success</th>
+            <th>Last Failure</th>
+            <th>Failure Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td>
+              <div><b>{{ item.label }}</b></div>
+              <div class="small text-muted">{{ item.job_name }}</div>
+            </td>
+            <td>
+              {% if item.last %}
+                <div>{{ item.last.status }}</div>
+                <div class="small text-muted">{{ item.last.started_at }}</div>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if item.last_success %}
+                <div>{{ item.last_success.finished_at or item.last_success.started_at }}</div>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if item.last_failed %}
+                <div>{{ item.last_failed.finished_at or item.last_failed.started_at }}</div>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td style="max-width:420px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              {% if item.last_failed and item.last_failed.error %}
+                <small>{{ item.last_failed.error }}</small>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

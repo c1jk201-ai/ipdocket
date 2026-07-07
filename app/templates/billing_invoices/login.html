@@ -1,0 +1,24 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+<div class="card" style="max-width:420px; margin:60px auto;">
+ <h2 style="margin-top:0; text-align:center;">🔑 </h2>
+ {% if error %}
+ <div style="padding:12px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#dc2626; margin-bottom:16px;">
+  <strong>⚠️ {{ error }}</strong>
+ </div>
+ {% endif %}
+ <form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div style="margin-bottom:16px;">
+   <label style="display:block; margin-bottom:6px; font-weight:600;"></label>
+   <input name="username" autofocus required style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:1rem;">
+  </div>
+  <div style="margin-bottom:20px;">
+   <label style="display:block; margin-bottom:6px; font-weight:600;"></label>
+   <input name="password" type="password" required style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:1rem;">
+  </div>
+  <button class="btn btn-primary btn-ui-prominent w-100" type="submit"></button>
+ </form>
+</div>
+{% endblock %}
+{% block footer %}{% endblock %}

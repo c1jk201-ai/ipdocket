@@ -1,0 +1,94 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<div class="container mt-3">
+  <h3 class="fw-semibold mb-3"> (Executive Dashboard)</h3>
+
+  <div class="row g-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">items</div>
+        <div id="kpi-new" class="fs-3 fw-semibold">-</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">In Progress</div>
+        <div id="kpi-mid" class="fs-3 fw-semibold">-</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small">Registration</div>
+        <div id="kpi-registered" class="fs-3 fw-semibold">-</div>
+      </div></div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="text-muted small d-flex justify-content-between align-items-center">
+          <span>Outstanding balance()</span>
+          <a id="kpi-ar-link" class="small text-decoration-none" href="/accounting/invoice-system/aging/aging">Aging</a>
+        </div>
+        <div id="kpi-ar" class="fs-3 fw-semibold">-</div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-md-6">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="fw-semibold mb-2">Type </div>
+        <canvas id="chartType" height="120"></canvas>
+      </div></div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm"><div class="card-body">
+        <div class="fw-semibold mb-2">/Foreign </div>
+        <canvas id="chartDiv" height="120"></canvas>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ static_asset_url('vendor/chart/chart.umd.min.js') }}"></script>
+<script>
+async function loadMetrics(){
+  const r = await fetch("{{ url_for('dashboard.metrics') }}");
+  const d = await r.json();
+  document.getElementById('kpi-new').textContent = d.cases.new;
+  document.getElementById('kpi-mid').textContent = d.cases.mid;
+  document.getElementById('kpi-registered').textContent = d.cases.registered;
+  const arElem = document.getElementById('kpi-ar');
+  const arLink = document.getElementById('kpi-ar-link');
+  if (d.finance.receivables_locked) {
+    arElem.textContent = '🔒';
+    arLink.classList.add('d-none');
+  } else {
+    const entries = Object.entries(d.finance.receivables_by_currency || {});
+    if (!entries.length) {
+      arElem.textContent = '-';
+    } else {
+      const parts = entries.map(([currency, value]) => {
+        const decimals = (currency === 'USD' || currency === 'JPY') ? 0 : 2;
+        const formatted = new Intl.NumberFormat('en-US', {
+          maximumFractionDigits: decimals
+        }).format(Number(value || 0));
+        return `${currency}: ${formatted}`;
+      });
+      arElem.textContent = parts.join(' / ');
+    }
+  }
+
+  const typeCtx = document.getElementById('chartType');
+  const divCtx = document.getElementById('chartDiv');
+  const typeLabels = Object.keys(d.holdings.by_type || {});
+  const typeData = Object.values(d.holdings.by_type || {});
+  const divLabels = Object.keys(d.holdings.by_division || {});
+  const divData = Object.values(d.holdings.by_division || {});
+  if (typeof window.Chart === 'function') {
+    new Chart(typeCtx, {type:'doughnut', data:{labels:typeLabels, datasets:[{data:typeData}]}});
+    new Chart(divCtx, {type:'doughnut', data:{labels:divLabels, datasets:[{data:divData}]}});
+  }
+}
+loadMetrics();
+</script>
+{% endblock %}

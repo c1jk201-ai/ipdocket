@@ -1,0 +1,260 @@
+{% extends 'invoice_base.html' %}
+{% import "components/_macros.html" as ui with context %}
+{% block invoice_content %}
+ <div class="page-header">
+  <h2 class="mb-0">Expense management</h2>
+  <div class="page-actions">
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_categories') }}"> category</a>
+   <a class="btn btn-ghost" href="{{ url_for('billing_invoices.reports.vat_report') }}">Sales tax </a>
+  </div>
+ </div>
+
+ {% set multi_currency_summary = (currency_filter == 'ALL' and (totals_by_currency|length)> 1) %}
+ <div class="grid grid-3 mt-3">
+  <div class="card">
+   <div class="muted text-sm mb-1">Taxable amount Total</div>
+   <div class="text-xl text-strong text-accent">
+    {% if totals_by_currency %}
+     {% for t in totals_by_currency %}
+      <div class="{% if not loop.first %}text-sm{% endif %}">
+       {{ "{:,.2f}".format(t.net or 0) }} {{ t.currency }}
+      </div>
+     {% endfor %}
+    {% else %}
+     0
+    {% endif %}
+   </div>
+   {% if multi_currency_summary %}<div class="muted text-xs mt-1">Currency Total ( )</div>{% endif %}
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-1">Sales tax Total</div>
+   <div class="text-xl text-strong text-accent-alt">
+    {% if totals_by_currency %}
+     {% for t in totals_by_currency %}
+      <div class="{% if not loop.first %}text-sm{% endif %}">
+       {{ "{:,.2f}".format(t.vat or 0) }} {{ t.currency }}
+      </div>
+     {% endfor %}
+    {% else %}
+     0
+    {% endif %}
+   </div>
+   {% if multi_currency_summary %}<div class="muted text-xs mt-1">Currency Total ( )</div>{% endif %}
+  </div>
+  <div class="card">
+   <div class="muted text-sm mb-1">Total Amount</div>
+   <div class="text-xl text-strong text-amber">
+    {% if totals_by_currency %}
+     {% for t in totals_by_currency %}
+      <div class="{% if not loop.first %}text-sm{% endif %}">
+       {{ "{:,.2f}".format(t.sum or 0) }} {{ t.currency }}
+      </div>
+     {% endfor %}
+    {% else %}
+     0
+    {% endif %}
+   </div>
+   {% if multi_currency_summary %}<div class="muted text-xs mt-1">Currency Total ( )</div>{% endif %}
+  </div>
+ </div>
+
+ <div class="card mt-3">
+  <h3 class="mt-0"> Registration</h3>
+  <form method="post" class="row g-2 align-items-end">
+   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <div class="col-12 col-md-4 col-lg-3">
+    <label>days</label>
+    <input type="date" name="expense_date" value="{{ start_date or '' }}">
+   </div>
+   <div class="col-12 col-md-4 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     {% for bp in business_profiles %}
+      <option value="{{ bp.id }}">{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-4 col-lg-3">
+    <label> category</label>
+    <select name="category_id">
+     <option value="">Uncategorized</option>
+     {% for cat in categories %}
+      <option value="{{ cat.id }}">{{ cat.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-4 col-lg-2">
+    <label>Currency</label>
+    <input type="text" name="currency" value="USD">
+   </div>
+   <div class="col-12 col-md-6 col-lg-4">
+    <label></label>
+    <input type="text" name="vendor_name" placeholder=": people">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Business profile</label>
+    <input type="text" name="vendor_tax_id" placeholder="Select">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Taxable amount</label>
+    <input type="number" step="0.01" name="net_amount" value="0">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Sales tax</label>
+    <input type="number" step="0.01" name="vat_amount" value="0">
+   </div>
+   <div class="col-12">
+    <label>Content</label>
+    <input type="text" name="description" placeholder=" Description">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Tax record type</label>
+    <select name="tax_type">
+     <option value="tax_invoice">Tax documentation</option>
+     <option value="cash_receipt">Payment receipt</option>
+     <option value="card">Card</option>
+     <option value="other">Other</option>
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Input </label>
+    <label class="d-flex align-items-center gap-2 mt-2">
+     <input type="checkbox" name="input_vat_eligible" value="1" checked>
+      target
+    </label>
+   </div>
+   <div class="col-12">
+    <label>Notes</label>
+    <input type="text" name="memo" placeholder="Add Notes">
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Registration</button>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card mt-3">
+  <h3 class="mt-0">Filters</h3>
+  <form method="get" class="row g-2 align-items-end">
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period start</label>
+    <input type="date" name="start_date" value="{{ start_date or '' }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Period end</label>
+    <input type="date" name="end_date" value="{{ end_date or '' }}">
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label> category</label>
+    <select name="category_id">
+     <option value="">All (category)</option>
+     {% for cat in categories %}
+     <option value="{{ cat.id }}" {% if category_filter and category_filter|int==cat.id %}selected{% endif %}>{{ cat.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Business profile</label>
+    <select name="business_profile_id">
+     <option value="">All (Business profile)</option>
+     {% for bp in business_profiles %}
+     <option value="{{ bp.id }}" {% if bp_filter and bp_filter|int==bp.id %}selected{% endif %}>{{ bp.name }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-md-6 col-lg-3">
+    <label>Currency</label>
+    <select name="currency">
+     <option value="ALL" {% if currency_filter == 'ALL' %}selected{% endif %}>All (Currency)</option>
+     {% for cur in currencies %}
+     <option value="{{ cur }}" {% if currency_filter == cur %}selected{% endif %}>{{ cur }}</option>
+     {% endfor %}
+    </select>
+   </div>
+   <div class="col-12 col-lg-4">
+    <label>Search (/Content/Notes)</label>
+    <input type="text" name="q" value="{{ q }}" placeholder="Search Input">
+   </div>
+   <div class="col-12 col-md-6 col-lg-2">
+    <label>page</label>
+    <select name="per_page">
+     <option value="20" {% if per_page==20 %}selected{% endif %}>20 items</option>
+     <option value="50" {% if per_page==50 %}selected{% endif %}>50 items</option>
+     <option value="100" {% if per_page==100 %}selected{% endif %}>100 items</option>
+    </select>
+   </div>
+   <div class="col-12">
+    <div class="d-flex gap-2 justify-content-end flex-wrap">
+     <button class="btn btn-primary" type="submit">Apply</button>
+     <a class="btn btn-ghost" href="{{ url_for('billing_invoices.expenses.list_expenses') }}">Reset</a>
+    </div>
+   </div>
+  </form>
+ </div>
+
+ <div class="card mt-3">
+  <div class="d-flex align-items-center gap-2 mb-3">
+   <div class="text-strong text-soft">Total {{ total_count }}items</div>
+   <div class="spacer"></div>
+   <div class="muted text-sm">
+    {% if total_count %}
+     {{ (page - 1) * per_page + 1 }} - {{ [page * per_page, total_count]|min }} Display
+    {% else %}
+     0 - 0 Display
+    {% endif %}
+   </div>
+  </div>
+  <div class="table-card">
+   <table class="table">
+    <thead>
+     <tr>
+      <th class="a_c">days</th>
+      <th></th>
+      <th>category</th>
+      <th>Content</th>
+      <th class="a_r">Taxable amount</th>
+      <th class="a_r">Sales tax</th>
+      <th class="a_r">Total</th>
+      <th class="a_c">Currency</th>
+      <th class="a_c"></th>
+      <th class="a_c w-110"></th>
+     </tr>
+    </thead>
+    <tbody>
+    {% for exp in expenses %}
+     <tr>
+      <td class="a_c">{{ exp.expense_date }}</td>
+      <td>{{ exp.vendor_name or '-' }}</td>
+      <td>{{ exp.category_name or 'Uncategorized' }}</td>
+      <td>{{ exp.description or '-' }}</td>
+      <td class="a_r">{{ exp.net_amount|currency(exp.currency or 'USD') }}</td>
+      <td class="a_r">{{ exp.vat_amount|currency(exp.currency or 'USD') }}</td>
+      <td class="a_r">{{ exp.total_amount|currency(exp.currency or 'USD') }}</td>
+      <td class="a_c">{{ exp.currency or 'USD' }}</td>
+      <td class="a_c">{% if exp.input_vat_eligible %}✅{% else %}—{% endif %}</td>
+      <td>
+       <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('billing_invoices.expenses.edit_expense', expense_id=exp.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('billing_invoices.expenses.delete_expense', expense_id=exp.id) }}" data-confirm="Delete" class="d-inline m-0">
+         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+         <button class="btn btn-ghost btn-sm" type="submit">Delete</button>
+        </form>
+       </div>
+      </td>
+     </tr>
+    {% else %}
+     <tr>
+      <td colspan="10" class="muted">Registration none.</td>
+     </tr>
+    {% endfor %}
+    </tbody>
+   </table>
+  </div>
+ </div>
+
+ {% set expense_pagination_args = request.args.to_dict(flat=True) %}
+ {% set _ = expense_pagination_args.update({'per_page': per_page, 'start_date': start_date, 'end_date': end_date, 'category_id': category_filter, 'business_profile_id': bp_filter, 'currency': currency_filter, 'q': q}) %}
+ {{ ui.pagination('billing_invoices.expenses.list_expenses', page, total_pages, expense_pagination_args, ' Pagination') }}
+{% endblock %}

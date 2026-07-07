@@ -1,0 +1,33 @@
+ <!-- Client Info -->
+ {% if not outgoing_mode %}
+ <div class="sheet">
+  <div class="box">
+   <div class="box-title">{{ t_lang('client_info', invoice_lang) }}</div>
+   <div class="pair">
+    <div class="k">{{ t_lang('client_name', invoice_lang) }}</div>
+    <div class="v">{{ invoice['client_name'] }}</div>
+   </div>
+   {% if invoice['client_address'] %}
+   <div class="pair">
+    <div class="k">{{ t_lang('address', invoice_lang) }}</div>
+    <div class="v">{{ invoice['client_address'] }}</div>
+   </div>
+   {% endif %} {% if invoice['client_phone'] %}
+   <div class="pair">
+    <div class="k">{{ t_lang('contact', invoice_lang) }}</div>
+    <div class="v">{{ invoice['client_phone'] }}</div>
+   </div>
+   {% endif %} {% if invoice['client_manager'] %}
+   <div class="pair">
+    <div class="k">{{ t_lang('manager', invoice_lang) }}</div>
+    <div class="v">{{ invoice['client_manager'] }}</div>
+   </div>
+   {% endif %} {% if invoice['client_email'] %}
+   <div class="pair">
+    <div class="k">{{ t_lang('email', invoice_lang) }}</div>
+    <div class="v">{{ invoice['client_email'] }}</div>
+   </div>
+   {% endif %}
+  </div>
+ </div>
+ {% endif %}

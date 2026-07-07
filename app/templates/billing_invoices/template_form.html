@@ -1,0 +1,499 @@
+{% extends 'invoice_base.html' %}
+{% block invoice_content %}
+ <form method="post" class="card">
+  <h2 class="mt-0">{{ 'Edit template' if template else 'New template' }}</h2>
+  <div class="grid grid-2">
+   <div>
+    <label>Template name (Required)</label>
+    <input name="name" value="{{ template['name'] if template else '' }}" required placeholder="Example: Standard service agreement" />
+   </div>
+   <div>
+    <label>Default payment terms (days)</label>
+    <input name="payment_terms" type="number" value="{{ template['payment_terms'] if template else 30 }}" />
+   </div>
+
+   <div>
+    <label>Default language (Optional)</label>
+    <select name="language">
+     <option value="">None</option>
+     <option value="en" {% if template and template['language'] == 'en' %}selected{% endif %}>English</option>
+    </select>
+   </div>
+   <div class="span-full">
+    <label>Description</label>
+    <input name="description" value="{{ template['description'] if template else '' }}" placeholder="Template description" />
+   </div>
+   <div class="span-full">
+    <label>Default notes</label>
+    <textarea name="notes" rows="3">{{ template['notes'] if template else '' }}</textarea>
+   </div>
+  </div>
+
+  <h3 class="mt-20">Default items</h3>
+  <p class="muted text-sm mb-12">Using this template automatically adds the default items below.</p>
+  <div class="row align-center gap-8 mb-8">
+   <div class="spacer"></div>
+   <button class="btn btn-ghost" type="button" id="tplFxToggleBtn" onclick="tplToggleFx()">Foreign currency mode</button>
+  </div>
+  <div id="tplFxPanel" class="muted fx-panel is-hidden">
+   <div class="text-strong mb-4">Exchange rate</div>
+   <div id="tplFxBaseLines" class="fx-base-lines"></div>
+  </div>
+  <div id="tplFxOutgoingLayout" class="fx-outgoing-layout is-hidden">
+   <div class="muted text-strong mb-6">Currency, fees, official fees, USD amount</div>
+   <div id="tplFxOutgoingDomestic"></div>
+   <div id="tplFxOutgoingForeign" class="mt-8"></div>
+   <div id="tplFxOutgoingTotals" class="mt-8"></div>
+  </div>
+
+  <div class="table-card">
+   <table id="items-table">
+    <thead>
+     <tr>
+      <th class="w-35p">Description</th>
+      <th class="w-13p">Type</th>
+      <th class="w-12p">Qty</th>
+      <th class="w-15p">Unit price</th>
+      <th class="w-13p">Discount (%)</th>
+      <th class="w-12p"></th>
+     </tr>
+    </thead>
+    <tbody id="items-body">
+     {% set items = template['default_items']|from_json if template and template['default_items'] else [] %}
+     {% if not items %}
+      {% set items = [{'description':'','qty':1,'unit_price':0,'item_type':'service','discount':0}] %}
+     {% endif %}
+     {% for it in items %}
+     <tr>
+      <td>
+       <input name="description[]" value="{{ it['description'] }}" placeholder="Example: professional service" />
+       <div class="tpl-phase-controls phase-controls is-hidden">
+        <div class="row align-center gap-6">
+        <span class="text-xs text-soft">Phase</span>
+        {% set _ph = (it.get('phase') or 'app') %}
+        <select name="phase[]" class="tpl-phase-select phase-select input-inline-sm">
+         <option value="app" {% if _ph=='app' %}selected{% endif %}>Filing</option>
+         <option value="oa" {% if _ph=='oa' %}selected{% endif %}>OA/Examination</option>
+         <option value="reg" {% if _ph=='reg' %}selected{% endif %}>Registration</option>
+        </select>
+        <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+         {% set _is_est = (it.get('is_estimated') if it.get('is_estimated') is not none else 0) %}
+         <input type="hidden" name="is_estimated_base[]" value="{{ '1' if _is_est else '0' }}" class="tpl-estimated-base">
+         <input type="checkbox" class="tpl-estimated-checkbox" {% if _is_est %}checked{% endif %} onchange="tplUpdateEstimatedHidden(this)">
+         Estimated cost
+        </label>
+        </div>
+       </div>
+       <div class="tpl-fx-controls fx-controls is-hidden">
+        <div class="fx-row">
+         {% set _cur = (it.get('fx_currency') or 'USD')|upper %}
+         <select name="fx_currency[]" class="tpl-fx-currency fx-currency input-inline-sm">
+          <option value="USD" {% if _cur=='USD' %}selected{% endif %}>USD</option>
+          <option value="JPY" {% if _cur=='JPY' %}selected{% endif %}>JPY</option>
+          <option value="EUR" {% if _cur=='EUR' %}selected{% endif %}>EUR</option>
+          <option value="CNY" {% if _cur=='CNY' %}selected{% endif %}>CNY</option>
+         </select>
+         <input type="number" name="fx_fee[]" class="tpl-fx-fee fx-fee input-inline-sm" step="0.01" placeholder="Fee" value="{{ it.get('fx_fee', '') }}" />
+         <input type="number" name="fx_gov[]" class="tpl-fx-gov fx-gov input-inline-sm" step="0.01" placeholder="Official fee" value="{{ it.get('fx_gov', '') }}" />
+         <input type="number" name="fx_markup[]" class="tpl-fx-markup fx-markup input-inline-sm" step="0.1" value="{{ it.get('fx_markup', 3) }}" placeholder="Markup (%)" />
+         <input type="hidden" name="fx_rate_used[]" class="tpl-fx-rate-used" value="{{ it.get('fx_rate_used', '') }}" />
+         <span class="tpl-fx-usd muted text-nowrap">→ USD amount: 0</span>
+         <span class="muted text-xs">
+          <input type="hidden" name="foreign_vat_base[]" value="{% if it.get('item_type')=='foreign' and it.get('is_taxable') %}1{% else %}0{% endif %}" class="tpl-fx-vat-hidden">
+          <label class="d-inline-flex align-center gap-4 cursor-pointer">
+           <input type="checkbox" name="foreign_vat_chk[]" value="1" class="tpl-fx-vat" {% if it.get('item_type')=='foreign' and it.get('is_taxable') %}checked{% endif %} onchange="tplUpdateForeignVatHidden(this)"> Apply sales tax
+          </label>
+         </span>
+        </div>
+       </div>
+      </td>
+      <td>
+       <select name="item_type[]" onchange="onTypeChange(this)">
+        <option value="service" {% if it['item_type']=='service' %}selected{% endif %}>Service fee</option>
+        <option value="admin" {% if it['item_type']=='admin' %}selected{% endif %}>Official fee</option>
+        <option value="foreign" {% if it['item_type']=='foreign' %}selected{% endif %}>Foreign expense</option>
+       </select>
+      </td>
+      <td><input name="qty[]" type="number" step="1" value="{{ it['qty'] }}" /></td>
+      <td><input name="unit_price[]" type="number" step="0.01" value="{{ it['unit_price'] }}" /></td>
+      <td><input name="discount[]" type="number" step="0.1" min="0" max="100" value="{{ it.get('discount', 0) }}" placeholder="0" /></td>
+      <td class="right"><button class="btn btn-danger" type="button" onclick="removeRow(this)">Delete</button></td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+  <button class="btn btn-ghost mt-8" type="button" onclick="addRow()">+ Add item</button>
+
+  <div class="row mt-12">
+   <button class="btn btn-primary" type="submit">Save</button>
+   <a class="btn" href="{{ url_for('list_templates') }}">Cancel</a>
+  </div>
+ </form>
+
+ <script>
+  function setHidden(el, hidden) {
+   if (!el) return;
+   el.classList.toggle('is-hidden', hidden);
+  }
+
+  function styleRow(tr){
+   try{
+    const sel = tr.querySelector('select[name="item_type[]"]');
+    const type = sel ? sel.value : 'service';
+    tr.classList.remove('type-service','type-admin','type-foreign');
+    tr.classList.add('type-' + (type || 'service'));
+   } catch(e){}
+  }
+  function onTypeChange(sel){
+   const tr = sel.closest('tr');
+   if(tr) styleRow(tr);
+  }
+  function applyRowStyles(){
+   document.querySelectorAll('#items-body tr').forEach(function(tr){
+    styleRow(tr);
+    const sel = tr.querySelector('select[name="item_type[]"]');
+    if(sel && !sel._bound){ sel.addEventListener('change', function(){ onTypeChange(this); }); sel._bound = true; }
+   });
+  }
+  function addRow(){
+   const tr = document.createElement('tr');
+   tr.innerHTML = `
+    <td>
+     <input name="description[]" placeholder="Example: Design response" />
+     <div class="tpl-phase-controls phase-controls is-hidden">
+      <div class="row align-center gap-6">
+      <span class="text-xs text-soft">Phase</span>
+      <select name="phase[]" class="tpl-phase-select phase-select input-inline-sm">
+       <option value="app" selected>Filing</option>
+       <option value="oa">OA/Examination</option>
+       <option value="reg">Registration</option>
+      </select>
+      <label class="d-inline-flex align-center gap-4 text-xs text-soft cursor-pointer">
+       <input type="hidden" name="is_estimated_base[]" value="0" class="tpl-estimated-base">
+       <input type="checkbox" class="tpl-estimated-checkbox" onchange="tplUpdateEstimatedHidden(this)">
+       Estimated cost
+      </label>
+      </div>
+     </div>
+     <div class="tpl-fx-controls fx-controls is-hidden">
+      <div class="fx-row">
+       <select name="fx_currency[]" class="tpl-fx-currency fx-currency input-inline-sm">
+        <option value="USD">USD</option>
+        <option value="JPY">JPY</option>
+        <option value="EUR">EUR</option>
+        <option value="CNY">CNY</option>
+       </select>
+       <input type="number" name="fx_fee[]" class="tpl-fx-fee fx-fee input-inline-sm" step="0.01" placeholder="Fee" />
+       <input type="number" name="fx_gov[]" class="tpl-fx-gov fx-gov input-inline-sm" step="0.01" placeholder="Official fee" />
+       <input type="number" name="fx_markup[]" class="tpl-fx-markup fx-markup input-inline-sm" step="0.1" value="3" placeholder="(%)" />
+       <input type="hidden" name="fx_rate_used[]" class="tpl-fx-rate-used" value="" />
+       <span class="tpl-fx-usd muted text-nowrap">→ USD amount: 0</span>
+       <span class="muted text-xs">
+        <input type="hidden" name="foreign_vat_base[]" value="0" class="tpl-fx-vat-hidden">
+        <label class="d-inline-flex align-center gap-4 cursor-pointer">
+         <input type="checkbox" name="foreign_vat_chk[]" value="1" class="tpl-fx-vat" onchange="tplUpdateForeignVatHidden(this)"> Apply sales tax
+        </label>
+       </span>
+      </div>
+     </div>
+    </td>
+    <td>
+     <select name="item_type[]" onchange="onTypeChange(this)">
+      <option value="service">Service fee</option>
+      <option value="admin">Official fee</option>
+      <option value="foreign">Foreign expense</option>
+     </select>
+    </td>
+    <td><input name="qty[]" type="number" step="1" value="1" /></td>
+    <td><input name="unit_price[]" type="number" step="0.01" value="0" /></td>
+    <td><input name="discount[]" type="number" step="0.1" min="0" max="100" value="0" placeholder="0" /></td>
+    <td class="right"><button class="btn btn-danger" type="button" onclick="removeRow(this)">Delete</button></td>
+   `;
+   document.getElementById('items-body').appendChild(tr);
+   styleRow(tr);
+   tplBindFxInputs(tr);
+   tplShowOrHidePhaseControls(tr);
+  }
+  function tplUpdateEstimatedHidden(cb){
+   const tr = cb.closest('tr');
+   if(!tr) return;
+   const hidden = tr.querySelector('.tpl-estimated-base');
+   if(hidden){ hidden.value = cb.checked ? '1' : '0'; }
+  }
+  function removeRow(btn){ btn.closest('tr').remove(); }
+  // ---------------- Template FX helpers ----------------
+  window.tplFxEnabled = false;
+  window.tplFxFetched = false;
+  window.tplFxRates = null;
+  window.tplFxOverrides = {};
+  window.tplFxShowAll = false; // Template from Default 4items + View
+  function tplToggleFx(){
+   window.tplFxEnabled = !window.tplFxEnabled;
+   const p = document.getElementById('tplFxPanel');
+   const ol = document.getElementById('tplFxOutgoingLayout');
+   const btn = document.getElementById('tplFxToggleBtn');
+   if(window.tplFxEnabled){
+    setHidden(p, false);
+    if(ol) setHidden(ol, false);
+    btn.classList.add('btn-primary');
+    if(!window.tplFxFetched){ tplFetchFxRatesOnce(); }
+   } else {
+    setHidden(p, true);
+    if(ol) setHidden(ol, true);
+    btn.classList.remove('btn-primary');
+   }
+   document.querySelectorAll('#items-body tr').forEach(tr => {
+    tplShowOrHideFxControls(tr);
+    tplShowOrHidePhaseControls(tr);
+   });
+   tplRenderFxOutgoingLayout();
+  }
+  function tplShowOrHidePhaseControls(tr){
+   const phaseCtl = tr.querySelector('.tpl-phase-controls');
+   if(!phaseCtl) return;
+   setHidden(phaseCtl, !window.tplFxEnabled);
+  }
+  function tplPopulateFxCurrencyOptions(){
+   try{
+    const rates = window.tplFxRates || {};
+    const keys = Object.keys(rates).sort();
+    if(!keys.length) return;
+    const majors = ['USD','JPY','CNY','EUR'];
+    document.querySelectorAll('.tpl-fx-currency').forEach(sel=>{
+     const cur = (sel.value || 'USD').toUpperCase();
+     const showAll = !!window.tplFxShowAll;
+     const list = [];
+     if(showAll){
+      if(keys.includes('USD')) list.push('USD');
+      list.push(...keys.filter(k=>k!=='USD'));
+     } else {
+      list.push(...majors.filter(m=> keys.includes(m)));
+      if(cur && !majors.includes(cur) && keys.includes(cur)){
+       list.push(cur);
+      }
+     }
+     const used = new Set();
+     const finalList = list.filter(ccy=>{ if(used.has(ccy)) return false; used.add(ccy); return true; });
+     const opts = finalList.map(k=> `<option value="${k}"${cur===k ? ' selected':''}>${k}</option>`);
+     if(!showAll){ opts.push('<option value="__MORE__">+ View</option>'); }
+     sel.innerHTML = opts.join('');
+    });
+   }catch(e){}
+  }
+  function tplFetchFxRatesOnce(){
+   const scriptRoot = "{{ request.script_root }}/accounting/invoice-system";
+   fetch(`${scriptRoot}/invoices/fx_rates?currencies=ALL`)
+    .then(r=>r.json())
+    .then(data=>{
+     if(data && data.success){
+      window.tplFxRates = data.rates || {};
+      window.tplFxFetched = true;
+      try{ tplPopulateFxCurrencyOptions(); }catch(e){}
+      tplUpdateFxBaseLines();
+     }
+    }).catch(()=>{});
+  }
+  function tplGetSelectedFxCurrencies(){
+   const set = new Set();
+   document.querySelectorAll('#items-body tr').forEach(tr=>{
+    const type = tr.querySelector('select[name="item_type[]"]').value;
+    if(type==='foreign'){
+     const sel = tr.querySelector('.tpl-fx-currency');
+     if(sel && sel.value){ set.add(sel.value.toUpperCase()); }
+    }
+   });
+   return Array.from(set).sort();
+  }
+  function tplUpdateFxBaseLines(){
+   const box = document.getElementById('tplFxBaseLines');
+   if(!box || !window.tplFxRates) return;
+   const selected = tplGetSelectedFxCurrencies();
+   if(!selected.length){ box.innerHTML=''; return; }
+   const parts = selected.map(ccy=>{
+    const r = window.tplFxRates[ccy]; if(!r) return '';
+    const val = (window.tplFxOverrides && window.tplFxOverrides[ccy] != null) ? parseFloat(window.tplFxOverrides[ccy]) : Number(r.base_rate);
+    return `1 ${ccy} <input type="number" step="0.01" value="${val}" data-ccy="${ccy}" class="tpl-fx-base-input input-inline-sm w-90 a_r" />`;
+   }).filter(Boolean);
+   box.innerHTML = parts.join(' \u00B7 ');
+   box.querySelectorAll('.tpl-fx-base-input').forEach(inp=>{
+    inp.addEventListener('input', function(){
+     const c = this.getAttribute('data-ccy');
+     const v = parseFloat(this.value);
+     if(!isNaN(v)) { window.tplFxOverrides[c] = v; } else { delete window.tplFxOverrides[c]; }
+     // row 
+     document.querySelectorAll('#items-body tr').forEach(tr=> tplUpdateFxForRow(tr));
+     tplRenderFxOutgoingLayout();
+    });
+   });
+  }
+  function tplShowOrHideFxControls(tr){
+   const type = tr.querySelector('select[name="item_type[]"]').value;
+   const fxCtl = tr.querySelector('.tpl-fx-controls');
+   if(!fxCtl) return;
+   setHidden(fxCtl, !(window.tplFxEnabled && type === 'foreign'));
+  }
+  function tplBindFxInputs(tr){
+   const els = tr.querySelectorAll('.tpl-fx-currency, .tpl-fx-fee, .tpl-fx-gov, .tpl-fx-markup, select[name="item_type[]"]');
+   els.forEach(el => el.addEventListener('input', ()=> { tplUpdateFxForRow(tr); tplUpdateFxBaseLines(); tplRenderFxOutgoingLayout(); }));
+   tplUpdateFxForRow(tr);
+   // '+View' 
+   try{
+    tr.querySelectorAll('.tpl-fx-currency').forEach(sel=>{
+     if(sel._tplFxMoreBound) return;
+     sel._tplFxMoreBound = true;
+     sel.addEventListener('mousedown', async function(){
+      try{ if(!window.tplFxFetched){ await tplFetchFxRatesOnce(); } tplPopulateFxCurrencyOptions(); }catch(e){}
+     });
+     sel.addEventListener('change', function(){
+      if(this.value === '__MORE__'){
+       window.tplFxShowAll = true;
+       tplPopulateFxCurrencyOptions();
+       try{ this.value = 'USD'; }catch(e){}
+       tplUpdateFxForRow(tr);
+       tplUpdateFxBaseLines();
+       tplRenderFxOutgoingLayout();
+      }
+     });
+    });
+   }catch(e){}
+  }
+
+  function tplRenderFxOutgoingLayout(){
+   const cont = document.getElementById('tplFxOutgoingLayout');
+   if(!cont) return;
+   const dWrap = document.getElementById('tplFxOutgoingDomestic');
+   const fWrap = document.getElementById('tplFxOutgoingForeign');
+   const tWrap = document.getElementById('tplFxOutgoingTotals');
+   if(!(dWrap && fWrap && tWrap)) return;
+
+   // Aggregate rows
+   let domesticRows = [];
+   let foreignRows = [];
+   let commonMarkup = null; let uniformMarkup = true;
+   let serviceTotal = 0, adminTotal = 0, foreignTotal = 0;
+   document.querySelectorAll('#items-body tr').forEach(r=>{
+    const type = r.querySelector('select[name="item_type[]"]').value;
+    const desc = (r.querySelector('input[name="description[]"]').value || '').trim();
+    const qty = parseFloat(r.querySelector('input[name="qty[]"]').value || '0')||0;
+    const unit = parseFloat(r.querySelector('input[name="unit_price[]"]').value || '0')||0;
+    const discount = parseFloat(r.querySelector('input[name="discount[]"]').value || '0')||0;
+    const amount = qty * unit * (1 - (discount||0)/100);
+    if(type==='foreign'){
+     const cur = (r.querySelector('.tpl-fx-currency')?.value || 'USD').toUpperCase();
+     const fee = parseFloat(r.querySelector('.tpl-fx-fee')?.value||'0')||0;
+     const gov = parseFloat(r.querySelector('.tpl-fx-gov')?.value||'0')||0;
+     const mkp = parseFloat(r.querySelector('.tpl-fx-markup')?.value||'0')||0;
+     if(commonMarkup === null){ commonMarkup = mkp; }
+     if(commonMarkup !== mkp){ uniformMarkup = false; }
+     let rate = 0;
+     const rec = (window.tplFxRates||{})[cur];
+     if(rec){ rate = rec.sending; }
+     if(window.tplFxOverrides && window.tplFxOverrides[cur] != null){
+      const ov = parseFloat(window.tplFxOverrides[cur]); if(!isNaN(ov) && ov>0){ rate = ov; }
+     }
+     const eff = rate * (1 + mkp/100);
+     const usd = (fee + gov) * eff;
+     foreignRows.push({ region: desc || '', cur, fee, gov, mkp, usd });
+     foreignTotal += amount;
+    } else {
+     domesticRows.push({ desc: desc || (type==='admin'?'Official fee':'Service fee'), amount });
+     if(type==='service') serviceTotal += amount; else adminTotal += amount;
+    }
+   });
+
+   // Domestic render
+   const domTable = [
+    '<table class="mini-table">',
+    '<thead><tr><th class="w-40p">Domestic cost</th><th class="right w-60p">Amount</th></tr></thead>',
+    '<tbody>',
+    ...domesticRows.map(r=> `<tr><td>${escapeHtml(r.desc)}</td><td class="right">${new Intl.NumberFormat('en-US').format(r.amount)}</td></tr>`),
+    '</tbody>',
+    '</table>'
+   ].join('');
+   dWrap.innerHTML = domTable + `<div class="row justify-end gap-12 mt-4"><div class="muted">Domestic cost subtotal(taxable)</div><div class="text-strong">${new Intl.NumberFormat('en-US').format(serviceTotal+adminTotal)}</div></div>`;
+
+   // Foreign render
+   const mkLabel = uniformMarkup && commonMarkup != null ? ` (${(commonMarkup||0)}% Exchange rate)` : ' ( Exchange rate Apply)';
+   const fHead = `<div class="text-strong">Foreign expense${mkLabel}</div>`;
+   const fTable = [
+    '<table class="mini-table mt-4">',
+    '<thead><tr><th class="w-18p"></th><th class="w-12p">Currency</th><th class="w-18p">Fee</th><th class="w-18p">Official fee</th><th class="right w-34p">USD amount</th></tr></thead>',
+    '<tbody>',
+    ...foreignRows.map(r=> `<tr><td>${escapeHtml(r.region)}</td><td>${r.cur}</td><td>${new Intl.NumberFormat('en-US').format(r.fee)}</td><td>${new Intl.NumberFormat('en-US').format(r.gov)}</td><td class=\"right\">${new Intl.NumberFormat('en-US').format(r.usd)}</td></tr>`),
+    '</tbody>',
+    '</table>'
+   ].join('');
+   fWrap.innerHTML = fHead + fTable + `<div class="row justify-end gap-12 mt-4"><div class="muted">Foreign expense subtotal(non-taxable)</div><div class="text-strong">${new Intl.NumberFormat('en-US').format(foreignTotal)}</div></div>`;
+
+   // Totals render
+   const subtotal = serviceTotal + adminTotal + foreignTotal;
+   const tax = serviceTotal * (parseFloat(document.getElementById('vat_rate')?.value || '0')||0)/100;
+   const total = subtotal + tax;
+   tWrap.innerHTML = `
+    <div class="row justify-end gap-16"> <div class="muted">Filing cost total</div><div class="text-bold">${new Intl.NumberFormat('en-US', {maximumFractionDigits:2}).format(total)}</div> </div>
+   `;
+
+   setHidden(cont, !window.tplFxEnabled);
+  }
+  function tplUpdateFxForRow(tr){
+   try{
+    const type = tr.querySelector('select[name="item_type[]"]').value;
+    const ctl = tr.querySelector('.tpl-fx-controls');
+    if(!(window.tplFxEnabled && type==='foreign')){ if(ctl) setHidden(ctl, true); return; }
+    if(ctl) setHidden(ctl, false);
+    const cur = (tr.querySelector('.tpl-fx-currency')?.value || 'USD').toUpperCase();
+    const fee = parseFloat(tr.querySelector('.tpl-fx-fee')?.value||'0')||0;
+    const gov = parseFloat(tr.querySelector('.tpl-fx-gov')?.value||'0')||0;
+    const mkp = parseFloat(tr.querySelector('.tpl-fx-markup')?.value||'0')||0;
+    const rates = window.tplFxRates || {};
+    const rec = rates[cur];
+    if(!rec) return;
+    let rate = rec.sending;
+    if(window.tplFxOverrides && window.tplFxOverrides[cur] != null){
+     const ov = parseFloat(window.tplFxOverrides[cur]);
+     if(!isNaN(ov) && ov> 0){ rate = ov; }
+    }
+    const eff = rate * (1 + mkp/100);
+    const usd = (fee + gov) * eff;
+    const up = tr.querySelector('input[name="unit_price[]"]');
+    if(up){ up.value = Math.round(usd); }
+    const fxK = tr.querySelector('.tpl-fx-usd'); if(fxK){ fxK.textContent = '→ USD amount: ' + new Intl.NumberFormat('en-US').format(usd); }
+   }catch(e){}
+  }
+  function applyRowStyles(){
+   document.querySelectorAll('#items-body tr').forEach(function(tr){
+    styleRow(tr);
+    const sel = tr.querySelector('select[name="item_type[]"]');
+    if(sel && !sel._bound){ sel.addEventListener('change', function(){ onTypeChange(this); tplUpdateFxForRow(tr); }); sel._bound = true; }
+    tplBindFxInputs(tr);
+    tplShowOrHideFxControls(tr);
+    tplShowOrHidePhaseControls(tr);
+   });
+
+   //  Confirm Auto active
+   let hasOutgoingData = false;
+   document.querySelectorAll('#items-body tr').forEach(function(tr){
+    const phaseSelect = tr.querySelector('.tpl-phase-select');
+    const itemType = tr.querySelector('select[name="item_type[]"]').value;
+
+    if (phaseSelect) {
+     const phase = phaseSelect.value;
+     if (phase && phase !== 'app') {
+      hasOutgoingData = true;
+     }
+    }
+
+    if (itemType === 'foreign') {
+     hasOutgoingData = true;
+    }
+   });
+
+   // Enable automatically when applicable.
+   if (hasOutgoingData && !window.tplFxEnabled) {
+    tplToggleFx();
+   }
+  }
+  window.addEventListener('load', applyRowStyles);
+ </script>
+{% endblock %}

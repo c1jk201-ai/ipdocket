@@ -1,0 +1,854 @@
+<!-- Payment Verification (non-print) -->
+<div id="{{ payment_anchor_id }}" class="sheet no-print" role="region" aria-labelledby="{{ payment_title_id }}">
+ {% set payment = invoice['payment_meta']|from_json %}
+ {% if payment is sequence and payment is not mapping and payment is not string %}
+ {% set payment = (payment[0] if payment|length else {}) %}
+ {% endif %}
+ {% set editable =
+ (invoice['payment_status'] != 'paid') and (invoice['status'] != 'void') %}
+ <h3 id="{{ payment_title_id }}" style="margin-top: 0">Payment verification</h3>
+
+ {% if invoice['payment_status'] == 'pending' and payment %}
+ <!--  Notice -->
+ <div
+  style="padding:12px; background:#FAF4E4; border:1px solid #E6D39B; border-radius:8px; margin-bottom:12px;"
+>
+  <div style="display: flex; align-items: start; gap: 8px">
+   <span style="font-size: 1.2em"></span>
+   <div style="flex: 1">
+    <div style="font-weight: 700; color: #0B1F3A; margin-bottom: 4px">
+     Payment verification pending
+    </div>
+    <div style="font-size: 0.9em; color: #12395F">
+     {% if payment.get('verification_error') %}
+     <strong> :</strong> {{ payment.get('verification_error') }}<br />
+     {% endif %} Review the fields below.<br />
+     {% if outgoing_mode %}
+     <strong
+     >Invoice total: {{ currency(total_billed.value +
+      total_billed.vat, invoice['currency'] or 'USD') }}</strong
+    >
+     {% else %}
+     <strong
+     >Invoice total: {{ currency(invoice['total'], invoice['currency'])
+      }}</strong
+    >
+     {% endif %}
+    </div>
+   </div>
+  </div>
+ </div>
+ {% endif %}
+
+ <p id="paymentHelp" class="muted" style="margin: 6px 0 12px 0">
+  Complete the required fields (<span style="color: #dc2626">*</span>).
+  If the total matches, the invoice is marked <strong>Paid</strong>.
+  Otherwise it remains <strong>Payment pending</strong>.
+ </p>
+
+ {# Deposit is a payment method; keep controls inside the payment panel (non-print). #}
+ {% include 'billing_invoices/partials/invoice_view/_deposit_panel.html' %}
+
+ <form
+  method="post"
+  action="{{ url_for('billing_invoices.invoices.save_payment_meta', invoice_id=invoice['id']) }}"
+  data-prevent-double-submit="true"
+  aria-describedby="paymentHelp"
+>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+  <div class="grid grid-2">
+   <div>
+    <label for="payment-account-alias" class="req">Bank account</label>
+    <input
+     id="payment-account-alias"
+     name="account_alias"
+     aria-required="true"
+     value="{{ payment.get('account_alias','') if payment else '' }}"
+     placeholder="Operating account"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-date" class="req">Date</label>
+    <input
+     id="payment-date"
+     name="date"
+     type="date"
+     aria-required="true"
+     value="{{ payment.get('date','') if payment else '' }}"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-time">Time</label>
+    <input
+     id="payment-time"
+     name="time"
+     type="text"
+     value="{{ payment.get('time','') if payment else '' }}"
+     placeholder="10:28:30 or 10:28"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-deposit" class="req">Deposit amount</label>
+    <input
+     id="payment-deposit"
+     name="deposit"
+     type="text"
+     inputmode="numeric"
+     aria-required="true"
+     placeholder="3800.00"
+     value="{{ payment.get('deposit','') if payment else '' }}"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-summary" class="req">Payer / memo</label>
+    <input
+     id="payment-summary"
+     name="summary"
+     aria-required="true"
+     value="{{ payment.get('summary','') if payment else '' }}"
+     placeholder="Client payment memo"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-currency">Currency</label>
+    <input
+     id="payment-currency"
+     name="currency"
+     value="{{ payment.get('currency', invoice['currency'] or 'USD') if payment else (invoice['currency'] or 'USD') }}"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+     readonly
+     aria-readonly="true"
+     style="background: #f3f4f6"
+    />
+   </div>
+   <div>
+    <label for="payment-channel">Reference</label>
+    <input
+     id="payment-channel"
+     name="channel"
+     value="{{ payment.get('channel','') if payment else '' }}"
+     placeholder="Bank reference"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+   <div>
+    <label for="payment-cms-code">Reference code</label>
+    <input
+     id="payment-cms-code"
+     name="cms_code"
+     value="{{ payment.get('cms_code','') if payment else '' }}"
+     placeholder="Bank code"
+     {%
+     if
+     not
+     editable
+     %}disabled{%
+     endif
+     %}
+    />
+   </div>
+  </div>
+
+  {% if editable %}
+  <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap">
+   <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+  {% endif %}
+ </form>
+
+ {% if foreign_remittance_required is defined and foreign_remittance_required %}
+ {% set attachment_dom_id = 'remittanceAttach' %}
+ {% set attachment_section_id = 'sec-remittance-proof' %}
+ {% set attachment_role = foreign_remittance_attachment_role %}
+ {% set attachment_list = foreign_remittance_attachments %}
+ {% set attachment_title = 'Foreign remittance proof' %}
+ {% set attachment_required = true %}
+ {% set attachment_satisfied = foreign_remittance_satisfied %}
+ {% set attachment_empty_text = 'No foreign remittance proof attached.' %}
+{% set attachment_description %}
+  Foreign matters require remittance proof before final payment verification.
+  Drop, select, or paste the proof file to upload it.
+{% endset %}
+ {% include 'billing_invoices/partials/invoice_view/_payment_attachments.html' %}
+ {% endif %}
+
+ {% set attachment_dom_id = 'attach' %}
+ {% set attachment_section_id = 'sec-payment-attachments' %}
+ {% set attachment_role = 'general' %}
+ {% set attachment_list = attachments %}
+ {% set attachment_title = 'Files' %}
+ {% set attachment_required = false %}
+ {% set attachment_satisfied = true %}
+ {% set attachment_empty_text = 'No files attached.' %}
+{% set attachment_description %}
+   Attach payment support files. Drop, select, or paste a file to upload it.
+   Supported types: pdf, doc, docx, xls, xlsx, csv, txt, image, zip, eml, msg.
+{% endset %}
+ {% include 'billing_invoices/partials/invoice_view/_payment_attachments.html' %}
+
+ <!-- Verification and Status Actions -->
+ <div
+  style="
+   margin-top: 16px;
+   padding: 16px;
+   background: #f9fafb;
+   border: 1px solid #e5e7eb;
+   border-radius: 8px;
+  "
+>
+  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+   <!-- Invoice total () -->
+   <div
+    style="
+     padding: 8px 12px;
+     background: white;
+     border: 2px solid var(--accent);
+     border-radius: 8px;
+     font-weight: 600;
+    "
+  >
+    <span style="color: #6b7280; font-size: 0.85em">Invoice total</span>
+    {% if outgoing_mode %}
+    <div style="color: #1f2937; font-size: 1.1em">
+     {{ currency(total_billed.value + total_billed.vat, invoice['currency'] or 'USD') }}
+    </div>
+    {% else %}
+    <div style="color: #1f2937; font-size: 1.1em">
+     {{ currency(invoice['total'], invoice['currency']) }}
+    </div>
+    {% endif %}
+   </div>
+
+   <!-- Status Display -->
+   {% if invoice['payment_verified'] %}
+   <span class="pill paid" style="padding: 6px 12px; font-size: 0.9em"
+   >Verified</span
+  >
+   {% elif invoice['payment_status'] == 'pending' %}
+   <span
+    class="pill payment_pending"
+    style="padding: 6px 12px; font-size: 0.9em"
+   >Payment pending</span
+  >
+   {% elif invoice['payment_status'] == 'paid' and not
+   invoice['payment_verified'] %}
+   <span class="pill paid" style="padding: 6px 12px; font-size: 0.9em"
+   >Paid</span
+  >
+   {% elif invoice['status'] == 'tax_issued' and not
+   invoice['payment_verified'] %}
+   <span
+    class="pill"
+    style="
+     padding: 6px 12px;
+     font-size: 0.9em;
+     background: #FAF4E4;
+     color: #0B1F3A;
+     border: 1px solid #E6D39B;
+    "
+   >Needs verification</span
+  >
+   {% endif %} {% set p = payment %} {% if invoice['payment_verified'] and p
+   and (p.get('verified_by_username') or p.get('verified_by_user_id')) %}
+   <span class="muted" style="font-size: 0.85em">
+    Verified by: {{ p.get('verified_by_username') or '-' }}{% if
+    p.get('verified_by_user_id') %} (ID {{ p.get('verified_by_user_id')
+    }}){% endif %}{% if p.get('verified_at') %}  {{ p.get('verified_at')
+    }}{% endif %}
+   </span>
+   {% elif invoice['status'] in ['paid','tax_issued'] and not
+   invoice['payment_verified'] and p and (p.get('force_paid_by_username') or
+   p.get('force_paid_by_user_id')) %}
+   <span class="muted" style="font-size: 0.85em">
+    Marked paid by: {{ p.get('force_paid_by_username') or '-' }}{% if
+    p.get('force_paid_by_user_id') %} (ID {{ p.get('force_paid_by_user_id')
+    }}){% endif %}{% if p.get('force_paid_at') %}  {{
+    p.get('force_paid_at') }}{% endif %}
+   </span>
+   {% endif %}
+
+   <div style="flex: 1"></div>
+
+   <a
+    class="btn btn-ghost"
+    href="{{ url_for('billing_invoices.bank_activity.matching_invoice_detail', invoice_id=invoice['id']) }}"
+  >Deposit matching</a>
+
+   <!-- Actions (LLM + ) -->
+   {% if editable %}
+   <button
+    class="btn btn-ghost"
+    type="button"
+    onclick="openPaymentLLMModal(this)"
+    style="border-color: #10b981; color: #059669"
+  >
+     Parse payment text
+   </button>
+   {% endif %} {% if editable and not invoice['payment_verified'] %}
+   <button
+    class="btn btn-success"
+    type="button"
+    onclick="saveAndVerify(this)"
+    style="font-weight: 600"
+  >
+     Verify payment
+   </button>
+   {% endif %} {% if has_role('admin','staff') %} {% if editable and not
+   invoice['payment_verified'] %}
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.force_paid', invoice_id=invoice['id']) }}"
+    style="display: inline"
+    data-confirm="Mark this invoice paid ? "
+    data-prevent-double-submit="true"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button class="btn btn-warning" type="submit">Mark paid</button>
+   </form>
+   {% endif %} {% if invoice['payment_status'] == 'paid' %}
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.unverify_payment', invoice_id=invoice['id']) }}"
+    style="display: inline"
+    data-confirm="Move this payment back to pending ? "
+    data-prevent-double-submit="true"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button
+     class="btn"
+     type="submit"
+     style="background: #C8A24A; color: white"
+   >
+      Reopen payment
+    </button>
+   </form>
+   {% endif %} {% endif %}
+  </div>
+ </div>
+
+ {% if settlement_details %}
+ <div class="sheet no-print">
+  <h3 style="margin-top: 0"> Internal Settlement</h3>
+  <p class="muted" style="margin: 4px 0 10px 0; font-size: 0.9em">
+    Invoice Settlement Internal Settlement Status.
+  </p>
+  <div class="table-card" style="margin-top: 6px">
+   <table style="font-size: 0.9em">
+    <thead>
+     <tr>
+      <th style="padding: 6px 8px">Settlement business profile</th>
+      <th style="padding: 6px 8px"></th>
+      <th class="right" style="padding: 6px 8px">Settlement Amount</th>
+     </tr>
+    </thead>
+    <tbody>
+     {% for s in settlement_details %}
+     <tr>
+      <td style="padding: 6px 8px">
+       {{ s.name or 'Business profile times' }} {% if s.bank_account %}
+       <div class="muted" style="font-size: 0.8em; margin-top: 2px">
+        {{ s.bank_account }}
+       </div>
+       {% endif %}
+      </td>
+      <td style="padding: 6px 8px" class="right num">
+       {{ s.percent|round(1) }}%
+      </td>
+      <td style="padding: 6px 8px" class="right num">
+       {% if s.amount is not none %} {{ currency(s.amount, s.currency) }}
+       {% else %} - {% endif %}
+      </td>
+     </tr>
+     {% endfor %}
+    </tbody>
+   </table>
+  </div>
+  <div
+   style="
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+   "
+ >
+   {% set is_settled = invoice['internal_settlement_status'] == 'done' %} {%
+   if is_settled %}
+   <span class="pill paid" style="padding: 4px 8px; font-size: 0.85em"
+   > Internal Settlement Done</span
+  >
+   {% if invoice['internal_settlement_at'] %}
+   <span class="muted" style="font-size: 0.8em"
+   >Done : {{ invoice['internal_settlement_at'] }}</span
+  >
+   {% endif %} {% else %}
+   <span
+    class="pill payment_pending"
+    style="padding: 4px 8px; font-size: 0.85em"
+   > Internal Settlement </span
+  >
+   {% endif %}
+   <div class="spacer"></div>
+   {% if has_role('admin','staff') %} {% if is_settled %}
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.reset_settlement_status', invoice_id=invoice['id']) }}"
+    data-confirm="Clear the internal settlement status?"
+    data-prevent-double-submit="true"
+    style="display: inline"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button class="btn btn-ghost btn-ui-compact" type="submit">
+     Internal Settlement 
+    </button>
+   </form>
+   {% else %}
+   <form
+    method="post"
+    action="{{ url_for('billing_invoices.invoices.mark_settlement_done', invoice_id=invoice['id']) }}"
+    data-confirm="Mark this invoice as internally settled?"
+    data-prevent-double-submit="true"
+    style="display: inline"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <button class="btn btn-primary btn-ui-compact" type="submit">
+      Internal Settlement Done
+    </button>
+   </form>
+   {% endif %} {% endif %}
+  </div>
+ </div>
+ {% endif %}
+
+ <!-- LLM Modal -->
+ <div
+  id="paymentLLMModal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="paymentLLMTitle"
+  aria-describedby="paymentLLMDesc"
+  aria-hidden="true"
+  style="
+   display: none;
+   position: fixed;
+   inset: 0;
+   background: rgba(0, 0, 0, 0.4);
+   z-index: 99;
+  "
+>
+  <div
+   class="card"
+   style="max-width: 720px; margin: 10vh auto; background: #fff"
+ >
+   <h3 id="paymentLLMTitle" style="margin: 0 0 12px 0">Payment verification</h3>
+
+   <!-- Invoice -->
+   <div
+    style="
+     padding: 12px;
+     background: #EAF4FF;
+     border: 1px solid #bfdbfe;
+     border-radius: 8px;
+     margin-bottom: 12px;
+    "
+  >
+    <div
+     style="
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 0.9em;
+     "
+   >
+     <div><strong>Invoice:</strong> {{ invoice['number'] }}</div>
+     <div><strong>Issue date:</strong> {{ invoice['issue_date'] }}</div>
+     <div><strong>Client:</strong> {{ invoice['client_name'] }}</div>
+     <div>
+      <strong>Total billed:</strong>
+      <span style="color: #059669; font-weight: 700"
+      >{{ currency(invoice['total'], invoice['currency']) }}</span
+     >
+     </div>
+    </div>
+   </div>
+
+   <p id="paymentLLMDesc" class="muted" style="margin: 0 0 8px 0">
+      Paste bank or deposit text, then select parsed fields to apply.
+   </p>
+   <label for="paymentLLMText" class="muted" style="margin: 0 0 6px 0; font-size: 0.9em"> </label>
+   <textarea
+    id="paymentLLMText"
+    rows="7"
+    placeholder="Example Input:\nOperating account\n2025-09-30 10:18:18\n3,800.00\nUSD\n\nBank reference 088771"
+    style="font-family: monospace; font-size: 0.9em"
+  ></textarea>
+   <div class="row" style="margin-top: 8px; gap: 8px">
+    <button
+     id="paymentLLMBtn"
+     class="btn btn-primary"
+     type="button"
+     onclick="parsePaymentLLM()"
+   >
+     Analyze
+    </button>
+    <button
+     class="btn btn-ghost"
+     type="button"
+     onclick="closePaymentLLMModal()"
+   >
+     Close
+    </button>
+   </div>
+   <div
+    id="paymentLLMError"
+    class="muted"
+    role="alert"
+    aria-live="assertive"
+    style="color: #b91c1c; margin-top: 6px; display: none"
+  ></div>
+   <div id="paymentLLMFields" style="margin-top: 8px; display: none">
+    <div class="muted" style="margin-bottom: 6px">Choose fields to apply.</div>
+    <div id="paymentLLMFieldList" class="d-grid gap-2"></div>
+    <div class="row" style="margin-top: 8px; gap: 8px">
+     <button class="btn btn-primary" type="button" onclick="applyPaymentLLMSelection()">Apply selected</button>
+     <button class="btn btn-ghost" type="button" onclick="selectAllPaymentLLMFields()">Select all</button>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <script>
+  let paymentLLMParsed = null;
+  let paymentLLMLastFocus = null;
+
+  function setActionButtonBusy(btn, busy, text) {
+   if (!btn) return;
+   try {
+    if (busy) {
+     if (btn.dataset.originalHtml === undefined) btn.dataset.originalHtml = btn.innerHTML;
+     btn.disabled = true;
+     btn.setAttribute("aria-busy", "true");
+     btn.innerHTML =
+      '<span class="inline-spinner" aria-hidden="true"></span>' +
+      (text || "Processing...");
+    } else {
+     btn.disabled = false;
+     btn.removeAttribute("aria-busy");
+     if (btn.dataset.originalHtml !== undefined) btn.innerHTML = btn.dataset.originalHtml;
+    }
+   } catch (e) {}
+  }
+
+  function getFocusableEls(root) {
+   try {
+    return Array.from(
+     root.querySelectorAll(
+      'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
+     )
+    ).filter((el) => {
+     if (el.hasAttribute("hidden")) return false;
+     return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    });
+   } catch (e) {
+    return [];
+   }
+  }
+
+  function trapFocus(modal) {
+   if (!modal || modal.dataset.trapInit === "1") return;
+   modal.dataset.trapInit = "1";
+   modal.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const els = getFocusableEls(modal);
+    if (!els.length) return;
+    const first = els[0];
+    const last = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+     e.preventDefault();
+     last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+     e.preventDefault();
+     first.focus();
+    }
+   });
+  }
+
+  function initPaymentLLMModalA11y() {
+   const modal = document.getElementById("paymentLLMModal");
+   if (!modal || modal.dataset.a11yInit === "1") return;
+   modal.dataset.a11yInit = "1";
+
+   trapFocus(modal);
+   modal.addEventListener("click", (e) => {
+    if (e.target === modal) closePaymentLLMModal();
+   });
+   document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const m = document.getElementById("paymentLLMModal");
+    if (m && m.style.display !== "none") closePaymentLLMModal();
+   });
+  }
+
+  function openPaymentLLMModal(triggerEl) {
+   initPaymentLLMModalA11y();
+
+   paymentLLMLastFocus = triggerEl || document.activeElement;
+   const modal = document.getElementById("paymentLLMModal");
+   if (!modal) return;
+
+   modal.style.display = "block";
+   modal.setAttribute("aria-hidden", "false");
+
+   const fieldWrap = document.getElementById("paymentLLMFields");
+   const fieldList = document.getElementById("paymentLLMFieldList");
+   const err = document.getElementById("paymentLLMError");
+   if (fieldWrap) fieldWrap.style.display = "none";
+   if (fieldList) fieldList.innerHTML = "";
+   if (err) err.style.display = "none";
+   paymentLLMParsed = null;
+
+   const ta = document.getElementById("paymentLLMText");
+   if (ta) ta.focus();
+  }
+
+  function closePaymentLLMModal() {
+   const modal = document.getElementById("paymentLLMModal");
+   if (!modal) return;
+
+   modal.style.display = "none";
+   modal.setAttribute("aria-hidden", "true");
+   modal.removeAttribute("aria-busy");
+
+   if (paymentLLMLastFocus && paymentLLMLastFocus.focus) {
+    try { paymentLLMLastFocus.focus(); } catch (e) {}
+   }
+  }
+
+  function renderPaymentLLMFields(meta) {
+   const fieldWrap = document.getElementById("paymentLLMFields");
+   const fieldList = document.getElementById("paymentLLMFieldList");
+   if (!fieldWrap || !fieldList) return;
+   paymentLLMParsed = meta || null;
+   fieldList.innerHTML = "";
+   Object.entries(meta || {}).forEach(([key, rawValue]) => {
+    const value =
+     rawValue === null || typeof rawValue === "undefined" ? "" : String(rawValue);
+    const id = `payment-llm-${key}`;
+
+    const row = document.createElement("div");
+    row.className = "form-check d-flex align-items-center gap-2";
+
+    const checkbox = document.createElement("input");
+    checkbox.className = "form-check-input";
+    checkbox.type = "checkbox";
+    checkbox.id = id;
+    checkbox.dataset.key = key;
+    checkbox.checked = Boolean(value);
+    checkbox.disabled = !value;
+
+    const label = document.createElement("label");
+    label.className = "form-check-label";
+    label.setAttribute("for", id);
+    label.textContent = key.replace(/_/g, " ");
+
+    const valueSpan = document.createElement("span");
+    valueSpan.className = "ms-auto text-muted small";
+    valueSpan.textContent = value || "-";
+
+    row.appendChild(checkbox);
+    row.appendChild(label);
+    row.appendChild(valueSpan);
+    fieldList.appendChild(row);
+   });
+   fieldWrap.style.display = "block";
+  }
+
+  function getSelectedPaymentLLMKeys() {
+   const fieldList = document.getElementById("paymentLLMFieldList");
+   if (!fieldList) return [];
+   return Array.from(fieldList.querySelectorAll('input[type="checkbox"][data-key]'))
+    .filter((cb) => cb.checked && !cb.disabled)
+    .map((cb) => cb.dataset.key);
+  }
+
+  function applyPaymentLLMSelection() {
+   const err = document.getElementById("paymentLLMError");
+   if (err) err.style.display = "none";
+   const keys = getSelectedPaymentLLMKeys();
+   if (!keys.length) {
+    if (err) {
+     err.textContent = "Select at least one field to apply.";
+     err.style.display = "block";
+    }
+    return;
+   }
+   const form = document.querySelector('form[action$="/save_payment_meta"]');
+   if (!form || !paymentLLMParsed) return;
+   keys.forEach((k) => {
+    const value = paymentLLMParsed[k];
+    if (value === null || typeof value === "undefined" || value === "") return;
+    const el = form.querySelector(`[name="${k}"]`);
+    if (el && !el.disabled) {
+     el.value = value;
+    }
+   });
+   closePaymentLLMModal();
+  }
+
+  function selectAllPaymentLLMFields() {
+   const fieldList = document.getElementById("paymentLLMFieldList");
+   if (!fieldList) return;
+   fieldList.querySelectorAll('input[type="checkbox"][data-key]').forEach((cb) => {
+    if (!cb.disabled) cb.checked = true;
+   });
+  }
+
+  async function saveAndVerify(btn) {
+   const form = document.querySelector('form[action$="/save_payment_meta"]');
+   if (!form) {
+    //  Status 
+    window.location.href =
+     '{{ url_for("billing_invoices.invoices.verify_payment", invoice_id=invoice["id"]) }}';
+    return;
+   }
+
+   setActionButtonBusy(btn, true, " ...");
+   try {
+    const csrf = document
+     .querySelector('meta[name="csrf-token"]')
+     .getAttribute("content");
+    const formData = new FormData(form);
+    const meta = {};
+    for (const [key, value] of formData.entries()) {
+     if (key !== "csrf_token") meta[key] = value;
+    }
+
+    // 1. Save
+    const saveResp = await fetch(
+     '{{ url_for("billing_invoices.invoices.save_payment_meta", invoice_id=invoice["id"]) }}',
+     {
+      method: "POST",
+      headers: {
+       "Content-Type": "application/json",
+       "X-CSRFToken": csrf,
+      },
+      body: JSON.stringify({ payment_meta: meta }),
+     }
+    );
+
+    if (!saveResp.ok) {
+     try { await window.AppAlert("Save failed. retry.", { title: "Error" }); } catch (e2) {}
+     setActionButtonBusy(btn, false);
+     return;
+    }
+
+    // 2. Save success 
+    const verifyForm = document.createElement("form");
+    verifyForm.method = "POST";
+    verifyForm.action =
+     '{{ url_for("billing_invoices.invoices.verify_payment", invoice_id=invoice["id"]) }}';
+    const csrfInput = document.createElement("input");
+    csrfInput.type = "hidden";
+    csrfInput.name = "csrf_token";
+    csrfInput.value = csrf;
+    verifyForm.appendChild(csrfInput);
+    document.body.appendChild(verifyForm);
+    verifyForm.submit();
+   } catch (e) {
+    try { await window.AppAlert("Error : " + e.message, { title: "Error" }); } catch (e2) {}
+    setActionButtonBusy(btn, false);
+   }
+  }
+
+  async function parsePaymentLLM() {
+   const text = document.getElementById("paymentLLMText").value.trim();
+   if (!text) {
+    try { await window.AppAlert("Enter payment text to analyze.", { title: "Confirm" }); } catch (e2) {}
+    return;
+   }
+   const btn = document.getElementById("paymentLLMBtn");
+   const err = document.getElementById("paymentLLMError");
+   const fieldWrap = document.getElementById("paymentLLMFields");
+   const modal = document.getElementById("paymentLLMModal");
+   setActionButtonBusy(btn, true, "Analyzing...");
+   if (modal) modal.setAttribute("aria-busy", "true");
+   err.style.display = "none";
+   if (fieldWrap) fieldWrap.style.display = "none";
+   try {
+    const csrf = document
+     .querySelector('meta[name="csrf-token"]')
+     .getAttribute("content");
+    const resp = await fetch(
+     '{{ url_for("billing_invoices.invoices.parse_payment_llm", invoice_id=invoice["id"]) }}',
+     {
+      method: "POST",
+      headers: {
+       "Content-Type": "application/json",
+       "X-CSRFToken": csrf,
+      },
+      body: JSON.stringify({ text }),
+     }
+    );
+    const data = await resp.json();
+    if (!data.success) {
+     throw new Error(data.error || "Payment analysis failed.");
+    }
+    const p = data.payment_meta || {};
+    renderPaymentLLMFields(p);
+   } catch (e) {
+    err.textContent = e.message;
+    err.style.display = "block";
+   } finally {
+    setActionButtonBusy(btn, false);
+    if (modal) modal.removeAttribute("aria-busy");
+   }
+  }
+ </script>
+</div>
