@@ -14,14 +14,14 @@ client_secret.json
 .idea/
 
 # Runtime data
-data/
-uploads/
-logs/
-backups/
-reports/
-instance/
-output/
-app/data/pdf_text_cache/
+/data/
+/uploads/
+/logs/
+/backups/
+/reports/
+/instance/
+/output/
+/app/data/pdf_text_cache/
 
 # Databases, dumps, and backups
 *.sqlite
@@ -83,5 +83,5 @@ inspect_schema.py
 # Transfer bundles and local release packages
 ipm_transfer_bundle*
 ipm-transfer-*.tar.gz
-transfer/
-legacy_data/
+/transfer/
+/legacy_data/

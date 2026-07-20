@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "match": {
+        "doc_name_contains_any": [
+          "Text",
+          "Text Text",
+          "Text",
+          "Text Text"
+        ],
+        "matter_type_in": ["PATENT", "UTILITY", "DESIGN", "TRADEMARK", "PCT", "MISC"]
+      },
+      "set_custom_fields": {
+        "appeal_no": "$case_no"
+      }
+    },
+    {
+      "match": {
+        "doc_name_contains_any": [
+          "Text",
+          "Text Text",
+          "Text",
+          "Text Text"
+        ],
+        "matter_type_in": ["LITIGATION", "TRIAL", "LAWSUIT"]
+      },
+      "set_custom_fields": {
+        "case_no": "$case_no"
+      }
+    },
+    {
+      "match": {
+        "doc_name_contains_any": ["Text", "Text Text"],
+        "matter_type_in": ["PATENT", "UTILITY"]
+      },
+      "set_custom_fields": {
+        "expedited_decision_date": "$dispatch_date"
+      }
+    },
+    {
+      "match": {
+        "doc_name_contains_any": ["Text", "Text Text"],
+        "matter_type_in": ["PATENT", "UTILITY"]
+      },
+      "set_custom_fields": {
+        "expedited_request_date": "$dispatch_date"
+      }
+    }
+  ]
+}

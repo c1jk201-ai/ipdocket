@@ -1,0 +1,7468 @@
+{
+  "version": 1,
+  "mappings": {
+    "BASE:*:*": {
+      "namespace": "matter",
+      "fields": [
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "our_ref",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "entered_at",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "matter_id",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "matter_type",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "memo",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "old_our_ref",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "raw_id",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "retained_at",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "right_group",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "right_name",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "status_blue",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "status_red",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "status_red_related_date",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "your_ref",
+          "required": false,
+          "order": 21,
+          "col": 1
+        }
+      ],
+      "inherit": null
+    },
+    "IP:LITIGATION": {
+      "namespace": "litigation",
+      "fields": [
+        {
+          "key": "old_our_ref",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "client_contact",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "right_type",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "case_name",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "request_deadline",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "application_reg_no",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "application_reg_date",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "applicant_registrant",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "case_no",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "request_date",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "detailed_reason_submitted",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "detailed_reason_deadline",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "detailed_reason_date",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "claimant_name",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "claimant_agent",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "respondent_name",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "respondent_agent",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "court",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "court_other",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "decision_date",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "decision_received_date",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "decision_result",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "judgment_appeal_deadline",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "judgment_appeal_date",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 22,
+          "col": 1
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "claimant_name_id",
+        "client_id",
+        "respondent_name_id"
+      ]
+    },
+    "IP:DOM:DESIGN": {
+      "namespace": "domestic_design",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "filing_kind",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "draft_sent_date",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 9.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 9.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 9.2,
+          "col": 1
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "early_pub_request_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "design_publication_request",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "basic_application_date",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "basic_application_no",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "basic_registration_date",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "basic_registration_no",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "is_partial",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "secrecy_request",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "creator_name",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "article_name",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "novelty_exception",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "claims",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "reg_penalty_deadline",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "foreign_filing_deadline",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "foreign_filing_date",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "misc_memo",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "related_applications",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "common_memo",
+          "required": false,
+          "order": 39,
+          "col": 1
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:DOM:PATENT": {
+      "namespace": "domestic_patent",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "invention_grade",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "draft_sent_date",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "inventor_name",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 11.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 11.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 11.2,
+          "col": 1
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "claims_total",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "claims_independent",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "claims_dependent",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "drawing_count",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "spec_pages",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "claims_deferment",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "priority_refiling_deadline",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "claims_deferment_deadline",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "claims_deferment_notice_date",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "exam_requested",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "exam_request_date",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "exam_deadline",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "priority_exam_request",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "early_pub_request_date",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "exam_deferment",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "exam_deferment_date",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "microbe_deposit",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "sequence_listing",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "national_rnd",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "tech_transfer",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "reg_penalty_deadline",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "foreign_filing_date",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "reexam_request_deadline",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "reexam_request_date",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "reexam_rejection_received",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "reexam_decision_date",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 40,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 41,
+          "col": 1
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 41,
+          "col": 2
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 42,
+          "col": 1
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 42,
+          "col": 2
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 43,
+          "col": 1
+        },
+        {
+          "key": "foreign_filing_deadline",
+          "required": false,
+          "order": 44,
+          "col": 1
+        },
+        {
+          "key": "pct_deadline",
+          "required": false,
+          "order": 44,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 45,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 45,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:DOM:UTILITY": {
+      "namespace": "domestic_patent",
+      "inherit": "IP:DOM:PATENT",
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:DOM:TRADEMARK": {
+      "namespace": "domestic_trademark",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "right_type",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "tm_registration_payment_term",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "draft_sent_date",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 9.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 9.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 9.2,
+          "col": 1
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "gazette_decision_received",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "gazette_decision_date",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "special_case_claimed",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "special_claim_doc_deadline",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "exhibition_date",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "tm_type",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "tm_name",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "application_classes",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "application_goods",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "original_registration_date",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "original_registration_no",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "reg_extension_date",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "registration_classes",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "registration_goods",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "cancellation_request_date",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "cancellation_decision_result",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "foreign_filing_deadline",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "foreign_filing_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 39,
+          "col": 1
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:INC:DESIGN": {
+      "namespace": "incoming_design",
+      "fields": [
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_kind",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "tm_registration_payment_term",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "ep_application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "ep_application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 10.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 10.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 10.2,
+          "col": 1
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "early_pub_request_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "design_publication_request",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "basic_application_date",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "basic_application_no",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "basic_registration_date",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "basic_registration_no",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "is_partial",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "secrecy_request",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "creator_name",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "article_name",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "claims",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "reg_penalty_deadline",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "trans_request_date",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "trans_accept_date",
+          "required": false,
+          "order": 40,
+          "col": 2
+        },
+        {
+          "key": "apply_plan_date",
+          "required": false,
+          "order": 41,
+          "col": 1
+        },
+        {
+          "key": "review_end_date",
+          "required": false,
+          "order": 41,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 42,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 42,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 43,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 43,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:INC:PATENT": {
+      "namespace": "incoming_patent",
+      "fields": [
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "pct_application_date",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "pct_application_no",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "ep_application_date",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "ep_application_no",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 9.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 9.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 9.2,
+          "col": 1
+        },
+        {
+          "key": "exam_requested",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "exam_request_date",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "exam_deadline",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "priority_exam_request",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "early_pub_request_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "claims_deferment",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "claims_deferment_deadline",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "claims_deferment_notice_date",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "inventor_name",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "claims_total",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "claims_independent",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "claims_dependent",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "drawing_count",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "spec_pages",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "reg_penalty_deadline",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "reexam_request_deadline",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "reexam_request_date",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "reexam_rejection_received",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "reexam_decision_date",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 40,
+          "col": 2
+        },
+        {
+          "key": "exam_deferment",
+          "required": false,
+          "order": 41,
+          "col": 1
+        },
+        {
+          "key": "exam_deferment_date",
+          "required": false,
+          "order": 41,
+          "col": 2
+        },
+        {
+          "key": "microbe_deposit",
+          "required": false,
+          "order": 42,
+          "col": 1
+        },
+        {
+          "key": "sequence_listing",
+          "required": false,
+          "order": 42,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 43,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 43,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 44,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 44,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 45,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 45,
+          "col": 2
+        },
+        {
+          "key": "trans_request_date",
+          "required": false,
+          "order": 46,
+          "col": 1
+        },
+        {
+          "key": "trans_accept_date",
+          "required": false,
+          "order": 46,
+          "col": 2
+        },
+        {
+          "key": "apply_plan_date",
+          "required": false,
+          "order": 47,
+          "col": 1
+        },
+        {
+          "key": "review_end_date",
+          "required": false,
+          "order": 47,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 48,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 48,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 49,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 49,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:INC:UTILITY": {
+      "namespace": "incoming_patent",
+      "inherit": "IP:INC:PATENT",
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:INC:TRADEMARK": {
+      "namespace": "incoming_trademark",
+      "fields": [
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "right_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "tm_registration_payment_term",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 9.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 9.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 9.2,
+          "col": 1
+        },
+        {
+          "key": "priority_exam_request",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "expedited_request_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "expedited_decision_date",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "gazette_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "gazette_no",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "gazette_decision_received",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "gazette_decision_date",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "special_claim_doc_deadline",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "exhibition_date",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "tm_type",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "tm_name",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "application_classes",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "application_goods",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "original_registration_date",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "original_registration_no",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "madrid_application_date",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "madrid_application_no",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "ctm_application_date",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "ctm_application_no",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "reg_extension_date",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "registration_classes",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "registration_goods",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "cancellation_request_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "cancellation_decision_result",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "trans_request_date",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "trans_accept_date",
+          "required": false,
+          "order": 40,
+          "col": 2
+        },
+        {
+          "key": "apply_plan_date",
+          "required": false,
+          "order": 41,
+          "col": 1
+        },
+        {
+          "key": "review_end_date",
+          "required": false,
+          "order": 41,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 42,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 42,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 43,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 43,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:OUT:DESIGN": {
+      "namespace": "outgoing_design",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "filing_kind",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "foreign_agent_name",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "hague_application_date",
+          "required": false,
+          "order": 10.5,
+          "col": 1
+        },
+        {
+          "key": "hague_application_no",
+          "required": false,
+          "order": 10.5,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 11.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 11.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 11.2,
+          "col": 1
+        },
+        {
+          "key": "application_ol_sent_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "creator_name",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "application_country",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "exam_requested",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "reg_ol_sent_date",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 37,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:OUT:PATENT": {
+      "namespace": "outgoing_patent",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "foreign_agent_name",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "pct_application_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "pct_application_no",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "ep_registration_date",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "ep_registration_no",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 11.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 11.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 11.2,
+          "col": 1
+        },
+        {
+          "key": "application_ol_sent_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "exam_requested",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "exam_request_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "exam_deadline",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "inventor_name",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "application_country",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "claims_total",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "claims_independent",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "claims_dependent",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "drawing_count",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "spec_pages",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "reg_ol_sent_date",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "reg_fee_paid_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "appeal_ol_sent_date",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "microbe_deposit",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "sequence_listing",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 40,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 41,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 41,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 42,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 42,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 43,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 43,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:OUT:PCT": {
+      "namespace": "pct",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "self_designated",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "application_language",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "preliminary_exam_request_date",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "preliminary_exam_deadline",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "inventor_name",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "proposal_title",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "translation_deadline",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "translation_submitted_date",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "international_search_report_received_date",
+          "required": false,
+          "order": 16,
+          "col": 2
+        },
+        {
+          "key": "claim_amendment_deadline",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "national_phase_countries",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "national_phase_last_entry_date",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "national_phase_notice_deadline",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "national_phase_deadline",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "national_phase_19m_deadline",
+          "required": false,
+          "order": 20,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 23,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:OUT:UTILITY": {
+      "namespace": "outgoing_patent",
+      "inherit": "IP:OUT:PATENT",
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:OUT:TRADEMARK": {
+      "namespace": "outgoing_trademark",
+      "fields": [
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "filing_type",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "app_route",
+          "required": false,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "applicant_contact",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "right_type",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "filing_deadline",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "foreign_agent_name",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "image",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "madrid_application_date",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "madrid_application_no",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "ctm_application_date",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "ctm_application_no",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "application_agent",
+          "required": false,
+          "order": 13.1,
+          "col": 1
+        },
+        {
+          "key": "application_applicant_name",
+          "required": false,
+          "order": 13.1,
+          "col": 2
+        },
+        {
+          "key": "application_applicant_customer_no",
+          "required": false,
+          "order": 13.2,
+          "col": 1
+        },
+        {
+          "key": "application_ol_sent_date",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "publication_date",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "publication_no",
+          "required": false,
+          "order": 15,
+          "col": 1
+        },
+        {
+          "key": "tm_type",
+          "required": false,
+          "order": 15,
+          "col": 2
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 16,
+          "col": 1
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 17,
+          "col": 1
+        },
+        {
+          "key": "title_en",
+          "required": false,
+          "order": 17,
+          "col": 2
+        },
+        {
+          "key": "application_country",
+          "required": false,
+          "order": 18,
+          "col": 1
+        },
+        {
+          "key": "inhouse_status",
+          "required": false,
+          "order": 18,
+          "col": 2
+        },
+        {
+          "key": "exam_requested",
+          "required": false,
+          "order": 18.1,
+          "col": 1
+        },
+        {
+          "key": "application_classes",
+          "required": false,
+          "order": 19,
+          "col": 1
+        },
+        {
+          "key": "application_goods",
+          "required": false,
+          "order": 19,
+          "col": 2
+        },
+        {
+          "key": "priority_claimed",
+          "required": false,
+          "order": 20,
+          "col": 1
+        },
+        {
+          "key": "priority_date",
+          "required": false,
+          "order": 21,
+          "col": 1
+        },
+        {
+          "key": "priority_no",
+          "required": false,
+          "order": 21,
+          "col": 2
+        },
+        {
+          "key": "parent_application_date",
+          "required": false,
+          "order": 22,
+          "col": 1
+        },
+        {
+          "key": "parent_application_no",
+          "required": false,
+          "order": 22,
+          "col": 2
+        },
+        {
+          "key": "public_notice_exception",
+          "required": false,
+          "order": 23,
+          "col": 1
+        },
+        {
+          "key": "novelty_grace_date",
+          "required": false,
+          "order": 23,
+          "col": 2
+        },
+        {
+          "key": "novelty_doc_deadline",
+          "required": false,
+          "order": 24,
+          "col": 1
+        },
+        {
+          "key": "novelty_doc_submitted",
+          "required": false,
+          "order": 24,
+          "col": 2
+        },
+        {
+          "key": "reg_decision_received",
+          "required": false,
+          "order": 25,
+          "col": 1
+        },
+        {
+          "key": "reg_decision_date",
+          "required": false,
+          "order": 25,
+          "col": 2
+        },
+        {
+          "key": "reg_deadline",
+          "required": false,
+          "order": 26,
+          "col": 1
+        },
+        {
+          "key": "reg_ol_sent_date",
+          "required": false,
+          "order": 26,
+          "col": 2
+        },
+        {
+          "key": "registration_date",
+          "required": false,
+          "order": 27,
+          "col": 1
+        },
+        {
+          "key": "registration_no",
+          "required": false,
+          "order": 27,
+          "col": 2
+        },
+        {
+          "key": "registration_classes",
+          "required": false,
+          "order": 28,
+          "col": 1
+        },
+        {
+          "key": "registration_goods",
+          "required": false,
+          "order": 28,
+          "col": 2
+        },
+        {
+          "key": "term_expiry_date",
+          "required": false,
+          "order": 29,
+          "col": 1
+        },
+        {
+          "key": "registrant_name",
+          "required": false,
+          "order": 29,
+          "col": 2
+        },
+        {
+          "key": "rejection_received_date",
+          "required": false,
+          "order": 30,
+          "col": 1
+        },
+        {
+          "key": "rejection_date",
+          "required": false,
+          "order": 30,
+          "col": 2
+        },
+        {
+          "key": "appeal_deadline",
+          "required": false,
+          "order": 31,
+          "col": 1
+        },
+        {
+          "key": "appeal_ol_sent_date",
+          "required": false,
+          "order": 31,
+          "col": 2
+        },
+        {
+          "key": "appeal_date",
+          "required": false,
+          "order": 32,
+          "col": 1
+        },
+        {
+          "key": "appeal_no",
+          "required": false,
+          "order": 32,
+          "col": 2
+        },
+        {
+          "key": "appeal_decision_date",
+          "required": false,
+          "order": 33,
+          "col": 1
+        },
+        {
+          "key": "appeal_decision_result",
+          "required": false,
+          "order": 33,
+          "col": 2
+        },
+        {
+          "key": "opposition_date",
+          "required": false,
+          "order": 34,
+          "col": 1
+        },
+        {
+          "key": "opposition_no",
+          "required": false,
+          "order": 34,
+          "col": 2
+        },
+        {
+          "key": "opposition_decision_date",
+          "required": false,
+          "order": 35,
+          "col": 1
+        },
+        {
+          "key": "opposition_decision_result",
+          "required": false,
+          "order": 35,
+          "col": 2
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 36,
+          "col": 1
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 36,
+          "col": 2
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 37,
+          "col": 1
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 37,
+          "col": 2
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 38,
+          "col": 1
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 38,
+          "col": 2
+        },
+        {
+          "key": "trans_charge",
+          "required": false,
+          "order": 39,
+          "col": 1
+        },
+        {
+          "key": "trans_type",
+          "required": false,
+          "order": 39,
+          "col": 2
+        },
+        {
+          "key": "trans_price",
+          "required": false,
+          "order": 40,
+          "col": 1
+        },
+        {
+          "key": "trans_expend_date",
+          "required": false,
+          "order": 40,
+          "col": 2
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id"
+      ]
+    },
+    "IP:MISC": {
+      "namespace": "misc",
+      "fields": [
+        {
+          "key": "right_type",
+          "required": false,
+          "order": 1,
+          "col": 1
+        },
+        {
+          "key": "old_our_ref",
+          "required": false,
+          "order": 1,
+          "col": 2
+        },
+        {
+          "key": "client_name",
+          "required": true,
+          "order": 2,
+          "col": 1
+        },
+        {
+          "key": "client_mgmt_no",
+          "required": false,
+          "order": 2,
+          "col": 2
+        },
+        {
+          "key": "client_contact",
+          "required": false,
+          "order": 3,
+          "col": 1
+        },
+        {
+          "key": "respondent_name",
+          "required": false,
+          "order": 3,
+          "col": 2
+        },
+        {
+          "key": "case_kind",
+          "required": false,
+          "order": 4,
+          "col": 1
+        },
+        {
+          "key": "processing_deadline",
+          "required": false,
+          "order": 4,
+          "col": 2
+        },
+        {
+          "key": "case_summary",
+          "required": false,
+          "order": 5,
+          "col": 1
+        },
+        {
+          "key": "result_summary",
+          "required": false,
+          "order": 5,
+          "col": 2
+        },
+        {
+          "key": "application_no",
+          "required": false,
+          "order": 6,
+          "col": 1
+        },
+        {
+          "key": "application_date",
+          "required": false,
+          "order": 6,
+          "col": 2
+        },
+        {
+          "key": "title_ko",
+          "required": false,
+          "order": 7,
+          "col": 1
+        },
+        {
+          "key": "applicant_name",
+          "required": false,
+          "order": 7,
+          "col": 2
+        },
+        {
+          "key": "application_classes",
+          "required": false,
+          "order": 8,
+          "col": 1
+        },
+        {
+          "key": "application_goods",
+          "required": false,
+          "order": 8,
+          "col": 2
+        },
+        {
+          "key": "assignee1",
+          "required": false,
+          "order": 9,
+          "col": 1
+        },
+        {
+          "key": "assignee2",
+          "required": false,
+          "order": 9,
+          "col": 2
+        },
+        {
+          "key": "department",
+          "required": false,
+          "order": 10,
+          "col": 1
+        },
+        {
+          "key": "attorney",
+          "required": false,
+          "order": 10,
+          "col": 2
+        },
+        {
+          "key": "handler",
+          "required": false,
+          "order": 11,
+          "col": 1
+        },
+        {
+          "key": "manager",
+          "required": false,
+          "order": 11,
+          "col": 2
+        },
+        {
+          "key": "drawing_handler",
+          "required": false,
+          "order": 12,
+          "col": 1
+        },
+        {
+          "key": "complete_date",
+          "required": false,
+          "order": 12,
+          "col": 2
+        },
+        {
+          "key": "stand_reason",
+          "required": false,
+          "order": 13,
+          "col": 1
+        },
+        {
+          "key": "abandon_date",
+          "required": false,
+          "order": 13,
+          "col": 2
+        },
+        {
+          "key": "abandon_reason",
+          "required": false,
+          "order": 14,
+          "col": 1
+        },
+        {
+          "key": "misc",
+          "required": false,
+          "order": 14,
+          "col": 2
+        },
+        {
+          "key": "memo2",
+          "required": false,
+          "order": 15,
+          "col": 1
+        }
+      ],
+      "inherit": null,
+      "extra_allowed": [
+        "client_id",
+        "respondent_name_id"
+      ]
+    }
+  },
+  "bib_mapping": {
+    "version": 1,
+    "scalar": {
+      "doc_type": [
+        "Text.value",
+        "Text"
+      ],
+      "doc_subtype": [
+        "Text.value",
+        "Text.value",
+        "Text.value",
+        "Text",
+        "Text",
+        "Text"
+      ],
+      "our_ref": [
+        "Text.value",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ],
+      "app_no": [
+        "Text Text.Text",
+        "Text Text.Text",
+        "Text Text.Text",
+        "Text Text.Text.value",
+        "Text.value",
+        "Text"
+      ],
+      "right_name_ko": [
+        "Text Text",
+        "Text Text",
+        "Text",
+        "Text Text.Text Text",
+        "Text Text"
+      ],
+      "right_name_en": [
+        "Text Text",
+        "Text Text"
+      ],
+      "app_type": [
+        "Text"
+      ],
+      "right_type": [
+        "Text.value",
+        "Text"
+      ],
+      "app_date": [
+        "Text Text.Text",
+        "Text.value",
+        "Text",
+        "Text"
+      ],
+      "pct_application_no": [
+        "Text.value",
+        "Text",
+        "PCT Text",
+        "PCTText"
+      ],
+      "pct_application_date": [
+        "Text.value",
+        "Text",
+        "Text",
+        "PCT Text",
+        "PCTText"
+      ],
+      "dispatch_no": [
+        "Text Text Text Text.value",
+        "Text Text Text Text"
+      ],
+      "exam_request": [
+        "Text.value",
+        "Text"
+      ],
+      "tm_name": [
+        "Text",
+        "Text"
+      ],
+      "tm_type": [
+        "Text.value",
+        "Text",
+        "Text Text"
+      ],
+      "nice_classes": [
+        "Text",
+        "Text",
+        "Text.Text",
+        "Text Text Text Text.Text"
+      ],
+      "designated_goods": [
+        "Text",
+        "Text Text",
+        "Text.Text",
+        "Text.Text Text",
+        "Text Text Text Text.Text Text"
+      ],
+      "article_name": [
+        "Text Text Text Text",
+        "Text Text.Text Text Text Text",
+        "Text",
+        "Text Text"
+      ],
+      "is_partial_design": [
+        "Text Text",
+        "Text Text.Text Text",
+        "Text"
+      ]
+    },
+    "groups": {
+      "applicants": {
+        "group_names": [
+          "Text Text"
+        ],
+        "name_keys": [
+          "Text",
+          "Text",
+          "Text Text Text",
+          "Text/Text",
+          "Text(Text)",
+          "Text(Text)"
+        ],
+        "customer_no_keys": [
+          "Text",
+          "Text(Text)"
+        ],
+        "relation_keys": [
+          "Text Text"
+        ]
+      },
+      "inventors": {
+        "group_names": [
+          "Text",
+          "Text"
+        ],
+        "name_ko_keys": [
+          "Text Text",
+          "Text"
+        ],
+        "name_en_keys": [
+          "Text Text"
+        ],
+        "nationality_keys": [
+          "Text"
+        ],
+        "address_keys": [
+          "Text"
+        ]
+      },
+      "agent": {
+        "group_names": [
+          "Text Text"
+        ],
+        "name_keys": [
+          "Text",
+          "Text"
+        ],
+        "agent_no_keys": [
+          "Text"
+        ],
+        "delegation_no_keys": [
+          "Text"
+        ]
+      },
+      "registrant": {
+        "group_names": [
+          "Text"
+        ],
+        "name_keys": [
+          "Text",
+          "Text"
+        ]
+      },
+      "priority_claims": {
+        "group_names": [
+          "Text"
+        ],
+        "country_keys": [
+          "Text"
+        ],
+        "app_no_keys": [
+          "Text"
+        ],
+        "app_date_keys": [
+          "Text"
+        ]
+      },
+      "related_applications": {
+        "group_names": [
+          "Text",
+          "Text"
+        ],
+        "relation_value": "Text",
+        "app_no_keys": [
+          "Text"
+        ],
+        "app_date_keys": [
+          "Text"
+        ]
+      }
+    }
+  },
+  "conflict_fields": {
+    "right_name": {
+      "label": "Text Text",
+      "table": "matter",
+      "priority": 1
+    },
+    "title_en": {
+      "label": "Text (Text)",
+      "table": "matter_custom_field",
+      "priority": 1
+    },
+    "title_ko": {
+      "label": "Text (Text)",
+      "table": "matter_custom_field",
+      "priority": 1
+    },
+    "proposal_title": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 1
+    },
+    "application_agent": {
+      "label": "Text Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "application_applicant_name": {
+      "label": "Text Text",
+      "table": "matter_custom_field",
+      "priority": 2,
+      "hidden": false
+    },
+    "application_applicant_customer_no": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2,
+      "hidden": false
+    },
+    "filing_type": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "right_type": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "tm_name": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "tm_type": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "application_classes": {
+      "label": "Text Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "application_goods": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "article_name": {
+      "label": "Text Text Text Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "is_partial": {
+      "label": "Text Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "registrant_name": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "pct_application_no": {
+      "label": "PCT Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "pct_application_date": {
+      "label": "PCT Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "app_no": {
+      "label": "Text",
+      "table": "matter_identifier",
+      "priority": 1
+    },
+    "app_type": {
+      "label": "Text",
+      "table": "matter_event",
+      "priority": 2
+    },
+    "exam_request": {
+      "label": "Text Text",
+      "table": "matter_event",
+      "priority": 2
+    },
+    "claim_count": {
+      "label": "Text Text",
+      "table": "matter_event",
+      "priority": 2
+    },
+    "app_date": {
+      "label": "Text",
+      "table": "matter_event",
+      "priority": 1
+    },
+    "applicant": {
+      "label": "Text",
+      "table": "matter_party_role",
+      "priority": 2
+    },
+    "inventor": {
+      "label": "Text",
+      "table": "matter_party_role",
+      "priority": 2
+    },
+    "attorney": {
+      "label": "Text",
+      "table": "matter_staff_assignment",
+      "priority": 3
+    },
+    "application_no": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 1,
+      "hidden": true
+    },
+    "application_date": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 1,
+      "hidden": true
+    },
+    "foreign_filing_deadline": {
+      "label": "Text",
+      "table": "matter_event",
+      "priority": 1
+    },
+    "inventor_name": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2,
+      "hidden": true
+    },
+    "exam_requested": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2,
+      "hidden": true
+    },
+    "exam_request_date": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2,
+      "hidden": true
+    },
+    "priority_exam_request": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "expedited_request_date": {
+      "label": "Text Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    },
+    "claims_total": {
+      "label": "Text",
+      "table": "matter_custom_field",
+      "priority": 2
+    }
+  },
+  "ledger_only_fields": [
+    "application_agent"
+  ],
+  "field_definitions": {
+    "__blank__": {
+      "key": "__blank__",
+      "label": "__blank__",
+      "input_type": "blank",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "abandon_date": {
+      "key": "abandon_date",
+      "label": "Text/Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "abandon_reason": {
+      "key": "abandon_reason",
+      "label": "Text/Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "app_route": {
+      "key": "app_route",
+      "label": "Text",
+      "input_type": "select_app_route",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_date": {
+      "key": "appeal_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_deadline": {
+      "key": "appeal_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_decision_date": {
+      "key": "appeal_decision_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_decision_result": {
+      "key": "appeal_decision_result",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_no": {
+      "key": "appeal_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "appeal_ol_sent_date": {
+      "key": "appeal_ol_sent_date",
+      "label": "Text O/LText",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "applicant_contact": {
+      "key": "applicant_contact",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "applicant_name": {
+      "key": "applicant_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "applicant_registrant": {
+      "key": "applicant_registrant",
+      "label": "Text/Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_agent": {
+      "key": "application_agent",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_applicant_customer_no": {
+      "key": "application_applicant_customer_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_applicant_name": {
+      "key": "application_applicant_name",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_classes": {
+      "key": "application_classes",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_country": {
+      "key": "application_country",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_date": {
+      "key": "application_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_goods": {
+      "key": "application_goods",
+      "label": "Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_language": {
+      "key": "application_language",
+      "label": "Text",
+      "input_type": "select_application_language",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_no": {
+      "key": "application_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_ol_sent_date": {
+      "key": "application_ol_sent_date",
+      "label": "Text O/LText",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_reg_date": {
+      "key": "application_reg_date",
+      "label": "Text/Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "application_reg_no": {
+      "key": "application_reg_no",
+      "label": "Text/Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "apply_plan_date": {
+      "key": "apply_plan_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "article_name": {
+      "key": "article_name",
+      "label": "Text Text Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "assignee1": {
+      "key": "assignee1",
+      "label": "Text(1)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "assignee2": {
+      "key": "assignee2",
+      "label": "Text(2)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "attorney": {
+      "key": "attorney",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "basic_application_date": {
+      "key": "basic_application_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "basic_application_no": {
+      "key": "basic_application_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "basic_registration_date": {
+      "key": "basic_registration_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "basic_registration_no": {
+      "key": "basic_registration_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "cancellation_decision_result": {
+      "key": "cancellation_decision_result",
+      "label": "Text Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "cancellation_request_date": {
+      "key": "cancellation_request_date",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "case_name": {
+      "key": "case_name",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_litigation_case",
+      "help_text": "",
+      "deprecated": false
+    },
+    "case_no": {
+      "key": "case_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claim_amendment_deadline": {
+      "key": "claim_amendment_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claimant_agent": {
+      "key": "claimant_agent",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claimant_name": {
+      "key": "claimant_name",
+      "label": "Text",
+      "input_type": "client_search",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claimant_name_id": {
+      "key": "claimant_name_id",
+      "label": "claimant_name_id",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims": {
+      "key": "claims",
+      "label": "Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_deferment": {
+      "key": "claims_deferment",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_deferment_deadline": {
+      "key": "claims_deferment_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_deferment_notice_date": {
+      "key": "claims_deferment_notice_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_dependent": {
+      "key": "claims_dependent",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_independent": {
+      "key": "claims_independent",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "claims_total": {
+      "key": "claims_total",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "client_contact": {
+      "key": "client_contact",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "client_id": {
+      "key": "client_id",
+      "label": "client_id",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "client_mgmt_no": {
+      "key": "client_mgmt_no",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "client_name": {
+      "key": "client_name",
+      "label": "Text",
+      "input_type": "client_search",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "common_memo": {
+      "key": "common_memo",
+      "label": "Text Text Text Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "complete_date": {
+      "key": "complete_date",
+      "label": "Text/Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "court": {
+      "key": "court",
+      "label": "Text Text",
+      "input_type": "select",
+      "options_source": "select_litigation_court",
+      "help_text": "",
+      "deprecated": false
+    },
+    "court_other": {
+      "key": "court_other",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "creator_name": {
+      "key": "creator_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ctm_application_date": {
+      "key": "ctm_application_date",
+      "label": "CTM Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ctm_application_no": {
+      "key": "ctm_application_no",
+      "label": "CTM Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "decision_date": {
+      "key": "decision_date",
+      "label": "Text/Text/Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "decision_received_date": {
+      "key": "decision_received_date",
+      "label": "Text/Text/Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "decision_result": {
+      "key": "decision_result",
+      "label": "Text/Text/Text Text",
+      "input_type": "select",
+      "options_source": "select_litigation_result",
+      "help_text": "",
+      "deprecated": false
+    },
+    "department": {
+      "key": "department",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_department",
+      "help_text": "",
+      "deprecated": false
+    },
+    "design_publication_request": {
+      "key": "design_publication_request",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "design_type": {
+      "key": "design_type",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "detailed_reason_date": {
+      "key": "detailed_reason_date",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "detailed_reason_deadline": {
+      "key": "detailed_reason_deadline",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "detailed_reason_submitted": {
+      "key": "detailed_reason_submitted",
+      "label": "Text Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "draft_sent_date": {
+      "key": "draft_sent_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "drafter": {
+      "key": "drafter",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "drawing_count": {
+      "key": "drawing_count",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "drawing_handler": {
+      "key": "drawing_handler",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "early_pub_request_date": {
+      "key": "early_pub_request_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "entered_at": {
+      "key": "entered_at",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ep_application_date": {
+      "key": "ep_application_date",
+      "label": "EP Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ep_application_no": {
+      "key": "ep_application_no",
+      "label": "EP Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ep_registration_date": {
+      "key": "ep_registration_date",
+      "label": "EP Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "ep_registration_no": {
+      "key": "ep_registration_no",
+      "label": "EP Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_deadline": {
+      "key": "exam_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_deferment": {
+      "key": "exam_deferment",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_deferment_date": {
+      "key": "exam_deferment_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_request_date": {
+      "key": "exam_request_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_request_deadline": {
+      "key": "exam_request_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exam_requested": {
+      "key": "exam_requested",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "exhibition_date": {
+      "key": "exhibition_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "expedited_decision_date": {
+      "key": "expedited_decision_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "expedited_request_date": {
+      "key": "expedited_request_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "filing_deadline": {
+      "key": "filing_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "filing_deadline_type": {
+      "key": "filing_deadline_type",
+      "label": "Text Text",
+      "input_type": "select_deadline_type",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "filing_kind": {
+      "key": "filing_kind",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "filing_type": {
+      "key": "filing_type",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "foreign_agent_name": {
+      "key": "foreign_agent_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "foreign_filing_date": {
+      "key": "foreign_filing_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "foreign_filing_deadline": {
+      "key": "foreign_filing_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "gazette_date": {
+      "key": "gazette_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "gazette_decision_date": {
+      "key": "gazette_decision_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "gazette_decision_received": {
+      "key": "gazette_decision_received",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "gazette_no": {
+      "key": "gazette_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "hague_application_date": {
+      "key": "hague_application_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "hague_application_no": {
+      "key": "hague_application_no",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "handler": {
+      "key": "handler",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "image": {
+      "key": "image",
+      "label": "Text/Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "inhouse_status": {
+      "key": "inhouse_status",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "international_search_report_received_date": {
+      "key": "international_search_report_received_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "invention_grade": {
+      "key": "invention_grade",
+      "label": "Text",
+      "input_type": "select_invention_grade",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "inventor_name": {
+      "key": "inventor_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "is_partial": {
+      "key": "is_partial",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "is_similar_design": {
+      "key": "is_similar_design",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "judgment_appeal_date": {
+      "key": "judgment_appeal_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "judgment_appeal_deadline": {
+      "key": "judgment_appeal_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "litigation_right_type": {
+      "key": "litigation_right_type",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_litigation_right_type",
+      "help_text": "",
+      "deprecated": false
+    },
+    "litigation_title_ko": {
+      "key": "litigation_title_ko",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "madrid_application_date": {
+      "key": "madrid_application_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "madrid_application_no": {
+      "key": "madrid_application_no",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "manager": {
+      "key": "manager",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "matter_id": {
+      "key": "matter_id",
+      "label": "Text ID",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "matter_type": {
+      "key": "matter_type",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "memo": {
+      "key": "memo",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "memo2": {
+      "key": "memo2",
+      "label": "Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "microbe_deposit": {
+      "key": "microbe_deposit",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "misc": {
+      "key": "misc",
+      "label": "Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "misc_memo": {
+      "key": "misc_memo",
+      "label": "Text Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_phase_19m_deadline": {
+      "key": "national_phase_19m_deadline",
+      "label": "Text Text 1Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_phase_countries": {
+      "key": "national_phase_countries",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_phase_deadline": {
+      "key": "national_phase_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_phase_last_entry_date": {
+      "key": "national_phase_last_entry_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_phase_notice_deadline": {
+      "key": "national_phase_notice_deadline",
+      "label": "Text Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "national_rnd": {
+      "key": "national_rnd",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "novelty_doc_deadline": {
+      "key": "novelty_doc_deadline",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "novelty_doc_submitted": {
+      "key": "novelty_doc_submitted",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "novelty_exception": {
+      "key": "novelty_exception",
+      "label": "Text Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "novelty_grace_date": {
+      "key": "novelty_grace_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "old_our_ref": {
+      "key": "old_our_ref",
+      "label": "Text Our Ref.",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "opposition_date": {
+      "key": "opposition_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "opposition_decision_date": {
+      "key": "opposition_decision_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "opposition_decision_result": {
+      "key": "opposition_decision_result",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "opposition_no": {
+      "key": "opposition_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "original_registration_date": {
+      "key": "original_registration_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "original_registration_no": {
+      "key": "original_registration_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "our_ref": {
+      "key": "our_ref",
+      "label": "Our Ref.(Text Text)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "parent_application_date": {
+      "key": "parent_application_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "parent_application_no": {
+      "key": "parent_application_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "pct_application_date": {
+      "key": "pct_application_date",
+      "label": "PCT Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "pct_application_no": {
+      "key": "pct_application_no",
+      "label": "PCT Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "pct_deadline": {
+      "key": "pct_deadline",
+      "label": "PCTText",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "preliminary_exam_deadline": {
+      "key": "preliminary_exam_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "preliminary_exam_request_date": {
+      "key": "preliminary_exam_request_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "priority_claimed": {
+      "key": "priority_claimed",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "priority_date": {
+      "key": "priority_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "priority_exam_request": {
+      "key": "priority_exam_request",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "priority_no": {
+      "key": "priority_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "priority_refiling_deadline": {
+      "key": "priority_refiling_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "proposal_title": {
+      "key": "proposal_title",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "public_notice_exception": {
+      "key": "public_notice_exception",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "publication_date": {
+      "key": "publication_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "publication_no": {
+      "key": "publication_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "raw_id": {
+      "key": "raw_id",
+      "label": "Raw ID",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reexam_decision_date": {
+      "key": "reexam_decision_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reexam_rejection_received": {
+      "key": "reexam_rejection_received",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reexam_request_date": {
+      "key": "reexam_request_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reexam_request_deadline": {
+      "key": "reexam_request_deadline",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_deadline": {
+      "key": "reg_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_decision_date": {
+      "key": "reg_decision_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_decision_received": {
+      "key": "reg_decision_received",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_extension_date": {
+      "key": "reg_extension_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_fee_paid_date": {
+      "key": "reg_fee_paid_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_ol_sent_date": {
+      "key": "reg_ol_sent_date",
+      "label": "Text O/LText",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "reg_penalty_deadline": {
+      "key": "reg_penalty_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "registrant_name": {
+      "key": "registrant_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "registration_classes": {
+      "key": "registration_classes",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "registration_date": {
+      "key": "registration_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "registration_goods": {
+      "key": "registration_goods",
+      "label": "Text Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "registration_no": {
+      "key": "registration_no",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "rejection_date": {
+      "key": "rejection_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "rejection_received_date": {
+      "key": "rejection_received_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "related_applications": {
+      "key": "related_applications",
+      "label": "Text Text Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "request_date": {
+      "key": "request_date",
+      "label": "Text/Text/Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "request_deadline": {
+      "key": "request_deadline",
+      "label": "Text/Text/Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "respondent_agent": {
+      "key": "respondent_agent",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "respondent_name": {
+      "key": "respondent_name",
+      "label": "Text",
+      "input_type": "client_search",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "respondent_name_id": {
+      "key": "respondent_name_id",
+      "label": "respondent_name_id",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "retained_at": {
+      "key": "retained_at",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "retained_date": {
+      "key": "retained_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "review_end_date": {
+      "key": "review_end_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "right_group": {
+      "key": "right_group",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "right_name": {
+      "key": "right_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "right_type": {
+      "key": "right_type",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "secrecy_request": {
+      "key": "secrecy_request",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "self_designated": {
+      "key": "self_designated",
+      "label": "Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "sequence_listing": {
+      "key": "sequence_listing",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "spec_pages": {
+      "key": "spec_pages",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "special_case_claimed": {
+      "key": "special_case_claimed",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "special_claim_doc_deadline": {
+      "key": "special_claim_doc_deadline",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "stand_reason": {
+      "key": "stand_reason",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_stand_reason",
+      "help_text": "",
+      "deprecated": false
+    },
+    "status_blue": {
+      "key": "status_blue",
+      "label": "Text(Text)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "status_red": {
+      "key": "status_red",
+      "label": "Text(Text)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "status_red_related_date": {
+      "key": "status_red_related_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "tech_transfer": {
+      "key": "tech_transfer",
+      "label": "Text Text",
+      "input_type": "select_yn",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "term_expiry_date": {
+      "key": "term_expiry_date",
+      "label": "Text Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "title_en": {
+      "key": "title_en",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "title_ko": {
+      "key": "title_ko",
+      "label": "Text Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "tm_filing_type": {
+      "key": "tm_filing_type",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_tm_filing_type",
+      "help_text": "",
+      "deprecated": false
+    },
+    "tm_name": {
+      "key": "tm_name",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "tm_registration_payment_term": {
+      "key": "tm_registration_payment_term",
+      "label": "Text Text Text",
+      "input_type": "select",
+      "options_source": "select_tm_registration_payment_term",
+      "help_text": "",
+      "deprecated": false
+    },
+    "tm_right_type": {
+      "key": "tm_right_type",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_tm_right_type",
+      "help_text": "",
+      "deprecated": false
+    },
+    "tm_type": {
+      "key": "tm_type",
+      "label": "Text",
+      "input_type": "select",
+      "options_source": "select_tm_type",
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_accept_date": {
+      "key": "trans_accept_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_charge": {
+      "key": "trans_charge",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_expend_date": {
+      "key": "trans_expend_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_price": {
+      "key": "trans_price",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_request_date": {
+      "key": "trans_request_date",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "trans_type": {
+      "key": "trans_type",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "translation_deadline": {
+      "key": "translation_deadline",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "translation_submitted_date": {
+      "key": "translation_submitted_date",
+      "label": "Text Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "your_ref": {
+      "key": "your_ref",
+      "label": "Your Ref.(Text Text)",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "case_summary": {
+      "key": "case_summary",
+      "label": "Text Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "result_summary": {
+      "key": "result_summary",
+      "label": "Text Text",
+      "input_type": "textarea",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "case_kind": {
+      "key": "case_kind",
+      "label": "Text",
+      "input_type": "text",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    },
+    "processing_deadline": {
+      "key": "processing_deadline",
+      "label": "Text",
+      "input_type": "date",
+      "options_source": null,
+      "help_text": "",
+      "deprecated": false
+    }
+  }
+}

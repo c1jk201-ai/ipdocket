@@ -73,3 +73,11 @@ inspect_*.py
 reproduce_*.py
 migration_guide.md
 README.md
+
+# Required application source/configuration. Keep these exceptions after
+# generic runtime and CSV exclusions so production images contain them.
+!app/data/
+!app/data/**
+!app/services/uploads/
+!app/services/uploads/**
+app/data/pdf_text_cache/

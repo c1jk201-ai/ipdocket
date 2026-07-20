@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "default_action": {
+    "distribute_to": "owner"
+  },
+  "rules": [
+    {
+      "id": "manager_only_notice_free_any_category",
+      "priority": 101,
+      "match": {
+        "name_free_contains": [
+          "\uc548\ub0b4\uc11c\uc2e0",
+          "\ud1b5\uc9c0\uc11c \uace0\uac1d\uc804\uc1a1",
+          "\ud1b5\uc9c0\uc11c \uad00\ub9ac",
+          "\ud574\uc678\ucd9c\uc6d0 \uc548\ub0b4\uc11c\uc2e0"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt"
+        ]
+      }
+    },
+    {
+      "id": "manager_only_notice_free",
+      "priority": 100,
+      "match": {
+        "category": [
+          "MGMT"
+        ],
+        "name_free_contains": [
+          "\uc548\ub0b4\uc11c\uc2e0",
+          "\ud1b5\uc9c0\uc11c \uace0\uac1d\uc804\uc1a1",
+          "\ud1b5\uc9c0\uc11c \uad00\ub9ac",
+          "\ud574\uc678\ucd9c\uc6d0 \uc548\ub0b4\uc11c\uc2e0"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt"
+        ]
+      }
+    },
+    {
+      "id": "manager_only_notice_ref_prefix",
+      "priority": 100,
+      "match": {
+        "name_ref_prefix": [
+          "MGMT:FOREIGN_FILING_NOTICE_3M",
+          "MGMT:NOTICE_SEND_3D",
+          "MGMT:NOTICE:"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt"
+        ]
+      }
+    },
+    {
+      "id": "legacy_office_action_name_free_mgmt_attorney_handler",
+      "priority": 98,
+      "match": {
+        "category": [
+          "WORK",
+          "MGMT"
+        ],
+        "name_ref_regex": [
+          "^$"
+        ],
+        "name_free_regex": [
+          "\\uc758\\uacac\\uc81c\\ucd9c\\ud1b5\\uc9c0",
+          "\\uac70\\uc808\\uc774\\uc720\\ud1b5\\uc9c0",
+          "\\uac70\\uc808\\uc608\\uace0\\ud1b5\\uc9c0",
+          "\\ucd5c\\ud6c4\\uc758\\uacac\\uc81c\\ucd9c",
+          "\\ubcf4\\uc815\\uc694\\uad6c",
+          "\\ubcf4\\uc815\\uba85\\ub839",
+          "\\ubc18\\ub824\\uc774\\uc720\\ud1b5\\uc9c0",
+          "\\uc11c\\ub958\\ubc18\\ub824\\ud1b5\\uc9c0",
+          "\\ubc18\\ub824\\ud1b5\\uc9c0",
+          "\\ubcf4\\uc644\\uc694\\uad6c",
+          "\\ubcf4\\ucda9\\uc694\\uad6c",
+          "\\uae30\\uac04\\uc9c0\\uc815",
+          "\\ud760\\uacb0.*\\ud1b5\\uc9c0"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt",
+          "attorney",
+          "retainer",
+          "handler",
+          "staff",
+          "draftsman"
+        ]
+      }
+    },
+    {
+      "id": "status_red_gazette_publication_no_work",
+      "priority": 97,
+      "match": {
+        "name_ref_exact": [
+          "MGMT:STATUS_RED:\ucd9c\uc6d0\uacf5\uace0"
+        ]
+      },
+      "action": {
+        "distribute_to": "none"
+      }
+    },
+    {
+      "id": "office_action_main_notice_mgmt_attorney_handler",
+      "priority": 97,
+      "match": {
+        "category": [
+          "WORK"
+        ],
+        "name_ref_regex": [
+          "^NOTICE:OA:[^:]+$"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt",
+          "attorney",
+          "retainer",
+          "handler",
+          "staff",
+          "draftsman"
+        ]
+      }
+    },
+    {
+      "id": "status_red_foreign_filing_mgmt_and_attorney",
+      "priority": 96,
+      "match": {
+        "name_ref_prefix": [
+          "MGMT:STATUS_RED:ForeignFilingDeadline"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt",
+          "attorney"
+        ]
+      }
+    },
+    {
+      "id": "status_red_mgmt_and_attorney",
+      "priority": 95,
+      "match": {
+        "name_ref_prefix": [
+          "MGMT:STATUS_RED:"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt",
+          "attorney"
+        ]
+      }
+    },
+    {
+      "id": "source_force_distribute",
+      "priority": 90,
+      "match": {
+        "source": [
+          "uspto_notice",
+          "upload_automation"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    },
+    {
+      "id": "category_mgmt_manager_only",
+      "priority": 85,
+      "match": {
+        "category": [
+          "MGMT"
+        ]
+      },
+      "action": {
+        "distribute_to": "role_set",
+        "roles": [
+          "manager",
+          "mgmt"
+        ]
+      }
+    },
+    {
+      "id": "category_work_owner",
+      "priority": 80,
+      "match": {
+        "category": [
+          "WORK",
+          "FILING",
+          "EXAM",
+          "REG",
+          "REGISTRATION"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    },
+    {
+      "id": "category_uspto_oa_owner",
+      "priority": 79,
+      "match": {
+        "category": [
+          "USPTO_OA"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    },
+    {
+      "id": "name_ref_exact_all_staff",
+      "priority": 84,
+      "match": {
+        "category": [
+          "WORK",
+          "FILING",
+          "EXAM",
+          "REG",
+          "REGISTRATION"
+        ],
+        "name_ref_exact": [
+          "\ub4f1\ub85d",
+          "\uc2ec\uc0ac\uccad\uad6c",
+          "\ucd9c\uc6d0"
+        ]
+      },
+      "action": {
+        "distribute_to": "all_staff"
+      }
+    },
+    {
+      "id": "name_ref_contains_all_staff",
+      "priority": 83,
+      "match": {
+        "category": [
+          "WORK",
+          "FILING",
+          "EXAM",
+          "REG",
+          "REGISTRATION"
+        ],
+        "name_ref_contains": [
+          "\ub4f1\ub85d",
+          "\ub4f1\ub85d\ub9c8\uac10",
+          "\uc2ec\uc0ac\uccad\uad6c",
+          "\ucd9c\uc6d0",
+          "\ucd9c\uc6d0\ub9c8\uac10",
+          "\ud574\uc678\ucd9c\uc6d0\ub9c8\uac10"
+        ]
+      },
+      "action": {
+        "distribute_to": "all_staff"
+      }
+    },
+    {
+      "id": "name_free_contains_all_staff",
+      "priority": 83,
+      "match": {
+        "category": [
+          "WORK",
+          "FILING",
+          "EXAM",
+          "REG",
+          "REGISTRATION"
+        ],
+        "name_free_contains": [
+          "\ub4f1\ub85d",
+          "\ub4f1\ub85d\ub9c8\uac10",
+          "\uc2ec\uc0ac\uccad\uad6c",
+          "\ucd9c\uc6d0",
+          "\ucd9c\uc6d0\ub9c8\uac10",
+          "\ud574\uc678\ucd9c\uc6d0\ub9c8\uac10"
+        ]
+      },
+      "action": {
+        "distribute_to": "all_staff"
+      }
+    },
+    {
+      "id": "notice_ref_contains_office_action_due",
+      "priority": 50,
+      "match": {
+        "category": [
+          "NOTICE"
+        ],
+        "name_ref_contains": [
+          "OFFICE_ACTION_DUE"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    },
+    {
+      "id": "category_notice_owner",
+      "priority": 49,
+      "match": {
+        "category": [
+          "NOTICE"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    },
+    {
+      "id": "category_v2_limit_owner",
+      "priority": 48,
+      "match": {
+        "category": [
+          "V2_LIMIT"
+        ]
+      },
+      "action": {
+        "distribute_to": "owner"
+      }
+    }
+  ]
+}

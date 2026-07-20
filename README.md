@@ -125,7 +125,7 @@ docker compose logs -f app
 Use the repo virtualenv when present:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt -c constraints.txt
 ```
 
 Run focused checks:

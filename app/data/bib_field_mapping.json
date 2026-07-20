@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "scalar": {
+    "doc_type": ["Text.value", "Text"],
+    "doc_subtype": [
+      "Text.value",
+      "Text.value",
+      "Text.value",
+      "Text",
+      "Text",
+      "Text"
+    ],
+    "our_ref": ["Text.value", "Text", "Text", "Text", "Text", "Text", "Text"],
+    "app_no": [
+      "Text Text.Text",
+      "Text Text.Text",
+      "Text Text.Text",
+      "Text Text.Text.value",
+      "Text.value",
+      "Text"
+    ],
+    "right_name_ko": ["Text Text", "Text Text", "Text", "Text Text.Text Text", "Text Text"],
+    "right_name_en": ["Text Text", "Text Text"],
+    "app_type": ["Text"],
+    "right_type": ["Text.value", "Text"],
+    "app_date": ["Text Text.Text", "Text.value", "Text", "Text"],
+    "pct_application_no": ["Text.value", "Text", "PCT Text", "PCTText"],
+    "pct_application_date": ["Text.value", "Text", "Text", "PCT Text", "PCTText"],
+    "dispatch_no": ["Text Text Text Text.value", "Text Text Text Text"],
+    "exam_request": ["Text.value", "Text"],
+    "tm_name": ["Text", "Text"],
+    "tm_type": ["Text.value", "Text", "Text Text"],
+    "nice_classes": ["Text", "Text", "Text.Text", "Text Text Text Text.Text"],
+    "designated_goods": [
+      "Text",
+      "Text Text",
+      "Text.Text",
+      "Text.Text Text",
+      "Text Text Text Text.Text Text"
+    ],
+    "article_name": [
+      "Text Text Text Text",
+      "Text Text.Text Text Text Text",
+      "Text",
+      "Text Text"
+    ],
+    "is_partial_design": ["Text Text", "Text Text.Text Text", "Text"]
+  },
+  "groups": {
+    "applicants": {
+      "group_names": ["Text Text"],
+      "name_keys": ["Text", "Text", "Text Text Text", "Text/Text", "Text(Text)", "Text(Text)"],
+      "customer_no_keys": ["Text", "Text(Text)"],
+      "relation_keys": ["Text Text"]
+    },
+    "inventors": {
+      "group_names": ["Text", "Text"],
+      "name_ko_keys": ["Text Text", "Text"],
+      "name_en_keys": ["Text Text"],
+      "nationality_keys": ["Text"],
+      "address_keys": ["Text"]
+    },
+    "agent": {
+      "group_names": ["Text Text"],
+      "name_keys": ["Text", "Text"],
+      "agent_no_keys": ["Text"],
+      "delegation_no_keys": ["Text"]
+    },
+    "registrant": {
+      "group_names": ["Text"],
+      "name_keys": ["Text", "Text"]
+    },
+    "priority_claims": {
+      "group_names": ["Text"],
+      "country_keys": ["Text"],
+      "app_no_keys": ["Text"],
+      "app_date_keys": ["Text"]
+    },
+    "related_applications": {
+      "group_names": ["Text", "Text"],
+      "relation_value": "Text",
+      "app_no_keys": ["Text"],
+      "app_date_keys": ["Text"]
+    }
+  }
+}
