@@ -10,11 +10,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 REQUIRED_SOURCE_FILES = (
-    "app/data/bib_field_mapping.json",
     "app/data/canonical_fields_extended.csv",
     "app/data/case_field_mappings.json",
     "app/data/case_parameter_mapping.csv",
-    "app/data/kipo_notice_param_mappings.json",
     "app/data/task_distribution_rules.json",
     "app/data/unified_field_registry.json",
     "app/services/uploads/__init__.py",
@@ -23,6 +21,8 @@ REQUIRED_SOURCE_FILES = (
     "app/services/uploads/upload_session_service.py",
     "app/services/uploads/upload_validation.py",
     "app/services/uploads/zip_safety.py",
+    "app/services/uspto/uspto_form_parser.py",
+    "app/services/uspto/uspto_practice.py",
 )
 
 ROOT_RUNTIME_DIRECTORIES = (

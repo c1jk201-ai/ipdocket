@@ -173,12 +173,6 @@
           "col": 2
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 6,
-          "col": 1
-        },
-        {
           "key": "applicant_registrant",
           "required": false,
           "order": 6,
@@ -928,12 +922,6 @@
           "key": "inventor_name",
           "required": false,
           "order": 9,
-          "col": 1
-        },
-        {
-          "key": "title_ko",
-          "required": false,
-          "order": 10,
           "col": 1
         },
         {
@@ -2567,12 +2555,6 @@
           "col": 2
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 19,
-          "col": 1
-        },
-        {
           "key": "title_en",
           "required": false,
           "order": 20,
@@ -3600,12 +3582,6 @@
           "col": 2
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 15,
-          "col": 1
-        },
-        {
           "key": "title_en",
           "required": false,
           "order": 16,
@@ -4053,12 +4029,6 @@
           "col": 2
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 16,
-          "col": 1
-        },
-        {
           "key": "title_en",
           "required": false,
           "order": 17,
@@ -4500,12 +4470,6 @@
           "col": 1
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 12,
-          "col": 2
-        },
-        {
           "key": "title_en",
           "required": false,
           "order": 13,
@@ -4831,12 +4795,6 @@
           "key": "applicant_name",
           "required": false,
           "order": 16,
-          "col": 1
-        },
-        {
-          "key": "title_ko",
-          "required": false,
-          "order": 17,
           "col": 1
         },
         {
@@ -5203,12 +5161,6 @@
           "col": 2
         },
         {
-          "key": "title_ko",
-          "required": false,
-          "order": 7,
-          "col": 1
-        },
-        {
           "key": "applicant_name",
           "required": false,
           "order": 7,
@@ -5312,208 +5264,57 @@
       ]
     }
   },
-  "bib_mapping": {
+  "uspto_form_mapping": {
     "version": 1,
     "scalar": {
       "doc_type": [
-        "Text.value",
-        "Text"
+        "Document Type",
+        "Form Type"
       ],
-      "doc_subtype": [
-        "Text.value",
-        "Text.value",
-        "Text.value",
-        "Text",
-        "Text",
-        "Text"
-      ],
-      "our_ref": [
-        "Text.value",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text",
-        "Text"
+      "matter_kind": [
+        "Application Type",
+        "Type of Application"
       ],
       "app_no": [
-        "Text Text.Text",
-        "Text Text.Text",
-        "Text Text.Text",
-        "Text Text.Text.value",
-        "Text.value",
-        "Text"
+        "Application No.",
+        "Application Number",
+        "U.S. Application No.",
+        "Serial Number"
       ],
-      "right_name_ko": [
-        "Text Text",
-        "Text Text",
-        "Text",
-        "Text Text.Text Text",
-        "Text Text"
+      "attorney_docket_no": [
+        "Attorney Docket No.",
+        "Attorney Docket Number",
+        "Applicant's Docket No."
       ],
-      "right_name_en": [
-        "Text Text",
-        "Text Text"
+      "confirmation_no": [
+        "Confirmation No.",
+        "Confirmation Number"
       ],
-      "app_type": [
-        "Text"
+      "filing_date": [
+        "Filing Date",
+        "Application Filing Date",
+        "International Filing Date"
       ],
-      "right_type": [
-        "Text.value",
-        "Text"
+      "title": [
+        "Title of Invention",
+        "Invention Title",
+        "Title"
       ],
-      "app_date": [
-        "Text Text.Text",
-        "Text.value",
-        "Text",
-        "Text"
+      "applicant_name": [
+        "Applicant",
+        "Applicant(s)",
+        "First Named Applicant",
+        "Owner"
       ],
-      "pct_application_no": [
-        "Text.value",
-        "Text",
-        "PCT Text",
-        "PCTText"
+      "first_named_inventor": [
+        "First Named Inventor",
+        "Inventor(s)"
       ],
-      "pct_application_date": [
-        "Text.value",
-        "Text",
-        "Text",
-        "PCT Text",
-        "PCTText"
-      ],
-      "dispatch_no": [
-        "Text Text Text Text.value",
-        "Text Text Text Text"
-      ],
-      "exam_request": [
-        "Text.value",
-        "Text"
-      ],
-      "tm_name": [
-        "Text",
-        "Text"
-      ],
-      "tm_type": [
-        "Text.value",
-        "Text",
-        "Text Text"
-      ],
-      "nice_classes": [
-        "Text",
-        "Text",
-        "Text.Text",
-        "Text Text Text Text.Text"
-      ],
-      "designated_goods": [
-        "Text",
-        "Text Text",
-        "Text.Text",
-        "Text.Text Text",
-        "Text Text Text Text.Text Text"
-      ],
-      "article_name": [
-        "Text Text Text Text",
-        "Text Text.Text Text Text Text",
-        "Text",
-        "Text Text"
-      ],
-      "is_partial_design": [
-        "Text Text",
-        "Text Text.Text Text",
-        "Text"
+      "mark_name": [
+        "Mark",
+        "Literal Element",
+        "Mark Information"
       ]
-    },
-    "groups": {
-      "applicants": {
-        "group_names": [
-          "Text Text"
-        ],
-        "name_keys": [
-          "Text",
-          "Text",
-          "Text Text Text",
-          "Text/Text",
-          "Text(Text)",
-          "Text(Text)"
-        ],
-        "customer_no_keys": [
-          "Text",
-          "Text(Text)"
-        ],
-        "relation_keys": [
-          "Text Text"
-        ]
-      },
-      "inventors": {
-        "group_names": [
-          "Text",
-          "Text"
-        ],
-        "name_ko_keys": [
-          "Text Text",
-          "Text"
-        ],
-        "name_en_keys": [
-          "Text Text"
-        ],
-        "nationality_keys": [
-          "Text"
-        ],
-        "address_keys": [
-          "Text"
-        ]
-      },
-      "agent": {
-        "group_names": [
-          "Text Text"
-        ],
-        "name_keys": [
-          "Text",
-          "Text"
-        ],
-        "agent_no_keys": [
-          "Text"
-        ],
-        "delegation_no_keys": [
-          "Text"
-        ]
-      },
-      "registrant": {
-        "group_names": [
-          "Text"
-        ],
-        "name_keys": [
-          "Text",
-          "Text"
-        ]
-      },
-      "priority_claims": {
-        "group_names": [
-          "Text"
-        ],
-        "country_keys": [
-          "Text"
-        ],
-        "app_no_keys": [
-          "Text"
-        ],
-        "app_date_keys": [
-          "Text"
-        ]
-      },
-      "related_applications": {
-        "group_names": [
-          "Text",
-          "Text"
-        ],
-        "relation_value": "Text",
-        "app_no_keys": [
-          "Text"
-        ],
-        "app_date_keys": [
-          "Text"
-        ]
-      }
     }
   },
   "conflict_fields": {
@@ -5523,11 +5324,6 @@
       "priority": 1
     },
     "title_en": {
-      "label": "Text (Text)",
-      "table": "matter_custom_field",
-      "priority": 1
-    },
-    "title_ko": {
       "label": "Text (Text)",
       "table": "matter_custom_field",
       "priority": 1
@@ -6600,14 +6396,6 @@
       "help_text": "",
       "deprecated": false
     },
-    "litigation_title_ko": {
-      "key": "litigation_title_ko",
-      "label": "Text Text",
-      "input_type": "text",
-      "options_source": null,
-      "help_text": "",
-      "deprecated": false
-    },
     "madrid_application_date": {
       "key": "madrid_application_date",
       "label": "Text Text",
@@ -7306,14 +7094,6 @@
     },
     "title_en": {
       "key": "title_en",
-      "label": "Text Text",
-      "input_type": "text",
-      "options_source": null,
-      "help_text": "",
-      "deprecated": false
-    },
-    "title_ko": {
-      "key": "title_ko",
       "label": "Text Text",
       "input_type": "text",
       "options_source": null,

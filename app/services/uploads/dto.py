@@ -53,8 +53,8 @@ class ApplyResult:
 
 
 @dataclass
-class ParsedBibResult:
-    """Result of parsing a BIB file."""
+class ParsedUsptoFormResult:
+    """Result of parsing a USPTO filing receipt or form."""
 
     matter_id: str
     our_ref: str

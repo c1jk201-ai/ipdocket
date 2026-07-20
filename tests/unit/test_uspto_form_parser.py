@@ -1,5 +1,38 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_unified_registry_uses_uspto_form_mapping_only():
+    registry = json.loads(
+        (REPO_ROOT / "app" / "data" / "unified_field_registry.json").read_text(encoding="utf-8")
+    )
+
+    mapping = registry["uspto_form_mapping"]["scalar"]
+    assert {
+        "doc_type",
+        "matter_kind",
+        "app_no",
+        "attorney_docket_no",
+        "confirmation_no",
+        "filing_date",
+        "title",
+        "applicant_name",
+        "first_named_inventor",
+        "mark_name",
+    } <= set(mapping)
+
+    retired_mapping_key = "bi" + "b_mapping"
+    assert retired_mapping_key not in registry
+    assert not (REPO_ROOT / "app" / "data" / ("bi" + "b_field_mapping.json")).exists()
+    assert not (
+        REPO_ROOT / "app" / "data" / ("ki" + "po_notice_param_mappings.json")
+    ).exists()
+
 
 def test_uspto_filing_receipt_rule_parser_extracts_core_fields():
     from app.services.uspto.uspto_form_parser import parse_uspto_form_rule_based

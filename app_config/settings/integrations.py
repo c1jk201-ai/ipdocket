@@ -1,12 +1,8 @@
-import os
-
 from app_config.settings.base import (
-    BaseSettings,
     _env_bool,
     _env_float,
     _env_int,
     _env_str,
-    _normalize_path,
 )
 
 
@@ -47,19 +43,3 @@ class IntegrationSettings:
     GOOGLE_SHARED_WORK_EMAIL = _env_str("GOOGLE_SHARED_WORK_EMAIL", "")
 
     ENABLE_TEST_ACCOUNTS = _env_bool("ENABLE_TEST_ACCOUNTS", False)
-
-    NKEAPS_MDB_PATH = _env_str(
-        "NKEAPS_MDB_PATH", os.path.join(BaseSettings.BASE_DIR, "data", "bib_schema.sqlite")
-    )
-    LEGACY_NOTICE_MESSAGE_DB_PATH = _env_str(
-        "LEGACY_NOTICE_MESSAGE_DB_PATH",
-        _env_str(
-            "KIPOMSG_DB_PATH",
-            os.path.join(BaseSettings.BASE_DIR, "data", "legacy_notice_messages.sqlite"),
-        ),
-    )
-    KIPOMSG_DB_PATH = LEGACY_NOTICE_MESSAGE_DB_PATH
-    NKEAPS_XML_BASE_DIR = _normalize_path(
-        _env_str("NKEAPS_XML_BASE_DIR", os.path.join(BaseSettings.BASE_DIR, "data", "nkeaps")),
-        BaseSettings.BASE_DIR,
-    )

@@ -171,12 +171,6 @@
         "col": 2
       },
       {
-        "key": "title_ko",
-        "required": false,
-        "order": 6,
-        "col": 1
-      },
-      {
         "key": "applicant_registrant",
         "required": false,
         "order": 6,
@@ -908,12 +902,6 @@
         "key": "inventor_name",
         "required": false,
         "order": 9,
-        "col": 1
-      },
-      {
-        "key": "title_ko",
-        "required": false,
-        "order": 10,
         "col": 1
       },
       {
@@ -2456,12 +2444,6 @@
         "col": 2
       },
       {
-        "key": "title_ko",
-        "required": false,
-        "order": 19,
-        "col": 1
-      },
-      {
         "key": "title_en",
         "required": false,
         "order": 20,
@@ -3428,12 +3410,6 @@
         "col": 2
       },
       {
-        "key": "title_ko",
-        "required": false,
-        "order": 15,
-        "col": 1
-      },
-      {
         "key": "title_en",
         "required": false,
         "order": 16,
@@ -3855,12 +3831,6 @@
         "required": false,
         "order": 15,
         "col": 2
-      },
-      {
-        "key": "title_ko",
-        "required": false,
-        "order": 16,
-        "col": 1
       },
       {
         "key": "title_en",
@@ -4331,12 +4301,6 @@
         "key": "applicant_name",
         "required": false,
         "order": 16,
-        "col": 1
-      },
-      {
-        "key": "title_ko",
-        "required": false,
-        "order": 17,
         "col": 1
       },
       {

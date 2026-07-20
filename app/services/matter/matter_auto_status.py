@@ -1920,7 +1920,7 @@ def _fetch_response_signals(
     """
     Fetch response(communication.comm_type='R') signals from attached .txt files.
 
-    We rely on KEAPS document field 'Applicant   Send' as the linkage key.
+    USPTO response metadata may provide a confirmation identifier and document type.
     """
     mid = (matter_id or "").strip()
     if not mid or not has_app_context():
@@ -1977,7 +1977,7 @@ def _fetch_response_signals(
     try:
         from flask import current_app
 
-        raw = current_app.config.get("document_MAX_PARSE_BYTES")
+        raw = current_app.config.get("USPTO_FORM_MAX_PARSE_BYTES")
         if raw not in (None, ""):
             max_bytes = int(raw)
     except Exception as exc:

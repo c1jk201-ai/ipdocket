@@ -389,7 +389,7 @@ def download_file_asset(case_id: str, file_asset_id: str):
         decoded, ok = _maybe_decode_pgloader_vector_blob(raw)
         if ok:
             # Check for text metadata masquerading as ZIP.
-            if decoded.startswith(b"<Version=Keaps") or decoded.startswith(b"<Version=NKeaps"):
+            if decoded.lstrip().startswith(b"<Version="):
                 flash("Only legacy metadata exists for this file; the source file is missing from migration.", "danger")
                 return redirect(url_for("case_work.case_detail", case_id=case_id))
 

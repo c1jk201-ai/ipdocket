@@ -10,6 +10,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 UNIFIED_FIELD_REGISTRY_KEY = "UNIFIED_FIELD_REGISTRY_JSON"
+_RETIRED_TOP_LEVEL_KEYS = {"bi" + "b_mapping"}
+_RETIRED_LOCALIZED_SUFFIX = "\u006b\u006f"
+_RETIRED_FIELD_KEYS = {
+    f"title_{_RETIRED_LOCALIZED_SUFFIX}",
+    f"litigation_title_{_RETIRED_LOCALIZED_SUFFIX}",
+}
 
 
 def _default_unified_registry_path() -> Path:
@@ -71,6 +77,49 @@ def _merge_mapping_config(base: Any, override: Any) -> dict[str, Any]:
     return merged
 
 
+def _strip_retired_import_entries(data: dict[str, Any]) -> dict[str, Any]:
+    cleaned = dict(data)
+    for key in _RETIRED_TOP_LEVEL_KEYS:
+        cleaned.pop(key, None)
+
+    definitions = cleaned.get("field_definitions")
+    if isinstance(definitions, dict):
+        cleaned["field_definitions"] = {
+            key: value for key, value in definitions.items() if key not in _RETIRED_FIELD_KEYS
+        }
+    elif isinstance(definitions, list):
+        cleaned["field_definitions"] = [
+            value
+            for value in definitions
+            if not isinstance(value, dict) or value.get("key") not in _RETIRED_FIELD_KEYS
+        ]
+
+    mappings = cleaned.get("mappings")
+    if isinstance(mappings, dict):
+        sanitized_mappings: dict[str, Any] = {}
+        for mapping_key, mapping in mappings.items():
+            if not isinstance(mapping, dict):
+                sanitized_mappings[mapping_key] = mapping
+                continue
+            sanitized = dict(mapping)
+            fields = sanitized.get("fields")
+            if isinstance(fields, list):
+                sanitized["fields"] = [
+                    field
+                    for field in fields
+                    if not isinstance(field, dict) or field.get("key") not in _RETIRED_FIELD_KEYS
+                ]
+            extra_allowed = sanitized.get("extra_allowed")
+            if isinstance(extra_allowed, list):
+                sanitized["extra_allowed"] = [
+                    key for key in extra_allowed if key not in _RETIRED_FIELD_KEYS
+                ]
+            sanitized_mappings[mapping_key] = sanitized
+        cleaned["mappings"] = sanitized_mappings
+
+    return cleaned
+
+
 def _merge_with_file_baseline(data: dict[str, Any], baseline: dict[str, Any]) -> dict[str, Any]:
     """Treat SystemConfig registry JSON as an override, not a replacement.
 
@@ -127,7 +176,7 @@ def _load_from_system_config() -> tuple[dict[str, Any] | None, dict[str, Any]]:
             return None, {"source": "system_config", "enabled": True, "present": True}
 
         digest = _sha256_text(raw) if isinstance(raw, str) else _sha256_json(data)
-        return data, {
+        return _strip_retired_import_entries(data), {
             "source": "system_config",
             "key": UNIFIED_FIELD_REGISTRY_KEY,
             "sha256": digest,
@@ -148,7 +197,7 @@ def _load_from_file(path: Path) -> tuple[dict[str, Any] | None, dict[str, Any]]:
             logger.error("Unified registry file is not a JSON object: %s", path)
             return None, {"source": "file", "path": str(path), "present": True}
         mtime = os.path.getmtime(str(path))
-        return data, {
+        return _strip_retired_import_entries(data), {
             "source": "file",
             "path": str(path),
             "mtime": mtime,

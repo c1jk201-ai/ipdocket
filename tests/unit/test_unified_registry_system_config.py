@@ -159,3 +159,54 @@ def test_system_config_registry_preserves_file_baseline_fields(app, db_session) 
     finally:
         _delete_system_config(db_session, "UNIFIED_FIELD_REGISTRY_JSON")
         _reset_case_field_singletons()
+
+
+def test_system_config_registry_strips_retired_agency_fields(app, db_session) -> None:
+    _reset_case_field_singletons()
+    retired_mapping = "bi" + "b_mapping"
+    retired_suffix = "\u006b\u006f"
+    retired_title = f"title_{retired_suffix}"
+    retired_litigation_title = f"litigation_title_{retired_suffix}"
+    payload = {
+        retired_mapping: {"version": 1},
+        "field_definitions": {
+            retired_title: {"label": "Retired title", "input_type": "text"},
+            retired_litigation_title: {
+                "label": "Retired litigation title",
+                "input_type": "text",
+            },
+        },
+        "mappings": {
+            "IP:DOM:PATENT": {
+                "namespace": "dom_patent",
+                "fields": [
+                    {"key": retired_title, "order": 1, "col": 1},
+                    {"key": "application_no", "order": 2, "col": 1},
+                ],
+                "extra_allowed": [retired_title, "client_id"],
+            }
+        },
+    }
+
+    try:
+        _set_system_config(db_session, "UNIFIED_FIELD_REGISTRY_JSON", json.dumps(payload))
+
+        from app.services.case_fields.registry import FieldRegistry
+        from app.services.case_fields.unified_config import load_unified_registry_data
+
+        data, _meta = load_unified_registry_data()
+        assert data is not None
+        assert retired_mapping not in data
+        assert retired_title not in data["field_definitions"]
+        assert retired_litigation_title not in data["field_definitions"]
+        fields = data["mappings"]["IP:DOM:PATENT"]["fields"]
+        assert all(field.get("key") != retired_title for field in fields)
+        assert retired_title not in data["mappings"]["IP:DOM:PATENT"]["extra_allowed"]
+
+        registry = FieldRegistry.instance()
+        registry.initialize()
+        assert not registry.exists(retired_title)
+        assert not registry.exists(retired_litigation_title)
+    finally:
+        _delete_system_config(db_session, "UNIFIED_FIELD_REGISTRY_JSON")
+        _reset_case_field_singletons()

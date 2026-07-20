@@ -68,7 +68,3 @@ def maybe_run_startup_housekeeping(app: Flask) -> None:
         app.logger.info("Startup housekeeping completed: %s", result)
     except Exception:
         app.logger.exception("Startup housekeeping failed.")
-
-
-def warn_missing_legacy_agency_assets(app: Flask) -> None:
-    return

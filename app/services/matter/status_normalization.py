@@ -285,7 +285,7 @@ _DOC_LIKE_RED_EXACT: set[str] = {
     "",
     "",
     "",
-    # KEAPS combined labels (sometimes appear verbatim)
+    # Combined labels retained from imported document titles
     "··",
     "Examination request·Examination",
     # Generic

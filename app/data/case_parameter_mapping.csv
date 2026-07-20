@@ -1,4 +1,4 @@
-﻿business_area,division_code,division_label_ko,case_type_code,case_type_label_ko,supported,namespace,param_key,label_ko,widget,storage,required,source
+﻿business_area,division_code,division_label,case_type_code,case_type_label,supported,namespace,param_key,label,widget,storage,required,source
 BASE,*,Text,*,Text,Y,basic,attorney,Text,text,matter_custom_field(namespace=basic).data,,app/blueprints/case/routes.py:_update_basic_matter_info
 BASE,*,Text,*,Text,Y,basic,handler,Text,text,matter_custom_field(namespace=basic).data,,app/blueprints/case/routes.py:_update_basic_matter_info
 BASE,*,Text,*,Text,Y,basic,manager,Text,text,matter_custom_field(namespace=basic).data,,app/blueprints/case/routes.py:_update_basic_matter_info
@@ -183,7 +183,6 @@ IP,DOM,Text,PATENT,Text,Y,domestic_patent,stand_reason,Text,select_stand_reason,
 IP,DOM,Text,PATENT,Text,Y,domestic_patent,tech_transfer,Text Text,select_yn,matter_custom_field(namespace=domestic_patent).data,,app/blueprints/case/helpers.py:DOMESTIC_PATENT_FIELDS
 IP,DOM,Text,PATENT,Text,Y,domestic_patent,term_expiry_date,Text Text Text,date,matter_custom_field(namespace=domestic_patent).data,,app/blueprints/case/helpers.py:DOMESTIC_PATENT_FIELDS
 IP,DOM,Text,PATENT,Text,Y,domestic_patent,title_en,Text Text,text,matter_custom_field(namespace=domestic_patent).data,,app/blueprints/case/helpers.py:DOMESTIC_PATENT_FIELDS
-IP,DOM,Text,PATENT,Text,Y,domestic_patent,title_ko,Text Text,text,matter_custom_field(namespace=domestic_patent).data,,app/blueprints/case/helpers.py:DOMESTIC_PATENT_FIELDS
 IP,DOM,Text,TRADEMARK,Text,Y,domestic_trademark,abandon_date,Text/Text,date,matter_custom_field(namespace=domestic_trademark).data,,app/blueprints/case/helpers.py:DOMESTIC_TRADEMARK_FIELDS
 IP,DOM,Text,TRADEMARK,Text,Y,domestic_trademark,abandon_reason,Text/Text Text,text,matter_custom_field(namespace=domestic_trademark).data,,app/blueprints/case/helpers.py:DOMESTIC_TRADEMARK_FIELDS
 IP,DOM,Text,TRADEMARK,Text,Y,domestic_trademark,appeal_date,Text Text,date,matter_custom_field(namespace=domestic_trademark).data,,app/blueprints/case/helpers.py:DOMESTIC_TRADEMARK_FIELDS
@@ -427,7 +426,6 @@ IP,INC,Text,PATENT,Text,Y,incoming_patent,spec_pages,Text Text,text,matter_custo
 IP,INC,Text,PATENT,Text,Y,incoming_patent,stand_reason,Text,select_stand_reason,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
 IP,INC,Text,PATENT,Text,Y,incoming_patent,term_expiry_date,Text Text Text,date,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
 IP,INC,Text,PATENT,Text,Y,incoming_patent,title_en,Text Text,text,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
-IP,INC,Text,PATENT,Text,Y,incoming_patent,title_ko,Text Text,text,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
 IP,INC,Text,PATENT,Text,Y,incoming_patent,trans_accept_date,Text,date,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
 IP,INC,Text,PATENT,Text,Y,incoming_patent,trans_charge,Text,text,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
 IP,INC,Text,PATENT,Text,Y,incoming_patent,trans_expend_date,Text,date,matter_custom_field(namespace=incoming_patent).data,,app/blueprints/case/helpers.py:INCOMING_PATENT_FIELDS
@@ -580,7 +578,6 @@ IP,OUT,Text,DESIGN,Text,Y,outgoing_design,retained_date,Text,date,matter_custom_
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,stand_reason,Text,select_stand_reason,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,term_expiry_date,Text Text Text,date,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,title_en,Text Text,text,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
-IP,OUT,Text,DESIGN,Text,Y,outgoing_design,title_ko,Text Text,text,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,trans_charge,Text,text,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,trans_expend_date,Text,date,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
 IP,OUT,Text,DESIGN,Text,Y,outgoing_design,trans_price,Text,text,matter_custom_field(namespace=outgoing_design).data,,app/blueprints/case/helpers.py:OUTGOING_DESIGN_FIELDS
@@ -662,7 +659,6 @@ IP,OUT,Text,PATENT,Text,Y,outgoing_patent,spec_pages,Text Text,text,matter_custo
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,stand_reason,Text,select_stand_reason,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,term_expiry_date,Text Text Text,date,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,title_en,Text Text,text,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
-IP,OUT,Text,PATENT,Text,Y,outgoing_patent,title_ko,Text Text,text,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,trans_charge,Text,text,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,trans_expend_date,Text,date,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
 IP,OUT,Text,PATENT,Text,Y,outgoing_patent,trans_price,Text,text,matter_custom_field(namespace=outgoing_patent).data,,app/blueprints/case/helpers.py:OUTGOING_PATENT_FIELDS
@@ -711,4 +707,3 @@ LITIGATION,,,LITIGATION,Text/Text/Text,Y,litigation,respondent_name_id,,,matter_
 LITIGATION,,,LITIGATION,Text/Text/Text,Y,litigation,retained_date,Text,date,matter_custom_field(namespace=litigation).data,,app/blueprints/case/helpers.py:LITIGATION_FIELDS
 LITIGATION,,,LITIGATION,Text/Text/Text,Y,litigation,right_type,Text,select_litigation_right_type,matter_custom_field(namespace=litigation).data,,app/blueprints/case/helpers.py:LITIGATION_FIELDS
 LITIGATION,,,LITIGATION,Text/Text/Text,Y,litigation,stand_reason,Text,select_stand_reason,matter_custom_field(namespace=litigation).data,,app/blueprints/case/helpers.py:LITIGATION_FIELDS
-LITIGATION,,,LITIGATION,Text/Text/Text,Y,litigation,title_ko,Text Text,text,matter_custom_field(namespace=litigation).data,,app/blueprints/case/helpers.py:LITIGATION_FIELDS

@@ -36,7 +36,6 @@ from app.core.setup.startup import runtime_env_name as _runtime_env_name
 from app.core.setup.startup import (
     warn_housekeeping_without_scheduler as _warn_housekeeping_without_scheduler,
 )
-from app.core.setup.startup import warn_missing_legacy_agency_assets
 from app.core.setup.template_filters import register_template_filters
 from app.security import init_security
 from app.utils.timezone import apply_process_timezone, normalize_timezone_name
@@ -138,7 +137,6 @@ def create_app(
     register_health_endpoints(app)
     validate_upload_limits(app)
     log_config_snapshot(app)
-    warn_missing_legacy_agency_assets(app)
     run_startup_checks(app)
     run_bootstrap(app, enable_bootstrap=enable_bootstrap)
     run_scheduler_bootstrap(app, enable_scheduler=enable_scheduler)
